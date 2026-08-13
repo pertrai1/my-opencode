@@ -15,7 +15,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 - `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
 - `plugins/agentmemory-capture.ts` — captures session observations into the agentmemory MCP server. Optional auth via `AGENTMEMORY_SECRET` env var.
-- `plugins/crg-plugin.ts` — keeps the [code-review-graph](https://github.com/) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
+- `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 
 ## Skills
@@ -32,6 +32,21 @@ Engineering skills live in `.agents/skills/` and are auto-discovered by opencode
 
 - `commands/recall.md` — search past session memory
 - `commands/remember.md` — explicitly save a memory
+
+## Resources
+
+- [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review
+- [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow
+- [hunk](https://hunk.dev) — review-first diff viewer for agent-authored changes
+- [GitHub CLI (`gh`)](https://cli.github.com/) — GitHub operations from the terminal
+- [gh-dash](https://github.com/dlvhdr/gh-dash) — terminal dashboard for GitHub pull requests and issues
+- [RTK](https://github.com/rtk-ai/rtk) — token-saving command proxy for terminal workflows
+- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools
+- [Code Review Graph](https://code-review-graph.com) — local-first knowledge graph tooling used by `crg-plugin.ts`
+- [agentmemory](https://github.com/agentmemoryai/agentmemory) — long-term memory MCP server for agent sessions
+- [lazygit](https://github.com/jesseduffield/lazygit) - simple terminal UI for git commands
+- [lazydocker](https://github.com/jesseduffield/lazydocker) - The lazier way to manage everything docker
+- [Matt Pocock Skills](https://github.com/mattpocock/skills) - Skills for Real Engineers.
 
 ## Replicating this setup
 
