@@ -1,4 +1,40 @@
-import type { Plugin } from "@opencode-ai/plugin"
+type ShellCommandResult = {
+  stdout?: {
+    toString(): string
+  }
+}
+
+type ShellCommand = {
+  quiet(): Promise<ShellCommandResult>
+}
+
+type ShellTemplate = (
+  strings: TemplateStringsArray,
+  ...values: ReadonlyArray<unknown>
+) => ShellCommand
+
+type ToolExecuteInput = {
+  command?: unknown
+  cmd?: unknown
+  content?: unknown
+}
+
+type PluginEventContext = {
+  $: ShellTemplate
+  input?: ToolExecuteInput
+  params?: ToolExecuteInput
+}
+
+type CodeReviewGraphApp = {
+  on(eventName: string, handler: (context: PluginEventContext) => Promise<void>): void
+}
+
+function getCommandText(input: ToolExecuteInput | undefined): string {
+  if (!input) return ""
+  if (typeof input.command === "string") return input.command
+  if (typeof input.cmd === "string") return input.cmd
+  return typeof input.content === "string" ? input.content : ""
+}
 
 /**
  * code-review-graph plugin for OpenCode.
@@ -9,55 +45,44 @@ import type { Plugin } from "@opencode-ai/plugin"
  * Installed by: code-review-graph install --platform opencode
  */
 
-// Helper: run a shell command quietly, swallowing errors.
-async function run($: any, cmd: string): Promise<string> {
-  try {
-    const result = await $`${cmd}`.quiet()
-    return result.stdout?.toString().trim() ?? ""
-  } catch {
-    return ""
-  }
-}
-
-export default (app: any) => {
+export default function CrgPlugin(app: CodeReviewGraphApp): void {
   // 1. Auto-update graph after file edits
-  app.on("file.edited", async ({ $ }: { $: any }) => {
+  app.on("file.edited", async ({ $ }) => {
     try {
       await $`code-review-graph update --skip-flows`.quiet()
     } catch {
-      // Swallow — graph may not be built yet for this project.
+      return
     }
   })
 
   // 2. Show graph status when a new session starts
-  app.on("session.created", async ({ $ }: { $: any }) => {
+  app.on("session.created", async ({ $ }) => {
     try {
       const result = await $`code-review-graph status`.quiet()
       const output = result.stdout?.toString().trim()
       if (output) {
-        console.log("[code-review-graph]", output)
+        console.log("[code-review-graph] status", { output })
       }
     } catch {
-      // Swallow — not every project has a graph.
+      return
     }
   })
 
   // 3. Detect changes before git commit commands
-  app.on("tool.execute.before", async (ctx: any) => {
+  app.on("tool.execute.before", async (context) => {
     try {
-      const input = ctx?.input ?? ctx?.params ?? {}
-      const cmd =
-        input.command ?? input.cmd ?? input.content ?? ""
+      const input = context.input ?? context.params
+      const cmd = getCommandText(input)
       if (typeof cmd === "string" && /^git\s+commit/i.test(cmd)) {
         const result =
-          await ctx.$`code-review-graph detect-changes --brief`.quiet()
+          await context.$`code-review-graph detect-changes --brief`.quiet()
         const output = result.stdout?.toString().trim()
         if (output) {
-          console.log("[code-review-graph] Pre-commit analysis:\n" + output)
+          console.log("[code-review-graph] pre-commit analysis", { output })
         }
       }
     } catch {
-      // Swallow — never block a commit.
+      return
     }
   })
 }
