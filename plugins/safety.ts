@@ -55,6 +55,11 @@ const TRACKED_TOOL_NAMES = new Set([
   "write",
 ]);
 
+const ARTIFACT_PREFIX = "opencode-full-out-";
+const ARTIFACT_SUFFIX = ".txt";
+const ARTIFACT_CREATION_ATTEMPTS = 5;
+const MAX_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
 // Helper: resolve paths starting with ~/
 function resolvePath(p: string): string {
   if (p.startsWith("~/")) {
@@ -73,6 +78,18 @@ function sanitizeFilenameComponent(value: string): string {
 
 function isTrackedTool(toolName: string): boolean {
   return TRACKED_TOOL_NAMES.has(toolName.toLowerCase());
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 && Number.isInteger(value);
+}
+
+function isPositiveNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function hasErrorCode(error: unknown, code: string): boolean {
+  return isRecord(error) && error.code === code;
 }
 
 function getEffectiveTruncationLengths(
@@ -191,24 +208,54 @@ function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
   const truncation = isRecord(parsed.safety.truncation) ? parsed.safety.truncation : {};
   const doomLoop = isRecord(parsed.safety.doomLoop) ? parsed.safety.doomLoop : {};
 
+  const maxLength = isPositiveInteger(truncation.maxLength)
+    ? truncation.maxLength
+    : DEFAULT_CONFIG.truncation.maxLength;
+  const configuredHeadLength = truncation.headLength;
+  const configuredTailLength = truncation.tailLength;
+  const hasConfiguredHeadLength = isPositiveInteger(configuredHeadLength);
+  const hasConfiguredTailLength = isPositiveInteger(configuredTailLength);
+  const requestedHeadLength = hasConfiguredHeadLength
+    ? configuredHeadLength
+    : DEFAULT_CONFIG.truncation.headLength;
+  const requestedTailLength = hasConfiguredTailLength
+    ? configuredTailLength
+    : DEFAULT_CONFIG.truncation.tailLength;
+  const hasInvalidConfiguredBudget = hasConfiguredHeadLength
+    && hasConfiguredTailLength
+    && requestedHeadLength + requestedTailLength > maxLength;
+  const effectiveTruncationLengths = getEffectiveTruncationLengths(
+    maxLength,
+    requestedHeadLength,
+    requestedTailLength,
+  );
+
+  const bufferSize = isPositiveInteger(doomLoop.bufferSize)
+    ? doomLoop.bufferSize
+    : DEFAULT_CONFIG.doomLoop.bufferSize;
+  const maxRepetitions = isPositiveInteger(doomLoop.maxRepetitions)
+    ? doomLoop.maxRepetitions
+    : DEFAULT_CONFIG.doomLoop.maxRepetitions;
+  const isValidDoomLoopThreshold = maxRepetitions <= bufferSize;
+
   return {
     truncation: {
-      maxLength: typeof truncation.maxLength === "number"
-        ? truncation.maxLength
+      maxLength: !hasInvalidConfiguredBudget
+        ? maxLength
         : DEFAULT_CONFIG.truncation.maxLength,
-      headLength: typeof truncation.headLength === "number"
-        ? truncation.headLength
+      headLength: !hasInvalidConfiguredBudget
+        ? effectiveTruncationLengths.headLength
         : DEFAULT_CONFIG.truncation.headLength,
-      tailLength: typeof truncation.tailLength === "number"
-        ? truncation.tailLength
+      tailLength: !hasInvalidConfiguredBudget
+        ? effectiveTruncationLengths.tailLength
         : DEFAULT_CONFIG.truncation.tailLength,
       tempDir: typeof truncation.tempDir === "string"
         ? truncation.tempDir
         : DEFAULT_CONFIG.truncation.tempDir,
-      retentionHours: typeof truncation.retentionHours === "number"
+      retentionHours: isPositiveNumber(truncation.retentionHours)
         ? truncation.retentionHours
         : DEFAULT_CONFIG.truncation.retentionHours,
-      maxTempDirSizeMB: typeof truncation.maxTempDirSizeMB === "number"
+      maxTempDirSizeMB: isPositiveNumber(truncation.maxTempDirSizeMB)
         ? truncation.maxTempDirSizeMB
         : DEFAULT_CONFIG.truncation.maxTempDirSizeMB,
     },
@@ -216,11 +263,11 @@ function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
       enabled: typeof doomLoop.enabled === "boolean"
         ? doomLoop.enabled
         : DEFAULT_CONFIG.doomLoop.enabled,
-      bufferSize: typeof doomLoop.bufferSize === "number"
-        ? doomLoop.bufferSize
+      bufferSize: isValidDoomLoopThreshold
+        ? bufferSize
         : DEFAULT_CONFIG.doomLoop.bufferSize,
-      maxRepetitions: typeof doomLoop.maxRepetitions === "number"
-        ? doomLoop.maxRepetitions
+      maxRepetitions: isValidDoomLoopThreshold
+        ? maxRepetitions
         : DEFAULT_CONFIG.doomLoop.maxRepetitions,
       exemptTools: Array.isArray(doomLoop.exemptTools)
         ? doomLoop.exemptTools.filter((tool): tool is string => typeof tool === "string")
@@ -254,7 +301,12 @@ function loadSafetyConfig(projectDir: string): SafetyConfig {
 }
 
 // Helper: perform retention and size cleanup on temp directory
-function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void {
+function pruneTempDir(
+  dir: string,
+  retentionHours: number,
+  maxMB: number,
+  protectedPath?: string,
+): void {
   if (!fs.existsSync(dir)) {
     return;
   }
@@ -265,11 +317,14 @@ function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void 
 
     const fileInfos = listFileInfos(dir);
     const artifactFiles = fileInfos.filter(
-      (info) => info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt")
+      (info) => info.name.startsWith(ARTIFACT_PREFIX) && info.name.endsWith(ARTIFACT_SUFFIX)
     );
 
     // 1. Prune by age (older than retentionHours)
     for (const info of artifactFiles) {
+      if (info.path === protectedPath) {
+        continue;
+      }
       const age = now - info.stat.mtimeMs;
       if (age > retentionMs) {
         try {
@@ -284,7 +339,11 @@ function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void 
     // Refresh file list after age-based pruning
     const remainingFiles = listFileInfos(dir);
     const remainingArtifactFiles = remainingFiles
-      .filter((info) => info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt"))
+      .filter((info) =>
+        info.name.startsWith(ARTIFACT_PREFIX)
+        && info.name.endsWith(ARTIFACT_SUFFIX)
+        && info.path !== protectedPath
+      )
       .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs); // oldest first
 
     // 2. Prune by directory size limit
@@ -307,8 +366,58 @@ function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void 
   }
 }
 
+function createOutputArtifact(
+  dir: string,
+  sessionID: string | undefined,
+  rawOutput: string,
+): string | null {
+  const timestamp = Date.now();
+  const safeSessionID = sanitizeFilenameComponent(sessionID ?? "unknown");
+
+  for (let attempt = 0; attempt < ARTIFACT_CREATION_ATTEMPTS; attempt++) {
+    const randomSuffix = crypto.randomBytes(3).toString("hex");
+    const fileName = `${ARTIFACT_PREFIX}${safeSessionID}-${timestamp}-${randomSuffix}${ARTIFACT_SUFFIX}`;
+    const fullPath = path.join(dir, fileName);
+
+    try {
+      fs.writeFileSync(fullPath, rawOutput, { flag: "wx", mode: 0o600 });
+      fs.chmodSync(fullPath, 0o600);
+      return fullPath;
+    } catch (error) {
+      if (hasErrorCode(error, "EEXIST")) {
+        continue;
+      }
+      console.warn("Failed to write persistent output file", { error });
+      return null;
+    }
+  }
+
+  console.warn("Failed to allocate a unique persistent output filename");
+  return null;
+}
+
 export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<Hooks> => {
+  const scheduledCleanup = (): void => {
+    const config = loadSafetyConfig(directory).truncation;
+    pruneTempDir(
+      resolvePath(config.tempDir),
+      config.retentionHours,
+      config.maxTempDirSizeMB,
+    );
+  };
+  const initialConfig = loadSafetyConfig(directory).truncation;
+  const cleanupIntervalMs = Math.min(
+    initialConfig.retentionHours * 60 * 60 * 1000,
+    MAX_CLEANUP_INTERVAL_MS,
+  );
+  const cleanupTimer = setInterval(scheduledCleanup, cleanupIntervalMs);
+  cleanupTimer.unref();
+  scheduledCleanup();
+
   return {
+    dispose: async () => {
+      clearInterval(cleanupTimer);
+    },
     // Reset buffer on new user message
     "chat.message": async ({ sessionID }) => {
       if (sessionID) {
@@ -352,19 +461,8 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
             return;
           }
 
-          // Generate collision-free filename
-          const timestamp = Date.now();
-          const randomSuffix = crypto.randomBytes(3).toString("hex");
-          const safeSessionID = sanitizeFilenameComponent(sessionID ?? "unknown");
-          const fileName = `opencode-full-out-${safeSessionID}-${timestamp}-${randomSuffix}.txt`;
-          const fullPath = path.join(resolvedTempDir, fileName);
-
-          // Write complete raw output to secure file with 0600 permissions
-          try {
-            fs.writeFileSync(fullPath, rawOutput, { mode: 0o600 });
-            fs.chmodSync(fullPath, 0o600);
-          } catch (error) {
-            console.warn("Failed to write persistent output file", { error });
+          const fullPath = createOutputArtifact(resolvedTempDir, sessionID, rawOutput);
+          if (!fullPath) {
             return;
           }
 
@@ -383,7 +481,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           output.output = head + warningMarker + tail;
 
           // Cleanup old files in temp directory
-          pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB);
+          pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
         }
       }
 

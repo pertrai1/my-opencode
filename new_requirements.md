@@ -13,7 +13,7 @@ This requirement consists of two primary mechanisms:
 * **Truncation Limits:** Any custom tool output or shell command stdout/stderr exceeding a combined limit of **30,000 Unicode characters** (evaluated post-execution on the combined output string) must be truncated.
 * **Truncation Strategy (Head-and-Tail):** To ensure critical execution summaries and stack traces (which are typically at the end of shell outputs) are preserved, implement a head-and-tail truncation strategy. Show the first **20,000 characters** and the last **10,000 characters**.
 * **UI Indicator:** Inject a prominent warning marker in place of the omitted middle content:
-  ```
+  ```text
   \n[WARNING: Output truncated at 30,000 characters. Showing first 20,000 and last 10,000 characters. Full output saved to <path>.]\n
   ```
   The warning indicator text itself does not count against the 30k character budget.

@@ -223,7 +223,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     fs.rmSync(mockDir, { recursive: true });
   });
 
-  await t.test('clamps overlapping head and tail lengths to the maxLength budget', async () => {
+  await t.test('falls back when configured head and tail lengths exceed maxLength', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-clamp-${Date.now()}`);
     const mockDir = createMockProjectDir({
       truncation: {
@@ -242,10 +242,39 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
     await plugin["tool.execute.after"](input, output);
 
-    assert.ok(output.output.startsWith('abcd'));
-    assert.ok(output.output.endsWith('i'));
-    assert.ok(output.output.includes('Showing first 4 and last 1 characters.'));
+    assert.strictEqual(output.output, 'abcdefghi');
 
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true });
+  });
+
+  await t.test('preserves the current artifact when it exceeds the size limit', async () => {
+    const tempDirName = path.join(os.tmpdir(), `opencode-protected-${Date.now()}`);
+    const mockDir = createMockProjectDir({
+      truncation: {
+        maxLength: 5,
+        headLength: 3,
+        tailLength: 2,
+        tempDir: tempDirName,
+        retentionHours: 24,
+        maxTempDirSizeMB: 0.000001
+      }
+    });
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
+
+    await plugin["tool.execute.after"](
+      { tool: 'bash', sessionID: 'session-protected', callID: 'call1', args: {} },
+      output,
+    );
+
+    const files = fs.readdirSync(tempDirName);
+    assert.strictEqual(files.length, 1);
+    const savedFileName = files.length > 0 ? files[0] : undefined;
+    assert.ok(savedFileName, 'Expected retained output file to exist');
+    assert.ok(output.output.includes(path.join(tempDirName, savedFileName)));
+
+    await plugin.dispose();
     fs.rmSync(tempDirName, { recursive: true, force: true });
     fs.rmSync(mockDir, { recursive: true });
   });
@@ -313,6 +342,9 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
 
     assert.ok(errorOccurred, 'Expected doom loop error to be thrown');
     assert.ok(errorOccurred.message.includes('[DOOM LOOP DETECTED]'));
+
+    // The loop abort clears history so a retry starts with a fresh buffer.
+    await plugin["tool.execute.after"](call1, res1);
 
     // Clean up
     fs.rmSync(mockDir, { recursive: true });
@@ -550,6 +582,31 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
 
     fs.rmSync(mockDir, { recursive: true });
   });
+
+  await t.test('falls back to valid loop thresholds when the configured relationship is invalid', async () => {
+    const mockDir = createMockProjectDir({
+      doomLoop: {
+        enabled: true,
+        bufferSize: 2,
+        maxRepetitions: 3,
+        exemptTools: [],
+        postAbortAction: "hard_error"
+      }
+    });
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const call = { tool: 'bash', sessionID: 'session-invalid-threshold', callID: 'c1', args: {} };
+    const output = { title: 'bash', output: 'ok', metadata: {} };
+
+    await plugin["tool.execute.after"](call, output);
+    await plugin["tool.execute.after"](call, output);
+    await assert.rejects(
+      plugin["tool.execute.after"](call, output),
+      /\[DOOM LOOP DETECTED\]/,
+    );
+
+    await plugin.dispose();
+    fs.rmSync(mockDir, { recursive: true });
+  });
 });
 
 test('Safety Plugin - JSONC Parsing of comments and string //', async (t) => {
@@ -582,5 +639,27 @@ test('Safety Plugin - JSONC Parsing of comments and string //', async (t) => {
     assert.ok(fs.existsSync(resolvedPath), 'Expected temporary files dir with // to exist');
 
     fs.rmSync(mockDir, { recursive: true, force: true });
+  });
+
+  await t.test('falls back when configured truncation lengths exceed maxLength', async () => {
+    const mockDir = createMockProjectDir({
+      truncation: {
+        maxLength: 5,
+        headLength: 4,
+        tailLength: 4,
+      }
+    });
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const output = { title: 'bash', output: 'abcdefghij', metadata: {} };
+
+    await plugin["tool.execute.after"](
+      { tool: 'bash', sessionID: 'session-invalid-budget', callID: 'call1', args: {} },
+      output,
+    );
+
+    assert.strictEqual(output.output, 'abcdefghij');
+
+    await plugin.dispose();
+    fs.rmSync(mockDir, { recursive: true });
   });
 });
