@@ -1,6 +1,9 @@
 
 <overview>
 The most common debugging mistake: declaring victory too early. A fix isn't complete until it's verified. This document defines what "verified" means and provides systematic approaches to proving your fix works.
+
+**Note on Canonical Guidance:**
+All verification workflows, reports, and evidence standards must align with the project's canonical shared guidance found in [.agents/docs/verification/README.md](../../../docs/verification/README.md). Keep verification reports consistent, evidence-based, and aligned with standard rubric expectations.
 </overview>
 
 
