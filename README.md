@@ -9,7 +9,7 @@ Global configuration for [opencode](https://opencode.ai).
 - **Permissions** — least privilege. Read-only tools and shell commands are allowed; edits, tasks, and mutating shell commands ask; destructive operations (`rm`, `git push`/`clean`/`reset --hard`/`rebase`) are denied. `.env` reads are denied.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
-- **TUI** — `tui.json` (theme, mouse, attention notifications).
+- **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
 
 ## Plugins
 
@@ -20,7 +20,16 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Skills
 
-Engineering skills live in `.agents/skills/` and are auto-discovered by opencode. They come from [mattpocock/skills](https://github.com/mattpocock/skills) and are managed via `npx skills` — update with `npx skills update` (sources are recorded in `skills-lock.json`).
+- `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
+- `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
+- `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
+
+## Agents
+
+- `agent/architecture-boundary-reviewer.md` — reviews diffs for architecture boundary violations.
+- `agent/performance-reviewer.md` — reviews diffs for performance risks and optimization opportunities.
+- `agent/production-readiness-reviewer.md` — reviews diffs for reliability and production safety risks.
+- `agent/test-reviewer.md` — reviews diffs for missing or weak test coverage.
 
 ## MCP servers
 
@@ -30,6 +39,7 @@ Engineering skills live in `.agents/skills/` and are auto-discovered by opencode
 
 ## Commands
 
+- `commands/code-review.md` — run a code review workflow against current changes
 - `commands/recall.md` — search past session memory
 - `commands/remember.md` — explicitly save a memory
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory
