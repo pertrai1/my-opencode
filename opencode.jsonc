@@ -90,7 +90,12 @@
       "rtk git rebase *": "deny",
     },
   },
-  "plugin": ["./plugins/agentmemory-capture.ts"],
+  "plugin": [
+    "./plugins/agentmemory-capture.ts",
+    "./plugins/crg-plugin.ts",
+    "./plugins/herdr-agent-state.js",
+    "./plugins/rtk.ts",
+  ],
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
