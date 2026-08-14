@@ -4,12 +4,30 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import * as os from "node:os";
 
+type SafetyConfig = {
+  truncation: {
+    maxLength: number;
+    headLength: number;
+    tailLength: number;
+    tempDir: string;
+    retentionHours: number;
+    maxTempDirSizeMB: number;
+  };
+  doomLoop: {
+    enabled: boolean;
+    bufferSize: number;
+    maxRepetitions: number;
+    exemptTools: string[];
+    postAbortAction: "hard_error" | "interactive_pause";
+  };
+};
+
 // Stateful memory buffer for Doom Loop Detection
 // Maps sessionID -> array of tool call hashes (rolling history)
 const sessionBuffers = new Map<string, string[]>();
 
 // Default safety configuration
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: SafetyConfig = {
   truncation: {
     maxLength: 30000,
     headLength: 20000,
@@ -27,6 +45,16 @@ const DEFAULT_CONFIG = {
   },
 };
 
+const TRACKED_TOOL_NAMES = new Set([
+  "apply_patch",
+  "bash",
+  "edit",
+  "question",
+  "task",
+  "webfetch",
+  "write",
+]);
+
 // Helper: resolve paths starting with ~/
 function resolvePath(p: string): string {
   if (p.startsWith("~/")) {
@@ -38,8 +66,40 @@ function resolvePath(p: string): string {
   return path.resolve(p);
 }
 
+function sanitizeFilenameComponent(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return sanitized.length > 0 ? sanitized : "unknown";
+}
+
+function isTrackedTool(toolName: string): boolean {
+  return TRACKED_TOOL_NAMES.has(toolName.toLowerCase());
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function listFileInfos(dir: string): Array<{
+  name: string;
+  path: string;
+  stat: fs.Stats;
+}> {
+  return fs.readdirSync(dir)
+    .map((name) => {
+      const filePath = path.join(dir, name);
+      try {
+        const stat = fs.statSync(filePath);
+        return { name, path: filePath, stat };
+      } catch (error) {
+        console.warn("Failed to stat file during pruning", { path: filePath, error });
+        return null;
+      }
+    })
+    .filter((info): info is NonNullable<typeof info> => info !== null && info.stat.isFile());
+}
+
 // Helper: deterministically stringify JSON arguments (alphabetical keys)
-function canonicalStringify(obj: any): string {
+function canonicalStringify(obj: unknown): string {
   if (obj === null || typeof obj !== "object") {
     return JSON.stringify(obj);
   }
@@ -54,7 +114,7 @@ function canonicalStringify(obj: any): string {
 }
 
 // Helper: clean JSONC comments and trailing commas
-function parseJsonc(content: string): any {
+function parseJsonc(content: string): unknown {
   let output = "";
   let state = "default";
   let i = 0;
@@ -105,11 +165,60 @@ function parseJsonc(content: string): any {
   return JSON.parse(clean);
 }
 
+function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
+  if (!isRecord(parsed) || !isRecord(parsed.safety)) {
+    return null;
+  }
+
+  const truncation = isRecord(parsed.safety.truncation) ? parsed.safety.truncation : {};
+  const doomLoop = isRecord(parsed.safety.doomLoop) ? parsed.safety.doomLoop : {};
+
+  return {
+    truncation: {
+      maxLength: typeof truncation.maxLength === "number"
+        ? truncation.maxLength
+        : DEFAULT_CONFIG.truncation.maxLength,
+      headLength: typeof truncation.headLength === "number"
+        ? truncation.headLength
+        : DEFAULT_CONFIG.truncation.headLength,
+      tailLength: typeof truncation.tailLength === "number"
+        ? truncation.tailLength
+        : DEFAULT_CONFIG.truncation.tailLength,
+      tempDir: typeof truncation.tempDir === "string"
+        ? truncation.tempDir
+        : DEFAULT_CONFIG.truncation.tempDir,
+      retentionHours: typeof truncation.retentionHours === "number"
+        ? truncation.retentionHours
+        : DEFAULT_CONFIG.truncation.retentionHours,
+      maxTempDirSizeMB: typeof truncation.maxTempDirSizeMB === "number"
+        ? truncation.maxTempDirSizeMB
+        : DEFAULT_CONFIG.truncation.maxTempDirSizeMB,
+    },
+    doomLoop: {
+      enabled: typeof doomLoop.enabled === "boolean"
+        ? doomLoop.enabled
+        : DEFAULT_CONFIG.doomLoop.enabled,
+      bufferSize: typeof doomLoop.bufferSize === "number"
+        ? doomLoop.bufferSize
+        : DEFAULT_CONFIG.doomLoop.bufferSize,
+      maxRepetitions: typeof doomLoop.maxRepetitions === "number"
+        ? doomLoop.maxRepetitions
+        : DEFAULT_CONFIG.doomLoop.maxRepetitions,
+      exemptTools: Array.isArray(doomLoop.exemptTools)
+        ? doomLoop.exemptTools.filter((tool): tool is string => typeof tool === "string")
+        : DEFAULT_CONFIG.doomLoop.exemptTools,
+      postAbortAction: doomLoop.postAbortAction === "interactive_pause"
+        ? "interactive_pause"
+        : DEFAULT_CONFIG.doomLoop.postAbortAction,
+    },
+  };
+}
+
 // Helper: load safety config from opencode.jsonc
-function loadSafetyConfig(projectDir: string): typeof DEFAULT_CONFIG {
+function loadSafetyConfig(projectDir: string): SafetyConfig {
   const configPath = path.join(projectDir, "opencode.jsonc");
   if (fs.existsSync(configPath)) {
-    let parsed: any;
+    let parsed: unknown;
     try {
       const raw = fs.readFileSync(configPath, "utf8");
       parsed = parseJsonc(raw);
@@ -118,17 +227,9 @@ function loadSafetyConfig(projectDir: string): typeof DEFAULT_CONFIG {
       return DEFAULT_CONFIG;
     }
 
-    if (parsed && parsed.safety) {
-      return {
-        truncation: {
-          ...DEFAULT_CONFIG.truncation,
-          ...parsed.safety.truncation,
-        },
-        doomLoop: {
-          ...DEFAULT_CONFIG.doomLoop,
-          ...parsed.safety.doomLoop,
-        },
-      };
+    const config = mergeSafetyConfig(parsed);
+    if (config) {
+      return config;
     }
   }
   return DEFAULT_CONFIG;
@@ -140,26 +241,17 @@ function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void 
     return;
   }
   try {
-    const files = fs.readdirSync(dir);
     const now = Date.now();
     const retentionMs = retentionHours * 60 * 60 * 1000;
     const maxSize = maxMB * 1024 * 1024;
 
-    const fileInfos = files
-      .map((f) => {
-        const fp = path.join(dir, f);
-        try {
-          const stat = fs.statSync(fp);
-          return { name: f, path: fp, stat };
-        } catch (error) {
-          console.warn("Failed to stat file during pruning", { path: fp, error });
-          return null;
-        }
-      })
-      .filter((info): info is NonNullable<typeof info> => info !== null && info.stat.isFile() && info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt"));
+    const fileInfos = listFileInfos(dir);
+    const artifactFiles = fileInfos.filter(
+      (info) => info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt")
+    );
 
     // 1. Prune by age (older than retentionHours)
-    for (const info of fileInfos) {
+    for (const info of artifactFiles) {
       const age = now - info.stat.mtimeMs;
       if (age > retentionMs) {
         try {
@@ -172,23 +264,14 @@ function pruneTempDir(dir: string, retentionHours: number, maxMB: number): void 
     }
 
     // Refresh file list after age-based pruning
-    const remainingFiles = fs.readdirSync(dir)
-      .map((f) => {
-        const fp = path.join(dir, f);
-        try {
-          const stat = fs.statSync(fp);
-          return { name: f, path: fp, stat };
-        } catch (error) {
-          console.warn("Failed to stat remaining file during pruning", { path: fp, error });
-          return null;
-        }
-      })
-      .filter((info): info is NonNullable<typeof info> => info !== null && info.stat.isFile() && info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt"))
+    const remainingFiles = listFileInfos(dir);
+    const remainingArtifactFiles = remainingFiles
+      .filter((info) => info.name.startsWith("opencode-full-out-") && info.name.endsWith(".txt"))
       .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs); // oldest first
 
     // 2. Prune by directory size limit
     let totalSize = remainingFiles.reduce((sum, f) => sum + f.stat.size, 0);
-    for (const info of remainingFiles) {
+    for (const info of remainingArtifactFiles) {
       if (totalSize <= maxSize) {
         break;
       }
@@ -220,20 +303,20 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
       const sessionID = input.sessionID;
       const args = input.args ?? {};
 
-      // Load configuration dynamically
       const config = loadSafetyConfig(directory);
 
       // ─── 1. Output Size Truncation ───
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const rawOutput = output.output ?? "";
+      const resolvedTempDir = resolvePath(tempDir);
+
+      pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB);
 
       // Performance Optimization: Check UTF-16 length before eagerly building a code points array
       if (rawOutput.length > maxLength) {
         const codePoints = Array.from(rawOutput);
 
         if (codePoints.length > maxLength) {
-          const resolvedTempDir = resolvePath(tempDir);
-          
           // Ensure secure directory with 0700 permissions
           try {
             if (fs.existsSync(resolvedTempDir)) {
@@ -254,7 +337,8 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           // Generate collision-free filename
           const timestamp = Date.now();
           const randomSuffix = crypto.randomBytes(3).toString("hex");
-          const fileName = `opencode-full-out-${sessionID ?? "unknown"}-${timestamp}-${randomSuffix}.txt`;
+          const safeSessionID = sanitizeFilenameComponent(sessionID ?? "unknown");
+          const fileName = `opencode-full-out-${safeSessionID}-${timestamp}-${randomSuffix}.txt`;
           const fullPath = path.join(resolvedTempDir, fileName);
 
           // Write complete raw output to secure file with 0600 permissions
@@ -286,8 +370,9 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
         const isExempt = exemptTools.some(
           (t) => t.toLowerCase() === toolName.toLowerCase()
         );
+        const shouldTrack = isTrackedTool(toolName);
 
-        if (!isExempt) {
+        if (shouldTrack && !isExempt) {
           // Outcome Comparison: Include the output text and/or error information from metadata
           const outcome = rawOutput + "|" + (output.metadata ? canonicalStringify(output.metadata) : "");
           const serializedArgs = canonicalStringify(args);

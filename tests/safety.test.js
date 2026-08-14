@@ -7,7 +7,8 @@ const os = require('node:os');
 // Dynamic TypeScript compilation hook using the typescript devDependency.
 // This allows the safety tests to run flawlessly on older Node versions (like Node 20)
 // that lack out-of-the-box type stripping, while keeping the TS plugin source in place.
-if (require.extensions && !require.extensions['.ts']) {
+const originalTsExtension = require.extensions && require.extensions['.ts'];
+if (require.extensions && !originalTsExtension) {
   require.extensions['.ts'] = function (module, filename) {
     const ts = require('typescript');
     const source = fs.readFileSync(filename, 'utf8');
@@ -20,6 +21,19 @@ if (require.extensions && !require.extensions['.ts']) {
     module._compile(result.outputText, filename);
   };
 }
+
+test.after(() => {
+  if (!require.extensions) {
+    return;
+  }
+
+  if (originalTsExtension) {
+    require.extensions['.ts'] = originalTsExtension;
+    return;
+  }
+
+  delete require.extensions['.ts'];
+});
 
 const { SafetyPlugin } = require('../plugins/safety.ts');
 
@@ -81,7 +95,9 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     // Verify raw output is saved to tempDirName with 0600 permissions
     const files = fs.readdirSync(tempDirName);
     assert.strictEqual(files.length, 1);
-    const savedFilePath = path.join(tempDirName, files[0]);
+    const savedFileName = files.length > 0 ? files[0] : undefined;
+    assert.ok(savedFileName, 'Expected retained output file to exist');
+    const savedFilePath = path.join(tempDirName, savedFileName);
     const savedContent = fs.readFileSync(savedFilePath, 'utf8');
     assert.strictEqual(savedContent, longOutput);
 
@@ -122,22 +138,25 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     const pastTime = Date.now() - 25 * 60 * 60 * 1000;
     fs.utimesSync(oldFilePath, new Date(pastTime), new Date(pastTime));
 
-    // 2. Create multiple files whose combined size exceeds maxTempDirSizeMB (1024 bytes)
-    // File A: 600 bytes, created 10 mins ago
+    // 2. Create two retained artifacts and one unrelated file. The directory exceeds
+    // the size limit only when all files are counted, so pruning must consider total
+    // directory size but only delete OpenCode-owned artifacts.
+    // File A: 400 bytes, created 10 mins ago
     const fileAPath = path.join(tempDirName, 'opencode-full-out-session123-A.txt');
-    fs.writeFileSync(fileAPath, 'A'.repeat(600), { mode: 0o600 });
+    fs.writeFileSync(fileAPath, 'A'.repeat(400), { mode: 0o600 });
     const timeA = Date.now() - 10 * 60 * 1000;
     fs.utimesSync(fileAPath, new Date(timeA), new Date(timeA));
 
-    // File B: 600 bytes, created 5 mins ago
+    // File B: 400 bytes, created 5 mins ago
     const fileBPath = path.join(tempDirName, 'opencode-full-out-session123-B.txt');
-    fs.writeFileSync(fileBPath, 'B'.repeat(600), { mode: 0o600 });
+    fs.writeFileSync(fileBPath, 'B'.repeat(400), { mode: 0o600 });
     const timeB = Date.now() - 5 * 60 * 1000;
     fs.utimesSync(fileBPath, new Date(timeB), new Date(timeB));
 
-    // 3. Create a non-OpenCode file in the directory to verify it is NOT pruned by age or size limits
+    // 3. Create a non-OpenCode file in the directory to verify it is NOT pruned by age
+    // or size limits, even though it contributes to the total directory size.
     const nonOpencodeFilePath = path.join(tempDirName, 'user-precious-file.txt');
-    fs.writeFileSync(nonOpencodeFilePath, 'precious user data', { mode: 0o600 });
+    fs.writeFileSync(nonOpencodeFilePath, 'precious user data'.repeat(25), { mode: 0o600 });
     // Make it old to verify age pruning also ignores it
     const pastTimeNon = Date.now() - 25 * 60 * 60 * 1000;
     fs.utimesSync(nonOpencodeFilePath, new Date(pastTimeNon), new Date(pastTimeNon));
@@ -155,8 +174,8 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     assert.ok(fs.existsSync(nonOpencodeFilePath), 'Expected non-OpenCode file to be preserved');
 
     // Verify directory-size cleanup: File A (oldest, 10 mins ago) should be pruned because
-    // total size (File A: 600 + File B: 600 + File C: ~26) exceeds 1024 bytes.
-    // File B and the newly created File C should remain.
+    // total directory size exceeds 1024 bytes once the unrelated file is included.
+    // File B, the unrelated file, and the newly created File C should remain.
     assert.ok(!fs.existsSync(fileAPath), 'Expected oldest file A to be deleted due to directory size constraints');
     assert.ok(fs.existsSync(fileBPath), 'Expected file B to remain');
 
@@ -199,6 +218,36 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     assert.ok(output.output.startsWith("😀😃"));
     assert.ok(output.output.endsWith("😆😅"));
     assert.ok(output.output.includes('[WARNING: Output truncated at 5 characters.'));
+
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true });
+  });
+
+  await t.test('sanitizes session IDs before using them in retained output filenames', async () => {
+    const tempDirName = path.join(os.tmpdir(), `opencode-sanitize-${Date.now()}`);
+    const mockDir = createMockProjectDir({
+      truncation: {
+        maxLength: 10,
+        headLength: 5,
+        tailLength: 5,
+        tempDir: tempDirName,
+        retentionHours: 24,
+        maxTempDirSizeMB: 100
+      }
+    });
+
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const input = { tool: 'bash', sessionID: '../nested/session', callID: 'call1', args: {} };
+    const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
+
+    await plugin["tool.execute.after"](input, output);
+
+    const files = fs.readdirSync(tempDirName);
+    assert.strictEqual(files.length, 1);
+    const savedFileName = files.length > 0 ? files[0] : undefined;
+    assert.ok(savedFileName, 'Expected retained output file to exist');
+    assert.match(savedFileName, /^opencode-full-out-[^/\\]+-\d+-[a-f0-9]{6}\.txt$/);
+    assert.ok(!savedFileName.includes('..'));
 
     fs.rmSync(tempDirName, { recursive: true, force: true });
     fs.rmSync(mockDir, { recursive: true });
@@ -334,6 +383,32 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
     await plugin["tool.execute.after"](callExempt, resExempt);
 
     assert.ok(true, 'Exempt tool did not trigger loop detection');
+
+    fs.rmSync(mockDir, { recursive: true });
+  });
+
+  await t.test('safe read-only tools are not tracked by default', async () => {
+    const mockDir = createMockProjectDir({
+      doomLoop: {
+        enabled: true,
+        bufferSize: 5,
+        maxRepetitions: 3,
+        exemptTools: [],
+        postAbortAction: "hard_error"
+      }
+    });
+
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const sessionID = 'session-read-only';
+    const call = { tool: 'read', sessionID, callID: 'r1', args: { filePath: 'a.txt' } };
+    const res = { title: 'read', output: 'content', metadata: {} };
+
+    await plugin["tool.execute.after"](call, res);
+    await plugin["tool.execute.after"](call, res);
+    await plugin["tool.execute.after"](call, res);
+    await plugin["tool.execute.after"](call, res);
+
+    assert.ok(true, 'Read-only tool did not trigger loop detection without explicit exemption');
 
     fs.rmSync(mockDir, { recursive: true });
   });
