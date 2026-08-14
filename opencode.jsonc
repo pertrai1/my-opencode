@@ -95,6 +95,7 @@
     "./plugins/crg-plugin.ts",
     "./plugins/herdr-agent-state.js",
     "./plugins/rtk.ts",
+    "./plugins/safety.ts",
   ],
   "provider": {
     "openai": {
@@ -133,6 +134,22 @@
       "command": ["npx", "-y", "@agentmemory/mcp"],
       "enabled": true,
     },
+  },
+  "safety": {
+    "truncation": {
+      "maxLength": 30000,
+      "headLength": 20000,
+      "tailLength": 10000,
+      "tempDir": "~/.opencode/tmp",
+      "retentionHours": 24,
+      "maxTempDirSizeMB": 100
+    },
+    "doomLoop": {
+      "enabled": true,
+      "bufferSize": 5,
+      "maxRepetitions": 3,
+      "exemptTools": ["read", "grep", "glob"]
+    }
   },
   "formatter": true,
 }
