@@ -58,6 +58,7 @@ const ARTIFACT_PREFIX = "opencode-full-out-";
 const ARTIFACT_SUFFIX = ".txt";
 const ARTIFACT_CREATION_ATTEMPTS = 5;
 const MAX_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const MIN_CLEANUP_INTERVAL_MS = 1000;
 
 // Helper: resolve paths starting with ~/
 function resolvePath(p: string): string {
@@ -469,7 +470,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
     );
   };
   const cleanupIntervalMs = Math.min(
-    config.truncation.retentionHours * 60 * 60 * 1000,
+    Math.max(config.truncation.retentionHours * 60 * 60 * 1000, MIN_CLEANUP_INTERVAL_MS),
     MAX_CLEANUP_INTERVAL_MS,
   );
   const cleanupTimer = setInterval(scheduledCleanup, cleanupIntervalMs);
@@ -498,6 +499,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
       if (rawOutput.length > maxLength) {
         if (exceedsCodePointLength(rawOutput, maxLength)) {
           // Ensure secure directory with 0700 permissions
+          let tempDirSecured = true;
           try {
             if (fs.existsSync(resolvedTempDir)) {
               const stat = fs.statSync(resolvedTempDir);
@@ -511,30 +513,30 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
             }
           } catch (error: unknown) {
             console.error("Failed to create or secure temp directory", { error });
-            return;
+            tempDirSecured = false;
           }
 
-          const fullPath = createOutputArtifact(resolvedTempDir, sessionID, rawOutput);
-          if (!fullPath) {
-            return;
+          const fullPath = tempDirSecured
+            ? createOutputArtifact(resolvedTempDir, sessionID, rawOutput)
+            : null;
+          if (fullPath) {
+            // Apply Head-and-Tail Truncation
+            const effectiveLengths = getEffectiveTruncationLengths(
+              maxLength,
+              headLength,
+              tailLength,
+            );
+            const head = takeFirstCodePoints(rawOutput, effectiveLengths.headLength);
+            const tail = effectiveLengths.tailLength > 0
+              ? takeLastCodePoints(rawOutput, effectiveLengths.tailLength)
+              : "";
+            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
+
+            output.output = head + warningMarker + tail;
+
+            // Cleanup old files in temp directory
+            pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
           }
-
-          // Apply Head-and-Tail Truncation
-          const effectiveLengths = getEffectiveTruncationLengths(
-            maxLength,
-            headLength,
-            tailLength,
-          );
-          const head = takeFirstCodePoints(rawOutput, effectiveLengths.headLength);
-          const tail = effectiveLengths.tailLength > 0
-            ? takeLastCodePoints(rawOutput, effectiveLengths.tailLength)
-            : "";
-          const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
-          
-          output.output = head + warningMarker + tail;
-
-          // Cleanup old files in temp directory
-          pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
         }
       }
 
