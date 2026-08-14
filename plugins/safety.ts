@@ -18,13 +18,13 @@ type SafetyConfig = {
     bufferSize: number;
     maxRepetitions: number;
     exemptTools: string[];
-    postAbortAction: "hard_error" | "interactive_pause";
   };
 };
 
 // Stateful memory buffer for Doom Loop Detection
 // Maps sessionID -> array of tool call hashes (rolling history)
 const sessionBuffers = new Map<string, string[]>();
+const MAX_TRACKED_SESSIONS = 1000;
 
 // Default safety configuration
 const DEFAULT_CONFIG: SafetyConfig = {
@@ -41,7 +41,6 @@ const DEFAULT_CONFIG: SafetyConfig = {
     bufferSize: 5,
     maxRepetitions: 3,
     exemptTools: ["read", "grep", "glob"],
-    postAbortAction: "hard_error",
   },
 };
 
@@ -80,6 +79,17 @@ function isTrackedTool(toolName: string): boolean {
   return TRACKED_TOOL_NAMES.has(toolName.toLowerCase());
 }
 
+function setSessionBuffer(sessionID: string, buffer: string[]): void {
+  sessionBuffers.delete(sessionID);
+  if (sessionBuffers.size >= MAX_TRACKED_SESSIONS) {
+    const oldestSessionID = sessionBuffers.keys().next().value;
+    if (oldestSessionID) {
+      sessionBuffers.delete(oldestSessionID);
+    }
+  }
+  sessionBuffers.set(sessionID, buffer);
+}
+
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 && Number.isInteger(value);
 }
@@ -108,6 +118,61 @@ function getEffectiveTruncationLengths(
     headLength: effectiveHeadLength,
     tailLength: effectiveTailLength,
   };
+}
+
+function exceedsCodePointLength(value: string, maxLength: number): boolean {
+  let length = 0;
+  let index = 0;
+  while (index < value.length) {
+    const codePoint = value.codePointAt(index);
+    if (codePoint === undefined) {
+      break;
+    }
+    index += codePoint > 0xffff ? 2 : 1;
+    length++;
+    if (length > maxLength) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function takeFirstCodePoints(value: string, count: number): string {
+  let result = "";
+  let taken = 0;
+  for (const codePoint of value) {
+    if (taken >= count) {
+      break;
+    }
+    result += codePoint;
+    taken++;
+  }
+  return result;
+}
+
+function takeLastCodePoints(value: string, count: number): string {
+  let result = "";
+  let index = value.length;
+  let taken = 0;
+
+  while (index > 0 && taken < count) {
+    const end = index;
+    index--;
+    const codeUnit = value.charCodeAt(index);
+    if (
+      codeUnit >= 0xdc00
+      && codeUnit <= 0xdfff
+      && index > 0
+      && value.charCodeAt(index - 1) >= 0xd800
+      && value.charCodeAt(index - 1) <= 0xdbff
+    ) {
+      index--;
+    }
+    result = value.slice(index, end) + result;
+    taken++;
+  }
+
+  return result;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -272,9 +337,6 @@ function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
       exemptTools: Array.isArray(doomLoop.exemptTools)
         ? doomLoop.exemptTools.filter((tool): tool is string => typeof tool === "string")
         : DEFAULT_CONFIG.doomLoop.exemptTools,
-      postAbortAction: doomLoop.postAbortAction === "interactive_pause"
-        ? "interactive_pause"
-        : DEFAULT_CONFIG.doomLoop.postAbortAction,
     },
   };
 }
@@ -331,7 +393,7 @@ function pruneTempDir(
           fs.unlinkSync(info.path);
         } catch (error) {
           console.warn("Failed to prune old file", { path: info.path, error });
-          return;
+          continue;
         }
       }
     }
@@ -357,7 +419,7 @@ function pruneTempDir(
         totalSize -= info.stat.size;
       } catch (error) {
         console.warn("Failed to prune file due to directory size limits", { path: info.path, error });
-        return;
+        continue;
       }
     }
   } catch (error) {
@@ -397,17 +459,17 @@ function createOutputArtifact(
 }
 
 export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<Hooks> => {
+  const config = loadSafetyConfig(directory);
   const scheduledCleanup = (): void => {
-    const config = loadSafetyConfig(directory).truncation;
+    const { truncation } = config;
     pruneTempDir(
-      resolvePath(config.tempDir),
-      config.retentionHours,
-      config.maxTempDirSizeMB,
+      resolvePath(truncation.tempDir),
+      truncation.retentionHours,
+      truncation.maxTempDirSizeMB,
     );
   };
-  const initialConfig = loadSafetyConfig(directory).truncation;
   const cleanupIntervalMs = Math.min(
-    initialConfig.retentionHours * 60 * 60 * 1000,
+    config.truncation.retentionHours * 60 * 60 * 1000,
     MAX_CLEANUP_INTERVAL_MS,
   );
   const cleanupTimer = setInterval(scheduledCleanup, cleanupIntervalMs);
@@ -420,9 +482,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
     },
     // Reset buffer on new user message
     "chat.message": async ({ sessionID }) => {
-      if (sessionID) {
-        sessionBuffers.set(sessionID, []);
-      }
+      setSessionBuffer(sessionID, []);
     },
 
     "tool.execute.after": async (input, output) => {
@@ -430,20 +490,13 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
       const sessionID = input.sessionID;
       const args = input.args ?? {};
 
-      const config = loadSafetyConfig(directory);
-
       // ─── 1. Output Size Truncation ───
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const rawOutput = output.output ?? "";
       const resolvedTempDir = resolvePath(tempDir);
 
-      pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB);
-
-      // Performance Optimization: Check UTF-16 length before eagerly building a code points array
       if (rawOutput.length > maxLength) {
-        const codePoints = Array.from(rawOutput);
-
-        if (codePoints.length > maxLength) {
+        if (exceedsCodePointLength(rawOutput, maxLength)) {
           // Ensure secure directory with 0700 permissions
           try {
             if (fs.existsSync(resolvedTempDir)) {
@@ -472,9 +525,9 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
             headLength,
             tailLength,
           );
-          const head = codePoints.slice(0, effectiveLengths.headLength).join("");
+          const head = takeFirstCodePoints(rawOutput, effectiveLengths.headLength);
           const tail = effectiveLengths.tailLength > 0
-            ? codePoints.slice(-effectiveLengths.tailLength).join("")
+            ? takeLastCodePoints(rawOutput, effectiveLengths.tailLength)
             : "";
           const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
           
@@ -487,7 +540,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
 
       // ─── 2. Doom Loop Detection ───
       if (config.doomLoop.enabled && sessionID) {
-        const { bufferSize, maxRepetitions, exemptTools, postAbortAction } = config.doomLoop;
+        const { bufferSize, maxRepetitions, exemptTools } = config.doomLoop;
 
         // Check if the current tool is exempt
         const isExempt = exemptTools.some(
@@ -510,22 +563,19 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           if (buffer.length > bufferSize) {
             buffer.shift();
           }
-          sessionBuffers.set(sessionID, buffer);
+          setSessionBuffer(sessionID, buffer);
 
           // Count repetitions of the current tool call hash in the rolling buffer
           const repetitionCount = buffer.filter((h) => h === callHash).length;
 
           if (repetitionCount >= maxRepetitions) {
             // Immediately clear buffer upon breaking loop to avoid re-tripping
-            sessionBuffers.set(sessionID, []);
+            setSessionBuffer(sessionID, []);
 
             // Log diagnostic warning to user
             console.error("Tool call loop detected!", { toolName });
 
-            if (postAbortAction === "interactive_pause") {
-              throw new Error("[DOOM LOOP DETECTED] Aborting execution due to repetitive tool calls. (Interactive pause triggered)");
-            }
-            throw new Error("[DOOM LOOP DETECTED] Aborting execution due to repetitive tool calls. (Hard error triggered)");
+            throw new Error("[DOOM LOOP DETECTED] Aborting execution due to repetitive tool calls.");
           }
         }
       }

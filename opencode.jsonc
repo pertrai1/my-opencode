@@ -148,8 +148,7 @@
       "enabled": true,
       "bufferSize": 5,
       "maxRepetitions": 3,
-      "exemptTools": ["read", "grep", "glob"],
-      "postAbortAction": "hard_error"
+      "exemptTools": ["read", "grep", "glob"]
     }
   },
   "formatter": true,

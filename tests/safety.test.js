@@ -87,7 +87,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     
     // Check that head (first 20) and tail (last 10) are correct
     const expectedHead = longOutput.slice(0, 20); // abcdefghijklmnopqrst
-    const expectedTail = longOutput.slice(-10); // IJKLMNOPQRSTUVWX
+    const expectedTail = longOutput.slice(-10); // OPQRSTUVWX
     
     assert.ok(output.output.startsWith(expectedHead));
     assert.ok(output.output.endsWith(expectedTail));
@@ -110,9 +110,8 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     assert.strictEqual(dirStat.mode & 0o777, 0o700);
 
     // Clean up
-    fs.unlinkSync(savedFilePath);
-    fs.rmdirSync(tempDirName);
-    fs.rmSync(mockDir, { recursive: true });
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true, force: true });
   });
 
   await t.test('pruning of older files and size constraints works', async () => {
@@ -308,6 +307,41 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     fs.rmSync(tempDirName, { recursive: true, force: true });
     fs.rmSync(mockDir, { recursive: true });
   });
+
+  await t.test('uses the configuration loaded at plugin startup', async () => {
+    const tempDirName = path.join(os.tmpdir(), `opencode-startup-config-${Date.now()}`);
+    const mockDir = createMockProjectDir({
+      truncation: {
+        maxLength: 10,
+        headLength: 5,
+        tailLength: 5,
+        tempDir: tempDirName,
+        retentionHours: 24,
+        maxTempDirSizeMB: 100,
+      },
+    });
+    const plugin = await SafetyPlugin({ directory: mockDir });
+
+    fs.writeFileSync(path.join(mockDir, 'opencode.jsonc'), JSON.stringify({
+      safety: {
+        truncation: {
+          maxLength: 100,
+        },
+      },
+    }));
+
+    const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
+    await plugin["tool.execute.after"](
+      { tool: 'bash', sessionID: 'session-startup-config', callID: 'call1', args: {} },
+      output,
+    );
+
+    assert.ok(output.output.includes('[WARNING: Output truncated at 10 characters.'));
+
+    await plugin.dispose();
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true, force: true });
+  });
 });
 
 test('Safety Plugin - Doom Loop Detection', async (t) => {
@@ -318,7 +352,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: ["read", "grep", "glob"],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -357,7 +390,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: ["read", "grep", "glob"],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -397,7 +429,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: ["read"],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -425,7 +456,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: ["read"],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -453,7 +483,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: [],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -479,7 +508,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: [],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -504,6 +532,34 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
     fs.rmSync(mockDir, { recursive: true });
   });
 
+  await t.test('evicts stale session buffers after reaching the session limit', async () => {
+    const mockDir = createMockProjectDir({
+      doomLoop: {
+        enabled: true,
+        bufferSize: 2,
+        maxRepetitions: 2,
+        exemptTools: [],
+      },
+    });
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const staleCall = { tool: 'bash', sessionID: 'session-to-evict', callID: 'c1', args: {} };
+    const output = { title: 'bash', output: 'ok', metadata: {} };
+
+    await plugin["tool.execute.after"](staleCall, output);
+    for (let index = 0; index < 1000; index++) {
+      await plugin["tool.execute.after"](
+        { tool: 'bash', sessionID: `session-${index}`, callID: 'c1', args: { index } },
+        output,
+      );
+    }
+
+    await plugin["tool.execute.after"](staleCall, output);
+    await assert.rejects(plugin["tool.execute.after"](staleCall, output), /\[DOOM LOOP DETECTED\]/);
+
+    await plugin.dispose();
+    fs.rmSync(mockDir, { recursive: true, force: true });
+  });
+
   await t.test('detects doom loop for three identical oversized calls', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-doom-oversized-${Date.now()}`);
     const mockDir = createMockProjectDir({
@@ -520,7 +576,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 5,
         maxRepetitions: 3,
         exemptTools: [],
-        postAbortAction: "hard_error"
       }
     });
 
@@ -551,38 +606,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
     fs.rmSync(mockDir, { recursive: true });
   });
 
-  await t.test('supports postAbortAction set to interactive_pause and throws pause error on doom loop', async () => {
-    const mockDir = createMockProjectDir({
-      doomLoop: {
-        enabled: true,
-        bufferSize: 5,
-        maxRepetitions: 3,
-        exemptTools: [],
-        postAbortAction: "interactive_pause"
-      }
-    });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
-    const sessionID = 'session-pause-test';
-    const call = { tool: 'bash', sessionID, callID: 'c1', args: {} };
-    const res = { title: 'bash', output: 'ok', metadata: {} };
-
-    await plugin["tool.execute.after"](call, res);
-    await plugin["tool.execute.after"](call, res);
-
-    let errorOccurred = null;
-    try {
-      await plugin["tool.execute.after"](call, res);
-    } catch (error) {
-      errorOccurred = error;
-    }
-
-    assert.ok(errorOccurred, 'Expected error to be thrown on loop detection with interactive_pause');
-    assert.ok(errorOccurred.message.includes("Interactive pause triggered"));
-
-    fs.rmSync(mockDir, { recursive: true });
-  });
-
   await t.test('falls back to valid loop thresholds when the configured relationship is invalid', async () => {
     const mockDir = createMockProjectDir({
       doomLoop: {
@@ -590,7 +613,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         bufferSize: 2,
         maxRepetitions: 3,
         exemptTools: [],
-        postAbortAction: "hard_error"
       }
     });
     const plugin = await SafetyPlugin({ directory: mockDir });
