@@ -1,0 +1,25 @@
+{
+  "theme": {
+    "name": "auto"
+  },
+  "attention": {
+    "enabled": true,
+    "notifications": true,
+    "sound": true,
+    "volume": 0.4
+  },
+  "diffs": {
+    "wrap": "word"
+  },
+  "session": {
+    "sidebar": "auto",
+    "scrollbar": false,
+    "thinking": "hide"
+  },
+  "animations": true,
+  "mouse": true,
+  "cursor": {
+    "style": "block",
+    "blinking": true
+  }
+}
