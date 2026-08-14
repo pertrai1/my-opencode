@@ -44,6 +44,7 @@ Reference the full guidance in `.agents/docs/verification/README.md`. Execute an
 ### 4. GitHub Issue Commenting
 - If a linked GitHub Issue is resolved or active, post the full verification report as a comment on that issue.
 - Skip commenting if `--no-comment` is specified or if no remote GitHub issue can be linked.
+- If commenting fails after a linked issue is found, retain the artifact, record the command and non-zero exit status, and set the disposition to `not ready` or `needs human decision`.
 
 ### 5. Present Summary to User
 - Provide a concise output in chat summarizing:
