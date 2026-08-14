@@ -1,4 +1,10 @@
 {
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
+  "overrides": {
+    "ini": "6.0.0"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "1.17.11"
   },
