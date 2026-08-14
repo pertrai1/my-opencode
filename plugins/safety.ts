@@ -75,6 +75,24 @@ function isTrackedTool(toolName: string): boolean {
   return TRACKED_TOOL_NAMES.has(toolName.toLowerCase());
 }
 
+function getEffectiveTruncationLengths(
+  maxLength: number,
+  requestedHeadLength: number,
+  requestedTailLength: number,
+): { headLength: number; tailLength: number } {
+  const safeMaxLength = Math.max(0, maxLength);
+  const safeHeadLength = Math.max(0, requestedHeadLength);
+  const safeTailLength = Math.max(0, requestedTailLength);
+  const effectiveHeadLength = Math.min(safeHeadLength, safeMaxLength);
+  const remainingLength = safeMaxLength - effectiveHeadLength;
+  const effectiveTailLength = Math.min(safeTailLength, remainingLength);
+
+  return {
+    headLength: effectiveHeadLength,
+    tailLength: effectiveTailLength,
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -351,9 +369,16 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           }
 
           // Apply Head-and-Tail Truncation
-          const head = codePoints.slice(0, headLength).join("");
-          const tail = codePoints.slice(-tailLength).join("");
-          const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${headLength} and last ${tailLength} characters. Full output saved to ${fullPath}.]\n`;
+          const effectiveLengths = getEffectiveTruncationLengths(
+            maxLength,
+            headLength,
+            tailLength,
+          );
+          const head = codePoints.slice(0, effectiveLengths.headLength).join("");
+          const tail = effectiveLengths.tailLength > 0
+            ? codePoints.slice(-effectiveLengths.tailLength).join("")
+            : "";
+          const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
           
           output.output = head + warningMarker + tail;
 

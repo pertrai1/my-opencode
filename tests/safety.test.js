@@ -223,6 +223,33 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     fs.rmSync(mockDir, { recursive: true });
   });
 
+  await t.test('clamps overlapping head and tail lengths to the maxLength budget', async () => {
+    const tempDirName = path.join(os.tmpdir(), `opencode-clamp-${Date.now()}`);
+    const mockDir = createMockProjectDir({
+      truncation: {
+        maxLength: 5,
+        headLength: 4,
+        tailLength: 4,
+        tempDir: tempDirName,
+        retentionHours: 24,
+        maxTempDirSizeMB: 100
+      }
+    });
+
+    const plugin = await SafetyPlugin({ directory: mockDir });
+    const input = { tool: 'bash', sessionID: 'session-clamp', callID: 'call1', args: {} };
+    const output = { title: 'bash', output: 'abcdefghi', metadata: {} };
+
+    await plugin["tool.execute.after"](input, output);
+
+    assert.ok(output.output.startsWith('abcd'));
+    assert.ok(output.output.endsWith('i'));
+    assert.ok(output.output.includes('Showing first 4 and last 1 characters.'));
+
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true });
+  });
+
   await t.test('sanitizes session IDs before using them in retained output filenames', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-sanitize-${Date.now()}`);
     const mockDir = createMockProjectDir({
