@@ -2,3 +2,5 @@ node_modules
 bun.lock
 service.json
 .omc/
+.agents/docs/verification/*
+!.agents/docs/verification/README.md

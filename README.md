@@ -32,6 +32,13 @@ Engineering skills live in `.agents/skills/` and are auto-discovered by opencode
 
 - `commands/recall.md` — search past session memory
 - `commands/remember.md` — explicitly save a memory
+- `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory
+
+## Verification & Rubrics
+
+- **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
+- **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
+
 
 ## Resources
 

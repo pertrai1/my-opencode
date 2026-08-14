@@ -137,6 +137,7 @@ Before completing:
 - [ ] Have you documented your reasoning?
 - [ ] Can you explain the issue to someone else?
 - [ ] Is your recommended fix specific and actionable?
+- [ ] Proof of work is structured using progressive disclosure and references the shared verification guidance in `.agents/docs/verification/README.md`.
 
 If you can't answer "yes" to all of these, keep investigating.
 
@@ -161,8 +162,8 @@ If you can't answer "yes" to all of these, keep investigating.
 ### Recommended Fix
 [What SHOULD be changed and WHY - specific files, lines, code]
 
-### Verification Plan
-[How to confirm the fix works after implementation]
+### Verification Plan & Proof of Work
+[How to confirm the fix works after implementation. Propose a verification plan following the shared guidelines in `.agents/docs/verification/README.md`. Show proof of work for the investigation including exact hypotheses tested, commands or scripts run, exit statuses, and diagnostic-tool outputs. Additionally, include a structured mapping that clearly connects each investigation finding to its recommended fix.]
 
 ### Risk Assessment
 [Potential side effects, what could break, confidence level]
