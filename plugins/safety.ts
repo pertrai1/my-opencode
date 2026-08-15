@@ -647,11 +647,10 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
 
     // Reset buffer on new user message, and capture agent
     "chat.message": async ({ sessionID, agent }) => {
-      if (sessionID) {
-        setSessionBuffer(sessionID, []);
-        if (agent) {
-          sessionAgents.set(sessionID, agent);
-        }
+      if (!sessionID) return;
+      setSessionBuffer(sessionID, []);
+      if (agent) {
+        sessionAgents.set(sessionID, agent);
       }
     },
 
