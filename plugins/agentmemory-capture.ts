@@ -1,5 +1,18 @@
-import type { Hooks, PluginInput } from "@opencode-ai/plugin";
+import { tool, type Hooks, type PluginInput } from "@opencode-ai/plugin";
 import type { Event, FilePart, Todo } from "@opencode-ai/sdk";
+import {
+  CURRENT_SESSION_SUMMARY_EXPORT_TOOL_NAME,
+  createCurrentSessionSummaryExportToolDefinition,
+} from "./agentmemory-session-summary-export";
+
+import {
+  captureSessionCompactionAnchorChatMessage,
+  captureSessionCompactionAnchorEvent,
+  clearSessionCompactionAnchorSession,
+  createSessionCompactionAnchorStore,
+  injectSessionCompactionAnchor,
+  renderSessionCompactionAnchor,
+} from "./agentmemory-compaction-anchor";
 
 const DEFAULT_API = "http://localhost:3111";
 const DEFAULT_POST_TIMEOUT_MS = 5000;
@@ -12,6 +25,7 @@ const AUTO_CRYSTALS_AFTER_DAYS = 7;
 const MAX_TODOS_CAPTURED = 100;
 const MAX_SYSTEM_FILES = 10;
 const MAX_PROMPT_FILES = 20;
+const MAX_TRACKED_SUMMARY_SESSIONS = 32;
 
 const API = process.env.AGENTMEMORY_URL ?? DEFAULT_API;
 const FILE_TOOLS = new Set(["Read", "Write", "Edit", "Glob", "Grep"]);
@@ -87,12 +101,169 @@ const stashedFiles = new Map<string, Set<string>>();
 const seenSubtaskIds = new Map<string, Set<string>>();
 const seenToolCallIds = new Map<string, Set<string>>();
 const contextInjectedSessions = new Set<string>();
+const compactionAnchorStore = createSessionCompactionAnchorStore();
+const sessionTitles = new Map<string, string | null>();
+const trackedSummarySessions = new Map<string, number>();
 // cache the context returned by POST /session/start so the chat
 // system-transform hook can inject it without a second /context fetch.
 // Auto-injection now happens at session.created (immediately) AND at
 // the first prompt_submit (fallback for older OpenCode builds that
 // don't implement experimental.chat.system.transform).
 const startContextCache = new Map<string, string>();
+
+function clearTrackedSessionState(sessionId: string): void {
+  sessionTitles.delete(sessionId);
+  startContextCache.delete(sessionId);
+  pruneSessionMaps(sessionId);
+  contextInjectedSessions.delete(sessionId);
+  clearSessionCompactionAnchorSession(compactionAnchorStore, sessionId);
+  trackedSummarySessions.delete(sessionId);
+}
+
+function touchTrackedSummarySession(sessionId: string): void {
+  trackedSummarySessions.delete(sessionId);
+  trackedSummarySessions.set(sessionId, Date.now());
+
+  while (trackedSummarySessions.size > MAX_TRACKED_SUMMARY_SESSIONS) {
+    const oldest = trackedSummarySessions.keys().next().value;
+    if (typeof oldest !== "string") return;
+    if (oldest === activeSessionId) {
+      trackedSummarySessions.delete(oldest);
+      trackedSummarySessions.set(oldest, Date.now());
+      continue;
+    }
+    clearTrackedSessionState(oldest);
+  }
+}
+
+function getSessionIdFromEvent(event: Event): string | null {
+  const properties = getRecord((event as { properties?: unknown }).properties);
+  if (!properties) return null;
+
+  const part = getRecord(properties.part);
+  if (typeof part?.sessionID === "string") return part.sessionID;
+  if (typeof properties.sessionID === "string") return properties.sessionID;
+
+  const info = getRecord(properties.info);
+  if (typeof info?.id === "string") return info.id;
+  if (typeof info?.sessionID === "string") return info.sessionID;
+
+  return null;
+}
+
+async function getNarrativeSummaryForSession(sessionId: string): Promise<
+  | {
+      sessionId: string;
+      source: "agentmemory-narrative-summary";
+      markdown: string;
+    }
+  | {
+      sessionId: string;
+      source: "agentmemory-narrative-summary-unavailable";
+      reason: "empty-context" | "http-error" | "transport-error";
+    }
+> {
+  try {
+    const response = await fetch(`${API}/agentmemory/context`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ sessionId, project: projectPath }),
+      signal: AbortSignal.timeout(DEFAULT_POST_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      if (DEBUG) {
+        console.error("[agentmemory] POST failed", {
+          path: "/context",
+          message: `HTTP ${response.status}`,
+        });
+      }
+      return {
+        sessionId,
+        source: "agentmemory-narrative-summary-unavailable",
+        reason: "http-error",
+      };
+    }
+
+    const result = await response.json();
+    const context = getContext(result);
+    if (!context) {
+      return {
+        sessionId,
+        source: "agentmemory-narrative-summary-unavailable",
+        reason: "empty-context",
+      };
+    }
+
+    return {
+      sessionId,
+      source: "agentmemory-narrative-summary",
+      markdown: context,
+    };
+  } catch (error) {
+    if (DEBUG) {
+      console.error("[agentmemory] POST failed", {
+        path: "/context",
+        message: extractErrorMessage(error),
+      });
+    }
+    return {
+      sessionId,
+      source: "agentmemory-narrative-summary-unavailable",
+      reason: "transport-error",
+    };
+  }
+}
+
+function buildCurrentSessionSummaryExportToolDefinition(sessionId: string) {
+  return createCurrentSessionSummaryExportToolDefinition({
+    currentSessionProvider: {
+      async getCurrentSession() {
+        return {
+          sessionId,
+          title: sessionTitles.get(sessionId) ?? null,
+        };
+      },
+    },
+    deterministicAnchorProvider: {
+      async getDeterministicAnchorForSession(requestSessionId) {
+        const markdown = renderSessionCompactionAnchor(compactionAnchorStore, requestSessionId) ?? "";
+
+        const failures = compactionAnchorStore.getEvidence(requestSessionId).filter((entry) => {
+          return entry.kind === "tool-failure" || entry.kind === "session-error";
+        });
+
+        const unresolvedFailuresMarkdown = failures.length > 0
+          ? failures
+              .map((entry) => {
+                if (entry.kind === "session-error") {
+                  return `- [observed failures] session-error: ${entry.errorExcerpt}`;
+                }
+                return `- [observed failures] ${entry.toolName} (${entry.callId}) failure=${entry.errorExcerpt} durationMs=${
+                  entry.durationMs ?? "n/a"
+                }`;
+              })
+              .join("\n")
+          : null;
+
+        return {
+          sessionId: requestSessionId,
+          source: "deterministic-session-anchor",
+          markdown,
+          unresolvedFailuresMarkdown:
+            failures.length > 0
+              ? `## Unresolved Failures\n${unresolvedFailuresMarkdown}`
+              : null,
+        };
+      },
+    },
+    narrativeContextProvider: {
+      async getNarrativeSummaryForSession(requestSessionId) {
+        return getNarrativeSummaryForSession(requestSessionId);
+      },
+    },
+  });
+}
 
 function stashFor(sid: string): Set<string> {
   let s = stashedFiles.get(sid);
@@ -257,15 +428,21 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
   return {
     event: async ({ event }: { event: Event }) => {
       const type = event.type;
+      captureSessionCompactionAnchorEvent(compactionAnchorStore, event);
+      const eventSessionId = getSessionIdFromEvent(event);
+      if (eventSessionId) {
+        touchTrackedSummarySession(eventSessionId);
+      }
 
       // ── session.created ──
       if (type === "session.created") {
         const info = event.properties.info;
         activeSessionId = info.id;
         if (!activeSessionId) return;
+        clearTrackedSessionState(activeSessionId);
+        sessionTitles.set(activeSessionId, typeof info?.title === "string" ? info.title : null);
+        touchTrackedSummarySession(activeSessionId);
         stashedFiles.set(activeSessionId, new Set());
-        pruneSessionMaps(activeSessionId);
-        contextInjectedSessions.delete(activeSessionId);
         // Snapshot the session id locally — `activeSessionId` is mutable
         // and another `session.created` event during the await could
         // rebind it, causing context to be cached against the wrong key.
@@ -321,6 +498,10 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
         const info = event.properties.info;
         const sid = info.id || activeSessionId;
         if (!sid) return;
+        if (typeof info.title === "string") {
+          sessionTitles.set(sid, info.title);
+        }
+        touchTrackedSummarySession(sid);
         await observe(sid, "session_updated", {
           title: info?.title ?? null,
           parentID: info?.parentID ?? null,
@@ -354,9 +535,7 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
         void post("/crystals/auto", { olderThanDays: AUTO_CRYSTALS_AFTER_DAYS }, BACKGROUND_POST_TIMEOUT_MS);
         void post("/consolidate-pipeline", { tier: "all", force: true }, BACKGROUND_POST_TIMEOUT_MS);
         if (sid === activeSessionId) activeSessionId = null;
-        startContextCache.delete(sid);
-        pruneSessionMaps(sid);
-        contextInjectedSessions.delete(sid);
+        clearTrackedSessionState(sid);
       }
 
       // ── session.error ──
@@ -593,12 +772,16 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
           });
         }
       }
+
     },
 
     // ── chat.message ──
     "chat.message": async (input, output) => {
+      captureSessionCompactionAnchorChatMessage(compactionAnchorStore, input, output);
+
       const sid = input.sessionID || activeSessionId;
       if (!sid) return;
+      touchTrackedSummarySession(sid);
       const parts = output.parts ?? [];
       const files = parts
         .map(getPromptFilePart)
@@ -626,6 +809,37 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
         files: files.slice(0, MAX_PROMPT_FILES),
         parts_summary: getPartTypes(parts),
       });
+    },
+
+    // ── tool: chat-only session summary export ──
+    tool: {
+      [CURRENT_SESSION_SUMMARY_EXPORT_TOOL_NAME]: tool({
+        description: "Export the current session summary in chat format without writing files.",
+        args: {
+        },
+        async execute(_, context) {
+          const sid = context.sessionID;
+          if (!sid) {
+            return {
+              title: "Current Session Summary",
+              output: "## Current Session Summary\n\nSession summary export unavailable because no session context is available.",
+              metadata: {
+                destination: "chat",
+                wroteFiles: false,
+                sessionId: "unknown",
+              },
+            };
+          }
+          touchTrackedSummarySession(sid);
+          const definition = buildCurrentSessionSummaryExportToolDefinition(sid);
+          const result = await definition.execute({}, { sessionID: sid });
+          return {
+            title: result.title,
+            output: result.output,
+            metadata: result.metadata,
+          };
+        },
+      }),
     },
 
     // ── chat.params ──
@@ -714,6 +928,9 @@ export async function AgentmemoryCapture(ctx: PluginInput): Promise<Hooks> {
     "experimental.session.compacting": async (input, output) => {
       const sid = input.sessionID || activeSessionId;
       if (!sid) return;
+      touchTrackedSummarySession(sid);
+
+      injectSessionCompactionAnchor(compactionAnchorStore, sid, output);
 
       const result = await postJson("/context", {
         sessionId: sid,
