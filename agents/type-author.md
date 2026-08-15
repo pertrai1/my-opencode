@@ -7,9 +7,13 @@ temperature: 0.2
 permission:
   edit:
     "*": deny
-    "**/*.ts": allow
-    "**/*.tsx": allow
-    "**/*.py": allow
+    "**/*.d.ts": allow
+    "**/types.ts": allow
+    "**/types.tsx": allow
+    "**/types/**/*.ts": allow
+    "**/types/**/*.tsx": allow
+    "**/contracts.py": allow
+    "**/types.py": allow
     "**/*.pyi": allow
     "**/*.test.*": deny
     "**/*.spec.*": deny
@@ -19,7 +23,19 @@ permission:
     "tests/**": deny
     "test/**": deny
   bash:
-    "*": allow
+    "*": deny
+    "pwd": allow
+    "ls *": allow
+    "tsc*": allow
+    "npx tsc*": allow
+    "npm run typecheck*": allow
+    "pnpm run typecheck*": allow
+    "yarn typecheck*": allow
+    "yarn run typecheck*": allow
+    "bun run typecheck*": allow
+    "mypy*": allow
+    "python -m mypy*": allow
+    "pyright*": allow
     "rm *": deny
     "git clean *": deny
     "git reset --hard *": deny
