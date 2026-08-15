@@ -49,7 +49,7 @@ Model philosophy: intelligence is front-loaded into the artifacts. The contract 
 How enforcement works:
 
 - **Permission globs** — each agent's `edit` permission scopes its lane; violations are blocked by opencode, not by prompt discipline.
-- **Scoped reads and shell** — the test-author only gets spec/contract/test reads, and the pipeline agents can only run narrow verification commands.
+- **Scoped reads and shell** — the test-author only gets contract/test file reads plus sanitized spec excerpts in its handoff, and the pipeline agents can only run narrow verification commands.
 - **Checksum verification** — the orchestrator hashes contract files after Phase 0 and test files after Phase 1, and rejects Phase 2 work if either changed.
 - **Independent verification** — the orchestrator re-runs typecheck and tests itself between phases; agent reports are claims, not evidence.
 - **Self-correction loop** — up to 3 retries per phase with failure evidence, then hard stop and escalate to the human.
