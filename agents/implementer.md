@@ -1,7 +1,7 @@
 ---
 description: Phase 2 (GREEN) of the type-driven TDD pipeline. Writes minimal production code to pass the test-author's failing test while conforming to the published contract or, in direct-task mode, the orchestrator's acceptance criteria and verification constraints. Cannot modify tests. Invoked by tdd-orchestrator after test-author or directly for config, docs, and trivial tasks.
 mode: subagent
-model: openai/gpt-5.3-codex
+model: openai/gpt-5.3-codex-spark
 reasoningEffort: low
 temperature: 0.2
 permission:
@@ -28,7 +28,7 @@ permission:
     "ls *": allow
     "npm test*": allow
     "npm run test*": allow
-    "npm run typecheck*": allow
+    "npm run typecheck": allow
     "npm run lint*": allow
     "pnpm test*": allow
     "pnpm run test*": allow

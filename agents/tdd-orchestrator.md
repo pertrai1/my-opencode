@@ -24,7 +24,7 @@ permission:
     "rtk git diff*": allow
     "npm test*": allow
     "npm run test*": allow
-    "npm run typecheck*": allow
+    "npm run typecheck": allow
     "pnpm test*": allow
     "pnpm run test*": allow
     "pnpm run typecheck*": allow

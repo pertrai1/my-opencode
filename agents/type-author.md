@@ -28,7 +28,7 @@ permission:
     "ls *": allow
     "tsc*": allow
     "npx tsc*": allow
-    "npm run typecheck*": allow
+    "npm run typecheck": allow
     "pnpm run typecheck*": allow
     "yarn typecheck*": allow
     "yarn run typecheck*": allow

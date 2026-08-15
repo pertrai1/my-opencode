@@ -88,6 +88,7 @@
       "rtk git push *": "deny",
       "git rebase *": "deny",
       "rtk git rebase *": "deny",
+      "npm run typecheck": "allow",
     },
   },
   "plugin": [
@@ -142,14 +143,14 @@
       "tailLength": 10000,
       "tempDir": "~/.opencode/tmp",
       "retentionHours": 24,
-      "maxTempDirSizeMB": 100
+      "maxTempDirSizeMB": 100,
     },
     "doomLoop": {
       "enabled": true,
       "bufferSize": 5,
       "maxRepetitions": 3,
-      "exemptTools": ["read", "grep", "glob"]
-    }
+      "exemptTools": ["read", "grep", "glob"],
+    },
   },
   "formatter": true,
 }
