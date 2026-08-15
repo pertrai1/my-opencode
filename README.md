@@ -6,9 +6,12 @@ Global configuration for [opencode](https://opencode.ai).
 
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
 - **Default agent** — Plan.
-- **Permissions** — least privilege. Read-only tools and shell commands are allowed; edits, tasks, and mutating shell commands ask; destructive operations (`rm`, `git push`/`clean`/`reset --hard`/`rebase`) are denied. `.env` reads are denied.
+- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
+- **Permissions** — least privilege. Read-only tools and shell commands are allowed; edits, tasks, and mutating shell commands ask; destructive operations (`rm`, `git push`/`clean`/`reset --hard`/`rebase`) are denied. `.env` reads are denied. Doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
+- **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agent`, so those paths are available as named OpenCode references.
+- **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
 
 ## Plugins

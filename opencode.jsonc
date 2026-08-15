@@ -89,11 +89,23 @@
     "prune": true,
     "reserved": 12000,
   },
+  "references": {
+    "workflow": {
+      "path": "./docs/agents",
+      "description": "Issue tracker, triage labels, and agent workflow docs"
+    },
+    "reviewers": {
+      "path": "./agent",
+      "description": "Custom review agents and review prompts"
+    }
+  },
   "watcher": {
     "ignore": ["node_modules/**", "dist/**", ".git/**"],
   },
   "autoupdate": "notify",
+  "enabled_providers": ["openai", "ollama"],
   "permission": {
+    "doom_loop": "ask",
     "read": {
       "*": "allow",
       "*.env": "deny",
@@ -206,21 +218,9 @@
       "enabled": true,
     },
   },
-  "safety": {
-    "truncation": {
-      "maxLength": 30000,
-      "headLength": 20000,
-      "tailLength": 10000,
-      "tempDir": "~/.opencode/tmp",
-      "retentionHours": 24,
-      "maxTempDirSizeMB": 100
-    },
-    "doomLoop": {
-      "enabled": true,
-      "bufferSize": 5,
-      "maxRepetitions": 3,
-      "exemptTools": ["read", "grep", "glob"]
-    }
+  "tool_output": {
+    "max_lines": 2000,
+    "max_bytes": 51200
   },
   "formatter": true,
 }
