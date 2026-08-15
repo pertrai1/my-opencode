@@ -28,7 +28,7 @@ permission:
     "ls *": allow
     "npm test*": allow
     "npm run test*": allow
-    "npm run typecheck*": allow
+    "npm run typecheck": allow
     "npm run lint*": allow
     "pnpm test*": allow
     "pnpm run test*": allow

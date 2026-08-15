@@ -194,4 +194,4 @@ All summarization requirement slices accepted.
 
 ## Open Issues
 
-- Slice 2 needs focused plugin-tool integration coverage before acceptance; do not begin Slice 3 until it passes.
+- None.

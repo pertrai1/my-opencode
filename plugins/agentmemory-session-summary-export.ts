@@ -111,15 +111,7 @@ export function createCurrentSessionSummaryExportHandler(
   request: Readonly<CurrentSessionSummaryExportReportRequest>,
 ): Readonly<CurrentSessionSummaryExportHandler> {
   return {
-    exportCurrentSessionSummaryToChat: async (): Promise<Readonly<CurrentSessionSummaryExportChatResult>> => {
-      const report = await buildCurrentSessionSummaryExportReport(request);
-      return {
-        destination: "chat",
-        wroteFiles: false,
-        report,
-        markdown: buildSessionSummaryExportMarkdown(report),
-      };
-    },
+    exportCurrentSessionSummaryToChat: () => exportCurrentSessionSummaryToChat(request),
   };
 }
 
@@ -231,5 +223,5 @@ export function buildSessionSummaryExportMarkdown(
     lines.push("This report is not an independently verified build/test result.");
   }
 
-  return lines.filter((line) => line.length > 0).join("\n");
+  return lines.join("\n");
 }

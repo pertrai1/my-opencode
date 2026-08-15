@@ -3,33 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const Module = require('node:module');
 
-const originalTsExtension = require.extensions && require.extensions['.ts'];
-if (require.extensions && !originalTsExtension) {
-  require.extensions['.ts'] = function registerTypeScript(module, filename) {
-    const ts = require('typescript');
-    const source = fs.readFileSync(filename, 'utf8');
-    const result = ts.transpileModule(source, {
-      compilerOptions: {
-        target: ts.ScriptTarget.ES2022,
-        module: ts.ModuleKind.CommonJS,
-      },
-    });
-    module._compile(result.outputText, filename);
-  };
-}
-
-test.after(() => {
-  if (!require.extensions) {
-    return;
-  }
-
-  if (originalTsExtension) {
-    require.extensions['.ts'] = originalTsExtension;
-    return;
-  }
-
-  delete require.extensions['.ts'];
-});
+require('./helpers/register-ts');
 
 test('agentmemory capture exposes an export-session-summary chat tool with empty args and fail-closed session-local output', async (t) => {
   const helperPathSuffix = `${require('node:path').sep}agentmemory-session-summary-export.ts`;
@@ -98,17 +72,17 @@ test('agentmemory capture exposes an export-session-summary chat tool with empty
     ['createWriteStream', fs.createWriteStream],
   ]);
 
-  for (const [name] of writeGuards) {
-    fs[name] = () => {
-      throw new Error(`Unexpected filesystem write via fs.${name}`);
-    };
-  }
-
   t.after(() => {
     for (const [name, original] of writeGuards) {
       fs[name] = original;
     }
   });
+
+  for (const [name] of writeGuards) {
+    fs[name] = () => {
+      throw new Error(`Unexpected filesystem write via fs.${name}`);
+    };
+  }
 
   const recursiveNoop = new Proxy(async function noop() {}, {
     get() {

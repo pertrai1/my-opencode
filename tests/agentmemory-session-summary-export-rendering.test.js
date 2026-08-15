@@ -1,34 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
 
-const originalTsExtension = require.extensions && require.extensions['.ts'];
-if (require.extensions && !originalTsExtension) {
-  require.extensions['.ts'] = function registerTypeScript(module, filename) {
-    const ts = require('typescript');
-    const source = fs.readFileSync(filename, 'utf8');
-    const result = ts.transpileModule(source, {
-      compilerOptions: {
-        target: ts.ScriptTarget.ES2022,
-        module: ts.ModuleKind.CommonJS,
-      },
-    });
-    module._compile(result.outputText, filename);
-  };
-}
-
-test.after(() => {
-  if (!require.extensions) {
-    return;
-  }
-
-  if (originalTsExtension) {
-    require.extensions['.ts'] = originalTsExtension;
-    return;
-  }
-
-  delete require.extensions['.ts'];
-});
+require('./helpers/register-ts');
 
 test('session summary export renders real report content and unavailable narrative states', async () => {
   const {
@@ -83,6 +56,8 @@ test('session summary export renders real report content and unavailable narrati
   assert.match(markdown, /not ground truth/i);
   assert.match(markdown, /narrowed the issue to the export tool path/i);
   assert.match(markdown, /not an independently verified build\/test result/i);
+  assert.match(markdown, /Session Title: Investigate summary export\n\n## Deterministic Session Anchor/);
+  assert.match(markdown, /## Summary Material\nAgentMemory narrative summary \(not ground truth\):\nThe agent narrowed the issue to the export tool path\./);
 
   const toolResult = await createCurrentSessionSummaryExportToolDefinition(request).execute({}, { sessionID: 'ignored' });
   assert.strictEqual(toolResult.metadata.sessionId, 'session-summary-real');
@@ -124,6 +99,7 @@ test('session summary export renders real report content and unavailable narrati
   assert.match(unavailableMarkdown, /No trusted session-local deterministic evidence is available for this session\./);
   assert.match(unavailableMarkdown, /AgentMemory narrative summary was unavailable because the service returned an error\./);
   assert.match(unavailableMarkdown, /## Explicit Verification Evidence/);
+  assert.match(unavailableMarkdown, /No trusted session-local deterministic evidence is available for this session\.\n\n## Summary Material/);
   assert.doesNotMatch(unavailableMarkdown, /## Deterministic Session Anchor/);
   assert.doesNotMatch(unavailableMarkdown, /not an independently verified build\/test result/i);
 });

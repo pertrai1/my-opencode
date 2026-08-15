@@ -1,34 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
 
-const originalTsExtension = require.extensions && require.extensions['.ts'];
-if (require.extensions && !originalTsExtension) {
-  require.extensions['.ts'] = function registerTypeScript(module, filename) {
-    const ts = require('typescript');
-    const source = fs.readFileSync(filename, 'utf8');
-    const result = ts.transpileModule(source, {
-      compilerOptions: {
-        target: ts.ScriptTarget.ES2022,
-        module: ts.ModuleKind.CommonJS,
-      },
-    });
-    module._compile(result.outputText, filename);
-  };
-}
-
-test.after(() => {
-  if (!require.extensions) {
-    return;
-  }
-
-  if (originalTsExtension) {
-    require.extensions['.ts'] = originalTsExtension;
-    return;
-  }
-
-  delete require.extensions['.ts'];
-});
+require('./helpers/register-ts');
 
 test('session compaction anchor retains bounded source-labeled evidence and injects it without inferring success', () => {
   const {
@@ -49,194 +22,328 @@ test('session compaction anchor retains bounded source-labeled evidence and inje
     maxSessionDiffEntries: 1,
     maxSessionErrors: 1,
   });
+  const replayStore = createSessionCompactionAnchorStore({
+    maxUserRequests: 1,
+    maxToolCompletions: 1,
+    maxToolFailures: 1,
+    maxPatchEntries: 1,
+    maxSessionDiffEntries: 1,
+    maxSessionErrors: 1,
+  });
   const sessionId = 'session-anchor-red';
 
   assert.ok(DEFAULT_SESSION_COMPACTION_ANCHOR_LIMITS.maxUserRequests >= 1);
 
-  captureSessionCompactionAnchorChatMessage(
-    store,
-    {
-      sessionID: sessionId,
-      agent: 'test-agent',
-      model: {
-        providerID: 'openai',
-        modelID: 'gpt-5.4',
-      },
-      messageID: 'user-message-1',
-    },
-    {
-      message: {
-        id: 'user-message-1',
+  const replayEvidenceSequence = (targetStore) => {
+    captureSessionCompactionAnchorChatMessage(
+      targetStore,
+      {
         sessionID: sessionId,
-        role: 'user',
-        time: { created: 1 },
         agent: 'test-agent',
         model: {
           providerID: 'openai',
           modelID: 'gpt-5.4',
         },
+        messageID: 'user-message-1',
       },
-      parts: [
-        {
-          id: 'user-text-1',
+      {
+        message: {
+          id: 'user-message-1',
           sessionID: sessionId,
-          messageID: 'user-message-1',
-          type: 'text',
-          text: 'Investigate the failing test and explain what broke.',
+          role: 'user',
+          time: { created: 1 },
+          agent: 'test-agent',
+          model: {
+            providerID: 'openai',
+            modelID: 'gpt-5.4',
+          },
         },
-      ],
-    },
-  );
-
-  captureSessionCompactionAnchorChatMessage(
-    store,
-    {
-      sessionID: sessionId,
-      agent: 'test-agent',
-      model: {
-        providerID: 'openai',
-        modelID: 'gpt-5.4',
+        parts: [
+          {
+            id: 'user-text-1',
+            sessionID: sessionId,
+            messageID: 'user-message-1',
+            type: 'text',
+            text: 'Investigate the failing test and explain what broke.',
+          },
+        ],
       },
-      messageID: 'user-message-synthetic',
-    },
-    {
-      message: {
-        id: 'user-message-synthetic',
+    );
+
+    captureSessionCompactionAnchorChatMessage(
+      targetStore,
+      {
         sessionID: sessionId,
-        role: 'user',
-        time: { created: 2 },
         agent: 'test-agent',
         model: {
           providerID: 'openai',
           modelID: 'gpt-5.4',
         },
+        messageID: 'user-message-synthetic',
       },
-      parts: [
-        {
-          id: 'user-text-synthetic',
+      {
+        message: {
+          id: 'user-message-synthetic',
           sessionID: sessionId,
-          messageID: 'user-message-synthetic',
-          type: 'text',
-          text: 'Synthetic follow-up',
-          synthetic: true,
+          role: 'user',
+          time: { created: 2 },
+          agent: 'test-agent',
+          model: {
+            providerID: 'openai',
+            modelID: 'gpt-5.4',
+          },
         },
-      ],
-    },
-  );
+        parts: [
+          {
+            id: 'user-text-synthetic',
+            sessionID: sessionId,
+            messageID: 'user-message-synthetic',
+            type: 'text',
+            text: 'Synthetic follow-up',
+            synthetic: true,
+          },
+        ],
+      },
+    );
 
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'message.part.updated',
-    properties: {
-      part: {
-        id: 'tool-part-complete-1',
+    captureSessionCompactionAnchorChatMessage(
+      targetStore,
+      {
         sessionID: sessionId,
-        messageID: 'assistant-message-1',
-        type: 'tool',
-        callID: 'tool-complete-1',
-        tool: 'bash',
-        state: {
-          status: 'completed',
-          input: { command: 'npm test' },
-          output: '1 test failed',
-          title: 'Run tests',
-          metadata: {},
-          time: { start: 10, end: 135 },
+        agent: 'test-agent',
+        model: {
+          providerID: 'openai',
+          modelID: 'gpt-5.4',
+        },
+        messageID: 'user-message-2',
+      },
+      {
+        message: {
+          id: 'user-message-2',
+          sessionID: sessionId,
+          role: 'user',
+          time: { created: 3 },
+          agent: 'test-agent',
+          model: {
+            providerID: 'openai',
+            modelID: 'gpt-5.4',
+          },
+        },
+        parts: [
+          {
+            id: 'user-text-2',
+            sessionID: sessionId,
+            messageID: 'user-message-2',
+            type: 'text',
+            text: 'Re-run the focused tests and summarize the remaining failures.',
+          },
+        ],
+      },
+    );
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'tool-part-complete-0',
+          sessionID: sessionId,
+          messageID: 'assistant-message-0',
+          type: 'tool',
+          callID: 'tool-complete-0',
+          tool: 'bash',
+          state: {
+            status: 'completed',
+            input: { command: 'npm test -- --watch' },
+            output: 'watch mode started',
+            title: 'Start watch mode',
+            metadata: {},
+            time: { start: 4, end: 8 },
+          },
         },
       },
-    },
-  });
+    });
 
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'message.part.updated',
-    properties: {
-      part: {
-        id: 'reasoning-part-1',
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'tool-part-complete-1',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'tool',
+          callID: 'tool-complete-1',
+          tool: 'bash',
+          state: {
+            status: 'completed',
+            input: { command: 'npm test' },
+            output: '1 test failed',
+            title: 'Run tests',
+            metadata: {},
+            time: { start: 10, end: 135 },
+          },
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'reasoning-part-1',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'reasoning',
+          text: 'This should not be trusted evidence.',
+          time: { start: 220, end: 221 },
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'tool-part-failure-0',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'tool',
+          callID: 'tool-failure-0',
+          tool: 'agentmemory',
+          state: {
+            status: 'error',
+            input: { command: '/search' },
+            error: 'older failure',
+            time: { start: 150, end: 151 },
+          },
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'tool-part-failure-1',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'tool',
+          callID: 'tool-failure-1',
+          tool: 'agentmemory',
+          state: {
+            status: 'error',
+            input: { command: '/context' },
+            error: 'remote context retrieval failed',
+            time: { start: 200, end: 212 },
+          },
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'patch-part-0',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'patch',
+          hash: 'old-hash',
+          files: ['obsolete.ts'],
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: 'patch-part-1',
+          sessionID: sessionId,
+          messageID: 'assistant-message-1',
+          type: 'patch',
+          hash: 'abc123',
+          files: ['plugins/agentmemory-capture.ts'],
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'session.diff',
+      properties: {
         sessionID: sessionId,
-        messageID: 'assistant-message-1',
-        type: 'reasoning',
-        text: 'This should not be trusted evidence.',
-        time: { start: 220, end: 221 },
+        diff: [
+          {
+            file: 'obsolete.ts',
+            before: '',
+            after: '',
+            additions: 1,
+            deletions: 0,
+          },
+        ],
       },
-    },
-  });
+    });
 
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'message.part.updated',
-    properties: {
-      part: {
-        id: 'tool-part-failure-1',
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'session.diff',
+      properties: {
         sessionID: sessionId,
-        messageID: 'assistant-message-1',
-        type: 'tool',
-        callID: 'tool-failure-1',
-        tool: 'agentmemory',
-        state: {
-          status: 'error',
-          input: { command: '/context' },
-          error: 'remote context retrieval failed',
-          time: { start: 200, end: 212 },
-        },
+        diff: [
+          {
+            file: 'plugins/agentmemory-capture.ts',
+            before: '',
+            after: '',
+            additions: 7,
+            deletions: 2,
+          },
+        ],
       },
-    },
-  });
+    });
 
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'message.part.updated',
-    properties: {
-      part: {
-        id: 'patch-part-1',
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'session.error',
+      properties: {
         sessionID: sessionId,
-        messageID: 'assistant-message-1',
-        type: 'patch',
-        hash: 'abc123',
-        files: ['plugins/agentmemory-capture.ts'],
-      },
-    },
-  });
-
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'session.diff',
-    properties: {
-      sessionID: sessionId,
-      diff: [
-        {
-          file: 'plugins/agentmemory-capture.ts',
-          before: '',
-          after: '',
-          additions: 7,
-          deletions: 2,
-        },
-      ],
-    },
-  });
-
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'session.error',
-    properties: {
-      sessionID: sessionId,
-      error: {
-        name: 'UnknownError',
-        data: {
-          message: 'AgentMemory context retrieval failed',
+        error: {
+          name: 'UnknownError',
+          data: {
+            message: 'First error',
+          },
         },
       },
-    },
-  });
+    });
 
-  captureSessionCompactionAnchorEvent(store, {
-    type: 'file.edited',
-    properties: {
-      file: 'ambiguous.txt',
-    },
-  });
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'session.error',
+      properties: {
+        sessionID: sessionId,
+        error: {
+          name: 'UnknownError',
+          data: {
+            message: 'AgentMemory context retrieval failed',
+          },
+        },
+      },
+    });
+
+    captureSessionCompactionAnchorEvent(targetStore, {
+      type: 'file.edited',
+      properties: {
+        file: 'ambiguous.txt',
+      },
+    });
+  };
+
+  replayEvidenceSequence(store);
+  replayEvidenceSequence(replayStore);
 
   const evidence = store.getEvidence(sessionId);
   assert.strictEqual(evidence.length, 6);
 
   const userIntent = evidence.find((item) => item.kind === 'user-intent');
   assert.ok(userIntent);
-  assert.match(userIntent.text, /Investigate the failing test/);
+  assert.match(userIntent.text, /Re-run the focused tests/);
   assert.doesNotMatch(userIntent.text, /Synthetic follow-up/);
+  assert.doesNotMatch(userIntent.text, /Investigate the failing test/);
 
   const toolCompletion = evidence.find((item) => item.kind === 'tool-completion');
   assert.ok(toolCompletion);
@@ -271,8 +378,10 @@ test('session compaction anchor retains bounded source-labeled evidence and inje
   assert.match(sessionError.errorExcerpt, /session error observed/i);
 
   const rendered = renderSessionCompactionAnchor(store, sessionId);
+  const replayRendered = renderSessionCompactionAnchor(replayStore, sessionId);
   assert.ok(rendered, 'Expected deterministic session evidence to render');
-  assert.match(rendered, /Investigate the failing test and explain what broke\./);
+  assert.strictEqual(rendered, replayRendered);
+  assert.match(rendered, /Re-run the focused tests and summarize the remaining failures\./);
   assert.match(rendered, /Run tests/);
   assert.match(rendered, /withheld output/i);
   assert.match(rendered, /abc123/);
@@ -280,6 +389,9 @@ test('session compaction anchor retains bounded source-labeled evidence and inje
   assert.match(rendered, /7/);
   assert.match(rendered, /2/);
   assert.match(rendered, /session error observed/i);
+  assert.doesNotMatch(rendered, /Start watch mode/);
+  assert.doesNotMatch(rendered, /old-hash/);
+  assert.doesNotMatch(rendered, /obsolete\.ts/);
   assert.doesNotMatch(rendered, /This should not be trusted evidence\./);
   assert.doesNotMatch(rendered, /ambiguous\.txt/);
   assert.doesNotMatch(rendered, /npm test/);
@@ -294,7 +406,7 @@ test('session compaction anchor retains bounded source-labeled evidence and inje
   assert.strictEqual(injectSessionCompactionAnchor(store, sessionId, output), true);
   assert.ok(Array.isArray(output.context));
   assert.ok(output.context.some((entry) => /AgentMemory \/context failed before local anchor injection\./.test(entry)));
-  assert.ok(output.context.some((entry) => /Investigate the failing test and explain what broke\./.test(entry)));
+  assert.ok(output.context.some((entry) => /Re-run the focused tests and summarize the remaining failures\./.test(entry)));
   assert.ok(output.context.some((entry) => /withheld output/i.test(entry)));
   assert.ok(output.context.some((entry) => /session error observed/i.test(entry)));
 
