@@ -5,7 +5,7 @@ Global configuration for [opencode](https://opencode.ai).
 ## What's configured
 
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
-- **Default agent** — Plan.
+- **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
@@ -33,10 +33,17 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Agents
 
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
 - `agents/architecture-boundary-reviewer.md` — reviews diffs for architecture boundary violations.
 - `agents/performance-reviewer.md` — reviews diffs for performance risks and optimization opportunities.
 - `agents/production-readiness-reviewer.md` — reviews diffs for reliability and production safety risks.
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
+
+## First-Call Context
+
+- `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
+- The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
+- Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 
 ## Type-Driven TDD Pipeline
 
