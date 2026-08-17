@@ -6,7 +6,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
 - **Default agent** — Plan.
-- **Permissions** — least privilege. Read-only tools and shell commands are allowed; edits, tasks, and mutating shell commands ask; destructive operations (`rm`, `git push`/`clean`/`reset --hard`/`rebase`) are denied. `.env` reads are denied.
+- **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
@@ -17,6 +17,13 @@ Global configuration for [opencode](https://opencode.ai).
 - `plugins/agentmemory-capture.ts` — captures session observations into the agentmemory MCP server. Optional auth via `AGENTMEMORY_SECRET` env var.
 - `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
+- `plugins/secret-scan.ts` — runs `gitleaks dir` on session start and after edits, then warns with redacted findings. If `gitleaks` is not installed, it logs a one-time disabled warning.
+
+## Secret Scanning
+
+- `.gitleaks.toml` — extends the default `gitleaks` ruleset for repo-level tuning.
+- Prefer `.gitleaks.toml` for durable shared policy such as path allowlists or disabled rules.
+- Use `.gitleaksignore` only for reviewed, specific finding fingerprints that you intentionally want to suppress.
 
 ## Skills
 
@@ -102,5 +109,6 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 2. `rtk init -g --opencode` to install the RTK plugin
 3. `code-review-graph install --platform opencode` to install the graph plugin
 4. herdr install for agent-state reporting
-5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
-6. Point `plugins/agentmemory-capture.ts` at an agentmemory server (default `http://localhost:3111`)
+5. `brew install gitleaks` to enable secret scanning
+6. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
+7. Point `plugins/agentmemory-capture.ts` at an agentmemory server (default `http://localhost:3111`)
