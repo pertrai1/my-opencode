@@ -43,9 +43,6 @@
     "prune": true,
     "reserved": 12000,
   },
-  "watcher": {
-    "ignore": ["node_modules/**", "dist/**", ".git/**"],
-  },
   "autoupdate": "notify",
   "permission": {
     "read": {
@@ -95,12 +92,29 @@
     },
   },
   "plugin": [
-    "./plugins/agentmemory-capture.ts",
     "./plugins/crg-plugin.ts",
     "./plugins/herdr-agent-state.js",
     "./plugins/rtk.ts",
     "./plugins/secret-scan.ts",
-    "./plugins/safety.ts",
+    [
+      "./plugins/safety.ts",
+      {
+        "truncation": {
+          "maxLength": 30000,
+          "headLength": 20000,
+          "tailLength": 10000,
+          "tempDir": "~/.opencode/tmp",
+          "retentionHours": 24,
+          "maxTempDirSizeMB": 100
+        },
+        "doomLoop": {
+          "enabled": true,
+          "bufferSize": 5,
+          "maxRepetitions": 3,
+          "exemptTools": ["read", "grep", "glob"]
+        }
+      }
+    ],
   ],
   "provider": {
     "openai": {
@@ -138,22 +152,6 @@
       "type": "local",
       "command": ["npx", "-y", "@agentmemory/mcp"],
       "enabled": true,
-    },
-  },
-  "safety": {
-    "truncation": {
-      "maxLength": 30000,
-      "headLength": 20000,
-      "tailLength": 10000,
-      "tempDir": "~/.opencode/tmp",
-      "retentionHours": 24,
-      "maxTempDirSizeMB": 100,
-    },
-    "doomLoop": {
-      "enabled": true,
-      "bufferSize": 5,
-      "maxRepetitions": 3,
-      "exemptTools": ["read", "grep", "glob"],
     },
   },
   "formatter": true,

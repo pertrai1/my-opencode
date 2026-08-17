@@ -37,21 +37,19 @@ test.after(() => {
 
 const { SafetyPlugin } = require('../plugins/safety.ts');
 
-// Helper to create a temp project directory with opencode.jsonc for testing
-function createMockProjectDir(safetyConfig) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-test-'));
-  const config = {
-    "$schema": "https://opencode.ai/config.json",
-    "safety": safetyConfig
-  };
-  fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), JSON.stringify(config, null, 2));
-  return tmpDir;
+function createMockProjectDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-test-'));
+}
+
+async function createSafetyPlugin(safetyConfig, directory = createMockProjectDir()) {
+  const plugin = await SafetyPlugin({ directory }, safetyConfig);
+  return { plugin, directory };
 }
 
 test('Safety Plugin - Output Size Truncation', async (t) => {
   await t.test('truncates output over maxLength using head / tail split and saves full output', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-tmp-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 30,
         headLength: 20,
@@ -61,8 +59,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 100
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     
     const input = {
       tool: 'bash',
@@ -118,7 +114,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     const tempDirName = path.join(os.tmpdir(), `opencode-prune-${Date.now()}`);
     fs.mkdirSync(tempDirName, { recursive: true, mode: 0o700 });
 
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 10,
         headLength: 5,
@@ -128,8 +124,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 0.001 // 1024 bytes
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
 
     // 1. Create a simulated older file (e.g. 25 hours old) to verify age pruning
     const oldFilePath = path.join(tempDirName, 'opencode-full-out-session123-12345-old.txt');
@@ -190,7 +184,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
   await t.test('truncates Unicode code points correctly without splitting surrogate pairs', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-unicode-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 5,
         headLength: 2,
@@ -200,8 +194,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 100
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const input = { tool: 'bash', sessionID: 'session-unicode', callID: 'call1', args: {} };
     
     // Each emoji is 1 Unicode code point, but 2 UTF-16 code units (length 2)
@@ -224,7 +216,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
   await t.test('falls back when configured head and tail lengths exceed maxLength', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-clamp-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 5,
         headLength: 4,
@@ -234,8 +226,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 100
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const input = { tool: 'bash', sessionID: 'session-clamp', callID: 'call1', args: {} };
     const output = { title: 'bash', output: 'abcdefghi', metadata: {} };
 
@@ -249,7 +239,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
   await t.test('preserves the current artifact when it exceeds the size limit', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-protected-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 5,
         headLength: 3,
@@ -259,7 +249,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 0.000001
       }
     });
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
 
     await plugin["tool.execute.after"](
@@ -280,7 +269,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
   await t.test('sanitizes session IDs before using them in retained output filenames', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-sanitize-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 10,
         headLength: 5,
@@ -290,8 +279,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 100
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const input = { tool: 'bash', sessionID: '../nested/session', callID: 'call1', args: {} };
     const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
 
@@ -310,7 +297,7 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
 
   await t.test('uses the configuration loaded at plugin startup', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-startup-config-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 10,
         headLength: 5,
@@ -320,15 +307,6 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
         maxTempDirSizeMB: 100,
       },
     });
-    const plugin = await SafetyPlugin({ directory: mockDir });
-
-    fs.writeFileSync(path.join(mockDir, 'opencode.jsonc'), JSON.stringify({
-      safety: {
-        truncation: {
-          maxLength: 100,
-        },
-      },
-    }));
 
     const output = { title: 'bash', output: 'abcdefghijklmnopqrstuvwxyz', metadata: {} };
     await plugin["tool.execute.after"](
@@ -342,11 +320,53 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     fs.rmSync(tempDirName, { recursive: true, force: true });
     fs.rmSync(mockDir, { recursive: true, force: true });
   });
+
+  await t.test('redacts sensitive values before saving oversized output artifacts', async () => {
+    const tempDirName = path.join(os.tmpdir(), `opencode-redact-${Date.now()}`);
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
+      truncation: {
+        maxLength: 40,
+        headLength: 20,
+        tailLength: 20,
+        tempDir: tempDirName,
+        retentionHours: 24,
+        maxTempDirSizeMB: 100,
+      },
+    });
+
+    const secretValue = 'sk-abcdefghijklmnopqrstuvwxyz123456';
+    const output = {
+      title: 'bash',
+      output: `Authorization: Bearer ${secretValue}\nOPENAI_API_KEY=${secretValue}\n${'x'.repeat(80)}`,
+      metadata: {},
+    };
+
+    await plugin["tool.execute.after"](
+      { tool: 'bash', sessionID: 'session-redact', callID: 'call1', args: {} },
+      output,
+    );
+
+    const files = fs.readdirSync(tempDirName);
+    assert.strictEqual(files.length, 1);
+    const savedFileName = files.length > 0 ? files[0] : undefined;
+    assert.ok(savedFileName, 'Expected retained output file to exist');
+    const savedFilePath = path.join(tempDirName, savedFileName);
+    const savedContent = fs.readFileSync(savedFilePath, 'utf8');
+
+    assert.ok(output.output.includes('Sensitive values were redacted before retention.'));
+    assert.ok(savedContent.includes('[REDACTED]'));
+    assert.ok(!savedContent.includes(secretValue));
+    assert.ok(!output.output.includes(secretValue));
+
+    await plugin.dispose();
+    fs.rmSync(tempDirName, { recursive: true, force: true });
+    fs.rmSync(mockDir, { recursive: true, force: true });
+  });
 });
 
 test('Safety Plugin - Doom Loop Detection', async (t) => {
   await t.test('detects consecutive loop A-A-A and aborts', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -354,8 +374,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: ["read", "grep", "glob"],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-loop-consecutive';
 
     const call1 = { tool: 'bash', sessionID, callID: 'c1', args: { command: 'test' } };
@@ -384,7 +402,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('detects alternating loop A-B-A-B-A and aborts', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -392,8 +410,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: ["read", "grep", "glob"],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-loop-alternating';
 
     const callA = { tool: 'bash', sessionID, callID: 'cA', args: { command: 'A' } };
@@ -423,7 +439,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('ignores legitimate polling when outputs change', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -431,8 +447,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: ["read"],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-polling';
 
     const call = { tool: 'bash', sessionID, callID: 'poll1', args: { command: 'status' } };
@@ -450,7 +464,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('exempt tools are not tracked for loop detection', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -458,8 +472,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: ["read"],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-exempt';
 
     const callExempt = { tool: 'read', sessionID, callID: 'r1', args: { path: 'a.txt' } };
@@ -477,7 +489,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('safe read-only tools are not tracked by default', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -485,8 +497,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: [],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-read-only';
     const call = { tool: 'read', sessionID, callID: 'r1', args: { filePath: 'a.txt' } };
     const res = { title: 'read', output: 'content', metadata: {} };
@@ -502,7 +512,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('buffer resets on new user message', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
@@ -510,8 +520,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: [],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-reset';
 
     const call = { tool: 'bash', sessionID, callID: 'c1', args: {} };
@@ -533,7 +541,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('evicts stale session buffers after reaching the session limit', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 2,
@@ -541,7 +549,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: [],
       },
     });
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const staleCall = { tool: 'bash', sessionID: 'session-to-evict', callID: 'c1', args: {} };
     const output = { title: 'bash', output: 'ok', metadata: {} };
 
@@ -562,7 +569,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
 
   await t.test('detects doom loop for three identical oversized calls', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-doom-oversized-${Date.now()}`);
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 10,
         headLength: 5,
@@ -578,8 +585,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: [],
       }
     });
-
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const sessionID = 'session-doom-oversized';
 
     const call = { tool: 'bash', sessionID, callID: 'c1', args: { command: 'oversized' } };
@@ -607,7 +612,7 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 
   await t.test('falls back to valid loop thresholds when the configured relationship is invalid', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 2,
@@ -615,7 +620,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         exemptTools: [],
       }
     });
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const call = { tool: 'bash', sessionID: 'session-invalid-threshold', callID: 'c1', args: {} };
     const output = { title: 'bash', output: 'ok', metadata: {} };
 
@@ -631,47 +635,36 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 });
 
-test('Safety Plugin - JSONC Parsing of comments and string //', async (t) => {
-  await t.test('correctly parses JSONC when strings contain //', async () => {
+test('Safety Plugin - Plugin Options Parsing', async (t) => {
+  await t.test('accepts plugin options when paths contain //', async () => {
     const mockDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-jsonc-test-'));
-    const resolvedPath = path.join(mockDir, "inspect // temporary files");
-    const configContent = `{
-      // This is a comment
-      "safety": {
-        "truncation": {
-          "maxLength": 50,
-          "tempDir": ${JSON.stringify(resolvedPath)}
-        }
-      }
-    }`;
-    fs.writeFileSync(path.join(mockDir, 'opencode.jsonc'), configContent);
-
-    // Call loadSafetyConfig or verify it via SafetyPlugin
-    const plugin = await SafetyPlugin({ directory: mockDir });
+    const resolvedPath = path.join(mockDir, 'inspect // temporary files');
+    const { plugin } = await createSafetyPlugin({
+      truncation: {
+        maxLength: 50,
+        tempDir: resolvedPath,
+      },
+    }, mockDir);
     const input = { tool: 'bash', sessionID: 'session-jsonc', callID: 'call1', args: {} };
-    // Trigger truncation with output > 50 chars to verify maxLength is 50 (configured) and not 30000 (default)
     const output = { title: 'bash', output: 'a'.repeat(60), metadata: {} };
 
     await plugin["tool.execute.after"](input, output);
 
-    // Verify it was truncated at 50 chars
     assert.ok(output.output.includes('[WARNING: Output truncated at 50 characters.'));
-    
-    // Verify custom tempDir was used and contains "//" correctly parsed
+
     assert.ok(fs.existsSync(resolvedPath), 'Expected temporary files dir with // to exist');
 
     fs.rmSync(mockDir, { recursive: true, force: true });
   });
 
   await t.test('falls back when configured truncation lengths exceed maxLength', async () => {
-    const mockDir = createMockProjectDir({
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
       truncation: {
         maxLength: 5,
         headLength: 4,
         tailLength: 4,
       }
     });
-    const plugin = await SafetyPlugin({ directory: mockDir });
     const output = { title: 'bash', output: 'abcdefghij', metadata: {} };
 
     await plugin["tool.execute.after"](

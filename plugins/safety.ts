@@ -21,6 +21,11 @@ type SafetyConfig = {
   };
 };
 
+type SafetyPluginOptions = Partial<{
+  truncation: Partial<SafetyConfig["truncation"]>;
+  doomLoop: Partial<SafetyConfig["doomLoop"]>;
+}>;
+
 // Stateful memory buffer for Doom Loop Detection
 // Maps sessionID -> array of tool call hashes (rolling history)
 const sessionBuffers = new Map<string, string[]>();
@@ -59,6 +64,7 @@ const ARTIFACT_SUFFIX = ".txt";
 const ARTIFACT_CREATION_ATTEMPTS = 5;
 const MAX_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const MIN_CLEANUP_INTERVAL_MS = 1000;
+const REDACTED_VALUE = "[REDACTED]";
 
 // Helper: resolve paths starting with ~/
 function resolvePath(p: string): string {
@@ -74,6 +80,23 @@ function resolvePath(p: string): string {
 function sanitizeFilenameComponent(value: string): string {
   const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_");
   return sanitized.length > 0 ? sanitized : "unknown";
+}
+
+function redactSensitiveOutput(value: string): string {
+  return value
+    .replace(
+      /(authorization\s*:\s*(?:bearer|basic)\s+)[^\s"'`]+/gi,
+      `$1${REDACTED_VALUE}`,
+    )
+    .replace(
+      /((?:api[_-]?key|secret|token|password|passwd|pwd|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*["']?)[^\s"',`]+/gi,
+      `$1${REDACTED_VALUE}`,
+    )
+    .replace(
+      /(-----BEGIN [^-]+-----)[\s\S]*?(-----END [^-]+-----)/g,
+      `$1\n${REDACTED_VALUE}\n$2`,
+    )
+    .replace(/\bsk-[A-Za-z0-9_-]{10,}\b/g, REDACTED_VALUE);
 }
 
 function isTrackedTool(toolName: string): boolean {
@@ -214,65 +237,10 @@ function canonicalStringify(obj: unknown): string {
   return "{" + parts.join(",") + "}";
 }
 
-// Helper: clean JSONC comments and trailing commas
-function parseJsonc(content: string): unknown {
-  let output = "";
-  let state = "default";
-  let i = 0;
-  while (i < content.length) {
-    const char = content[i];
-    const nextChar = content[i + 1] ?? "";
-
-    if (state === "default") {
-      if (char === '"') {
-        state = "string";
-        output += char;
-      } else if (char === "/" && nextChar === "/") {
-        state = "line-comment";
-        i++; // skip next /
-      } else if (char === "/" && nextChar === "*") {
-        state = "block-comment";
-        i++; // skip next *
-      } else {
-        output += char;
-      }
-    } else if (state === "string") {
-      if (char === "\\") {
-        state = "escape";
-        output += char;
-      } else if (char === '"') {
-        state = "default";
-        output += char;
-      } else {
-        output += char;
-      }
-    } else if (state === "escape") {
-      state = "string";
-      output += char;
-    } else if (state === "line-comment") {
-      if (char === "\n" || char === "\r") {
-        state = "default";
-        output += char;
-      }
-    } else if (state === "block-comment") {
-      if (char === "*" && nextChar === "/") {
-        state = "default";
-        i++; // skip /
-      }
-    }
-    i++;
-  }
-  const clean = output.replace(/,(\s*[\]}])/g, "$1");
-  return JSON.parse(clean);
-}
-
-function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
-  if (!isRecord(parsed) || !isRecord(parsed.safety)) {
-    return null;
-  }
-
-  const truncation = isRecord(parsed.safety.truncation) ? parsed.safety.truncation : {};
-  const doomLoop = isRecord(parsed.safety.doomLoop) ? parsed.safety.doomLoop : {};
+function mergeSafetyConfig(options: unknown): SafetyConfig {
+  const parsedOptions = isRecord(options) ? options : {};
+  const truncation = isRecord(parsedOptions.truncation) ? parsedOptions.truncation : {};
+  const doomLoop = isRecord(parsedOptions.doomLoop) ? parsedOptions.doomLoop : {};
 
   const maxLength = isPositiveInteger(truncation.maxLength)
     ? truncation.maxLength
@@ -340,27 +308,6 @@ function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
         : DEFAULT_CONFIG.doomLoop.exemptTools,
     },
   };
-}
-
-// Helper: load safety config from opencode.jsonc
-function loadSafetyConfig(projectDir: string): SafetyConfig {
-  const configPath = path.join(projectDir, "opencode.jsonc");
-  if (fs.existsSync(configPath)) {
-    let parsed: unknown;
-    try {
-      const raw = fs.readFileSync(configPath, "utf8");
-      parsed = parseJsonc(raw);
-    } catch (error) {
-      console.warn("Failed to load or parse opencode.jsonc, using defaults", { error });
-      return DEFAULT_CONFIG;
-    }
-
-    const config = mergeSafetyConfig(parsed);
-    if (config) {
-      return config;
-    }
-  }
-  return DEFAULT_CONFIG;
 }
 
 // Helper: perform retention and size cleanup on temp directory
@@ -459,8 +406,11 @@ function createOutputArtifact(
   return null;
 }
 
-export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<Hooks> => {
-  const config = loadSafetyConfig(directory);
+export const SafetyPlugin: Plugin = async (
+  _input: PluginInput,
+  options?: SafetyPluginOptions,
+): Promise<Hooks> => {
+  const config = mergeSafetyConfig(options);
   const scheduledCleanup = (): void => {
     const { truncation } = config;
     pruneTempDir(
@@ -494,10 +444,11 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
       // ─── 1. Output Size Truncation ───
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const rawOutput = output.output ?? "";
+      const retainedOutput = redactSensitiveOutput(rawOutput);
       const resolvedTempDir = resolvePath(tempDir);
 
       if (rawOutput.length > maxLength) {
-        if (exceedsCodePointLength(rawOutput, maxLength)) {
+        if (exceedsCodePointLength(retainedOutput, maxLength)) {
           // Ensure secure directory with 0700 permissions
           let tempDirSecured = true;
           try {
@@ -517,7 +468,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           }
 
           const fullPath = tempDirSecured
-            ? createOutputArtifact(resolvedTempDir, sessionID, rawOutput)
+            ? createOutputArtifact(resolvedTempDir, sessionID, retainedOutput)
             : null;
           if (fullPath) {
             // Apply Head-and-Tail Truncation
@@ -526,11 +477,14 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
               headLength,
               tailLength,
             );
-            const head = takeFirstCodePoints(rawOutput, effectiveLengths.headLength);
+            const head = takeFirstCodePoints(retainedOutput, effectiveLengths.headLength);
             const tail = effectiveLengths.tailLength > 0
-              ? takeLastCodePoints(rawOutput, effectiveLengths.tailLength)
+              ? takeLastCodePoints(retainedOutput, effectiveLengths.tailLength)
               : "";
-            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
+            const redactionNote = retainedOutput !== rawOutput
+              ? " Sensitive values were redacted before retention."
+              : "";
+            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
 
             output.output = head + warningMarker + tail;
 
