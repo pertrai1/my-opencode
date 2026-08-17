@@ -12,14 +12,13 @@ function getCommandText(args: unknown): string {
 /**
  * code-review-graph plugin for OpenCode.
  *
- * Keeps the knowledge graph up-to-date and surfaces status
- * information automatically during coding sessions.
+ * Keeps the knowledge graph up-to-date during coding sessions.
  *
  * Installed by: code-review-graph install --platform opencode
  */
 export const CrgPlugin: Plugin = async ({ $ }: PluginInput): Promise<Hooks> => {
   return {
-    // 1. Auto-update graph after file edits, 2. show graph status on session start
+    // Auto-update graph after file edits.
     event: async ({ event }: { event: Event }) => {
       if (event.type === "file.edited") {
         try {
@@ -28,21 +27,9 @@ export const CrgPlugin: Plugin = async ({ $ }: PluginInput): Promise<Hooks> => {
           return
         }
       }
-
-      if (event.type === "session.created") {
-        try {
-          const result = await $`code-review-graph status`.quiet()
-          const output = result.stdout?.toString().trim()
-          if (output) {
-            console.log("[code-review-graph] status", { output })
-          }
-        } catch {
-          return
-        }
-      }
     },
 
-    // 3. Detect changes before git commit commands
+    // Detect changes before git commit commands.
     "tool.execute.before": async (input, output) => {
       try {
         const cmd = getCommandText(output.args)
