@@ -89,6 +89,8 @@
       "git rebase *": "deny",
       "rtk git rebase *": "deny",
       "npm run typecheck": "allow",
+      "gh *": "allow",
+      "rtk gh *": "allow",
     },
   },
   "plugin": [

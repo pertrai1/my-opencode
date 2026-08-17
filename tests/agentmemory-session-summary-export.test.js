@@ -6,7 +6,7 @@ const Module = require('node:module');
 require('./helpers/register-ts');
 
 test('agentmemory capture exposes an export-session-summary chat tool with empty args and fail-closed session-local output', async (t) => {
-  const helperPathSuffix = `${require('node:path').sep}agentmemory-session-summary-export.ts`;
+  const helperPathSuffix = `${require('node:path').sep}lib${require('node:path').sep}agentmemory-session-summary-export.ts`;
   const helperCalls = [];
   const pluginApiModule = {
     tool(definition) {
@@ -50,8 +50,8 @@ test('agentmemory capture exposes an export-session-summary chat tool with empty
     }
 
     if (
-      request === './agentmemory-session-summary-export' ||
-      request === './agentmemory-session-summary-export.ts' ||
+      request === './lib/agentmemory-session-summary-export' ||
+      request === './lib/agentmemory-session-summary-export.ts' ||
       request.endsWith(helperPathSuffix)
     ) {
       return helperModule;

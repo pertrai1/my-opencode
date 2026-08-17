@@ -9,7 +9,7 @@ test('session summary export renders real report content and unavailable narrati
     createCurrentSessionSummaryExportToolDefinition,
     buildCurrentSessionSummaryExportReport,
     buildSessionSummaryExportMarkdown,
-  } = require('../plugins/agentmemory-session-summary-export.ts');
+  } = require('../plugins/lib/agentmemory-session-summary-export.ts');
 
   assert.strictEqual(CURRENT_SESSION_SUMMARY_EXPORT_TOOL_NAME, 'export-session-summary');
 

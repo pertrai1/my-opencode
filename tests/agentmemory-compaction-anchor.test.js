@@ -12,7 +12,7 @@ test('session compaction anchor retains bounded source-labeled evidence and inje
     injectSessionCompactionAnchor,
     renderSessionCompactionAnchor,
     DEFAULT_SESSION_COMPACTION_ANCHOR_LIMITS,
-  } = require('../plugins/agentmemory-compaction-anchor.ts');
+  } = require('../plugins/lib/agentmemory-compaction-anchor.ts');
 
   const store = createSessionCompactionAnchorStore({
     maxUserRequests: 1,

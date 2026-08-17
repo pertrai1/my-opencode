@@ -3,7 +3,7 @@ import type { Event, FilePart, Todo } from "@opencode-ai/sdk";
 import {
   CURRENT_SESSION_SUMMARY_EXPORT_TOOL_NAME,
   createCurrentSessionSummaryExportToolDefinition,
-} from "./agentmemory-session-summary-export";
+} from "./lib/agentmemory-session-summary-export";
 
 import {
   captureSessionCompactionAnchorChatMessage,
@@ -12,7 +12,7 @@ import {
   createSessionCompactionAnchorStore,
   injectSessionCompactionAnchor,
   renderSessionCompactionAnchor,
-} from "./agentmemory-compaction-anchor";
+} from "./lib/agentmemory-compaction-anchor";
 
 const DEFAULT_API = "http://localhost:3111";
 const DEFAULT_POST_TIMEOUT_MS = 5000;
