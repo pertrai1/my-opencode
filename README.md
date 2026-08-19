@@ -6,6 +6,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
+- **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
