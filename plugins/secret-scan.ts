@@ -4,6 +4,7 @@ import type { Hooks, Plugin, PluginInput } from "@opencode-ai/plugin";
 import type { Event } from "@opencode-ai/sdk";
 
 const MAX_FINDINGS_PER_SCAN = 20;
+const MAX_FINDINGS_PER_TOAST = 5;
 const MIN_REPO_SCAN_INTERVAL_MS = 30_000;
 
 type GitleaksFinding = {
@@ -56,6 +57,10 @@ function parseGitleaksReport(reportText: string): SecretFinding[] {
     }));
 }
 
+function hasGitleaksFindings(reportText: string): boolean {
+  return parseGitleaksReport(reportText).length > 0;
+}
+
 function summarizeFindings(findings: SecretFinding[]): string[] {
   return findings.map((finding) => {
     const location = finding.line !== null ? `${finding.filePath}:${finding.line}` : finding.filePath;
@@ -99,22 +104,64 @@ function buildScanArgs(targetPath: string): string[] {
   ];
 }
 
-export { buildScanArgs, parseGitleaksReport };
+async function filterIgnoredFindings(
+  findings: SecretFinding[],
+  isIgnored: (filePath: string) => Promise<boolean>,
+): Promise<SecretFinding[]> {
+  const kept: SecretFinding[] = [];
 
-export const SecretScanPlugin: Plugin = async ({ $, directory, worktree }: PluginInput): Promise<Hooks> => {
+  for (const finding of findings) {
+    if (await isIgnored(finding.filePath)) {
+      continue;
+    }
+    kept.push(finding);
+  }
+
+  return kept;
+}
+
+function buildToastMessage(findings: SecretFinding[]): string {
+  const lines = summarizeFindings(findings.slice(0, MAX_FINDINGS_PER_TOAST));
+  if (findings.length <= MAX_FINDINGS_PER_TOAST) {
+    return lines.join("\n");
+  }
+
+  return `${lines.join("\n")}\n+${findings.length - MAX_FINDINGS_PER_TOAST} more`;
+}
+
+export { buildScanArgs, buildToastMessage, filterIgnoredFindings, hasGitleaksFindings, parseGitleaksReport };
+
+export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree }: PluginInput): Promise<Hooks> => {
   const rootDir = worktree ?? directory;
   const reportedFindings = new Set<string>();
   const gitleaksProbe = await $`which gitleaks`.quiet().nothrow();
   const gitleaksAvailable = gitleaksProbe.exitCode === 0;
-  let warnedMissingBinary = false;
+  let notifiedMissingBinary = false;
   let lastRepoScanAt = 0;
 
-  const warnUnavailable = (): void => {
-    if (warnedMissingBinary || gitleaksAvailable) {
+  const showToast = async (title: string, message: string, variant: "warning" | "error"): Promise<void> => {
+    await client.tui.showToast({
+      body: {
+        title,
+        message,
+        variant,
+        duration: variant === "error" ? 10000 : 8000,
+      },
+    });
+  };
+
+  const notifyUnavailable = async (): Promise<void> => {
+    if (notifiedMissingBinary || gitleaksAvailable) {
       return;
     }
-    warnedMissingBinary = true;
-    console.warn("[secret-scan] gitleaks not found in PATH; secret scanning is disabled");
+    notifiedMissingBinary = true;
+    await showToast("Secret scan disabled", "gitleaks was not found in PATH.", "warning");
+  };
+
+  const isGitIgnored = async (targetPath: string): Promise<boolean> => {
+    const absolutePath = path.isAbsolute(targetPath) ? targetPath : path.join(rootDir, targetPath);
+    const result = await $`git check-ignore --no-index --quiet ${absolutePath}`.cwd(rootDir).quiet().nothrow();
+    return result.exitCode === 0;
   };
 
   const runScan = async (targetPath: string): Promise<SecretFinding[]> => {
@@ -125,10 +172,18 @@ export const SecretScanPlugin: Plugin = async ({ $, directory, worktree }: Plugi
     const result = await $`${buildScanArgs(targetPath)}`.quiet().nothrow();
     const stdout = String(result.stdout ?? "");
     const stderr = String(result.stderr ?? "");
-    const findings = parseGitleaksReport(stdout).slice(0, MAX_FINDINGS_PER_SCAN);
+    const parsedFindings = parseGitleaksReport(stdout).slice(0, MAX_FINDINGS_PER_SCAN);
+    const findings = await filterIgnoredFindings(
+      parsedFindings,
+      isGitIgnored,
+    );
 
     if (findings.length > 0) {
       return findings;
+    }
+
+    if (parsedFindings.length > 0) {
+      return [];
     }
 
     if (result.exitCode === 0) {
@@ -136,13 +191,13 @@ export const SecretScanPlugin: Plugin = async ({ $, directory, worktree }: Plugi
     }
 
     if (stderr.trim().length > 0) {
-      console.warn("[secret-scan] gitleaks scan failed", { message: stderr.trim() });
+      await showToast("Secret scan failed", stderr.trim(), "error");
     }
 
     return [];
   };
 
-  const reportFindings = (findings: SecretFinding[]): void => {
+  const reportFindings = async (findings: SecretFinding[]): Promise<void> => {
     const unseen = findings.filter((finding) => {
       const key = finding.fingerprint ?? `${finding.filePath}:${finding.line ?? "unknown"}:${finding.ruleId}`;
       if (reportedFindings.has(key)) {
@@ -156,21 +211,22 @@ export const SecretScanPlugin: Plugin = async ({ $, directory, worktree }: Plugi
       return;
     }
 
-    console.warn("[secret-scan] Potential committed secrets detected", {
-      count: unseen.length,
-      findings: summarizeFindings(unseen),
-    });
+    await showToast("Potential secrets detected", buildToastMessage(unseen), "warning");
   };
 
   const scanRepo = async (): Promise<void> => {
     lastRepoScanAt = Date.now();
-    reportFindings(await runScan(rootDir));
+    await reportFindings(await runScan(rootDir));
   };
 
   const scanEditedFile = async (event: Event): Promise<void> => {
     const editedFilePath = extractEditedFilePath(event, rootDir);
     if (editedFilePath) {
-      reportFindings(await runScan(editedFilePath));
+      if (await isGitIgnored(editedFilePath)) {
+        return;
+      }
+
+      await reportFindings(await runScan(editedFilePath));
       return;
     }
 
@@ -183,7 +239,7 @@ export const SecretScanPlugin: Plugin = async ({ $, directory, worktree }: Plugi
     event: async ({ event }: { event: Event }) => {
       if (!gitleaksAvailable) {
         if (event.type === "session.created") {
-          warnUnavailable();
+          await notifyUnavailable();
         }
         return;
       }
