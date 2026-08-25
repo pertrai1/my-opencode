@@ -63,7 +63,10 @@ function hasGitleaksFindings(reportText: string): boolean {
 
 function summarizeFindings(findings: SecretFinding[]): string[] {
   return findings.map((finding) => {
-    const location = finding.line !== null ? `${finding.filePath}:${finding.line}` : finding.filePath;
+    const location =
+      finding.line !== null
+        ? `${finding.filePath}:${finding.line}`
+        : finding.filePath;
     return `${location} ${finding.ruleId} (${finding.description})`;
   });
 }
@@ -76,7 +79,12 @@ function extractEditedFilePath(event: Event, rootDir: string): string | null {
     return null;
   }
 
-  const candidates = [properties.path, properties.filePath, properties.file, properties.filename];
+  const candidates = [
+    properties.path,
+    properties.filePath,
+    properties.file,
+    properties.filename,
+  ];
   for (const candidate of candidates) {
     if (typeof candidate !== "string" || candidate.length === 0) {
       continue;
@@ -129,9 +137,22 @@ function buildToastMessage(findings: SecretFinding[]): string {
   return `${lines.join("\n")}\n+${findings.length - MAX_FINDINGS_PER_TOAST} more`;
 }
 
-export { buildScanArgs, buildToastMessage, filterIgnoredFindings, hasGitleaksFindings, parseGitleaksReport };
+type SecretScanPluginWithTestUtils = Plugin & {
+  testUtils: {
+    buildScanArgs: typeof buildScanArgs;
+    buildToastMessage: typeof buildToastMessage;
+    filterIgnoredFindings: typeof filterIgnoredFindings;
+    hasGitleaksFindings: typeof hasGitleaksFindings;
+    parseGitleaksReport: typeof parseGitleaksReport;
+  };
+};
 
-export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree }: PluginInput): Promise<Hooks> => {
+const SecretScanPlugin: SecretScanPluginWithTestUtils = async ({
+  $,
+  client,
+  directory,
+  worktree,
+}: PluginInput): Promise<Hooks> => {
   const rootDir = worktree ?? directory;
   const reportedFindings = new Set<string>();
   const gitleaksProbe = await $`which gitleaks`.quiet().nothrow();
@@ -139,7 +160,11 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
   let notifiedMissingBinary = false;
   let lastRepoScanAt = 0;
 
-  const showToast = async (title: string, message: string, variant: "warning" | "error"): Promise<void> => {
+  const showToast = async (
+    title: string,
+    message: string,
+    variant: "warning" | "error",
+  ): Promise<void> => {
     await client.tui.showToast({
       body: {
         title,
@@ -155,12 +180,21 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
       return;
     }
     notifiedMissingBinary = true;
-    await showToast("Secret scan disabled", "gitleaks was not found in PATH.", "warning");
+    await showToast(
+      "Secret scan disabled",
+      "gitleaks was not found in PATH.",
+      "warning",
+    );
   };
 
   const isGitIgnored = async (targetPath: string): Promise<boolean> => {
-    const absolutePath = path.isAbsolute(targetPath) ? targetPath : path.join(rootDir, targetPath);
-    const result = await $`git check-ignore --no-index --quiet ${absolutePath}`.cwd(rootDir).quiet().nothrow();
+    const absolutePath = path.isAbsolute(targetPath)
+      ? targetPath
+      : path.join(rootDir, targetPath);
+    const result = await $`git check-ignore --no-index --quiet ${absolutePath}`
+      .cwd(rootDir)
+      .quiet()
+      .nothrow();
     return result.exitCode === 0;
   };
 
@@ -172,11 +206,11 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
     const result = await $`${buildScanArgs(targetPath)}`.quiet().nothrow();
     const stdout = String(result.stdout ?? "");
     const stderr = String(result.stderr ?? "");
-    const parsedFindings = parseGitleaksReport(stdout).slice(0, MAX_FINDINGS_PER_SCAN);
-    const findings = await filterIgnoredFindings(
-      parsedFindings,
-      isGitIgnored,
+    const parsedFindings = parseGitleaksReport(stdout).slice(
+      0,
+      MAX_FINDINGS_PER_SCAN,
     );
+    const findings = await filterIgnoredFindings(parsedFindings, isGitIgnored);
 
     if (findings.length > 0) {
       return findings;
@@ -199,7 +233,9 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
 
   const reportFindings = async (findings: SecretFinding[]): Promise<void> => {
     const unseen = findings.filter((finding) => {
-      const key = finding.fingerprint ?? `${finding.filePath}:${finding.line ?? "unknown"}:${finding.ruleId}`;
+      const key =
+        finding.fingerprint ??
+        `${finding.filePath}:${finding.line ?? "unknown"}:${finding.ruleId}`;
       if (reportedFindings.has(key)) {
         return false;
       }
@@ -211,7 +247,11 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
       return;
     }
 
-    await showToast("Potential secrets detected", buildToastMessage(unseen), "warning");
+    await showToast(
+      "Potential secrets detected",
+      buildToastMessage(unseen),
+      "warning",
+    );
   };
 
   const scanRepo = async (): Promise<void> => {
@@ -254,6 +294,14 @@ export const SecretScanPlugin: Plugin = async ({ $, client, directory, worktree 
       }
     },
   };
+};
+
+SecretScanPlugin.testUtils = {
+  buildScanArgs,
+  buildToastMessage,
+  filterIgnoredFindings,
+  hasGitleaksFindings,
+  parseGitleaksReport,
 };
 
 export default SecretScanPlugin;
