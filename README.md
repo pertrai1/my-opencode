@@ -7,9 +7,12 @@ Global configuration for [opencode](https://opencode.ai).
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer.
+- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
+- **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
+- **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
+- **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
 
 ## Graph
@@ -25,6 +28,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 - `agents/architecture-boundary-reviewer.md` — narrow, diff-only companion to `architecture-reviewer`; checks changed dependency and public-API edges for boundary violations.
 - `agents/architecture-reviewer.md` — broader architectural reviewer for pre-implementation fitness and post-implementation drift.
+- `agents/explore.md` — read-only reconnaissance agent for codebase analysis and safe shell/file inspection.
 - `agents/performance-reviewer.md` — reviews diffs for performance risks and optimization opportunities.
 - `agents/production-readiness-reviewer.md` — reviews diffs for reliability and production safety risks.
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
@@ -58,7 +62,7 @@ Global configuration for [opencode](https://opencode.ai).
 ## Security
 
 - `plugins/secret-scan.ts` — runs `gitleaks dir` on session start and after edits, then warns with redacted findings. If `gitleaks` is not installed, it logs a one-time disabled warning.
-- `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, and aborts repetitive tool loops. It is configured through the `plugin` tuple entry in `opencode.jsonc`, which keeps the top-level OpenCode config schema-valid.
+- `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
 - `.gitleaks.toml` — extends the default `gitleaks` ruleset for repo-level tuning.
 - Prefer `.gitleaks.toml` for durable shared policy such as path allowlists or disabled rules.
 - Use `.gitleaksignore` only for reviewed, specific finding fingerprints that you intentionally want to suppress.
