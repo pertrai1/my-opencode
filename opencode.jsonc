@@ -11,7 +11,7 @@
         "lsp": "deny",
         "webfetch": "deny",
         "websearch": "deny",
-        "skill": "deny",
+        "skill": "allow",
         "question": "deny",
         "task": "deny",
         "todowrite": "deny",
