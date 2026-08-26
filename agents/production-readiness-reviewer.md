@@ -32,4 +32,25 @@ Rules:
 4. Recommend the smallest production-safety fix, not a platform rewrite.
 5. If there are no findings, return `No production readiness findings.`
 
-Return a concise review with file references, production impact, and the smallest safe fix.
+## Severity levels
+
+- Blocker: credible rollout, data, auth, privacy, or recovery risk that should be fixed before merge or deployment
+- Major: meaningful operational risk that should be corrected soon
+- Minor: real production hardening gap that can be deferred with awareness
+
+## Output format
+
+1. Review Scope
+2. Verdict
+3. Findings
+4. Deferred / Non-blocking Notes
+5. Assumptions / Uncertainty
+
+For each finding include:
+
+- Title
+- Severity
+- File(s)
+- Evidence
+- Production impact
+- Smallest safe fix

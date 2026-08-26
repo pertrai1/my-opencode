@@ -26,7 +26,24 @@ Rules:
 
 1. Prefer concrete coverage or assertion gaps over generic requests for more tests.
 2. Only report issues that materially affect confidence in the changed behavior.
-3. If the diff does not change behavior or tests, say so explicitly.
-4. If there are no findings, return `No test review findings.`
+3. Classify findings as one of: coverage gap, assertion quality issue, or brittleness issue.
+4. If the diff does not change behavior or tests, say so explicitly.
+5. If there are no findings, return `No test review findings.`
 
-Return a concise review with file references, the test gap, and why it matters.
+## Output format
+
+1. Review Scope
+2. Verdict
+3. Findings
+4. Deferred / Non-blocking Notes
+5. Assumptions / Uncertainty
+
+For each finding include:
+
+- Title
+- Category
+- Severity
+- File(s)
+- Evidence
+- Why it matters
+- Smallest safe fix

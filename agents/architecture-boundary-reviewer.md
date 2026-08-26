@@ -34,7 +34,21 @@ Rules:
 3. Keep the review constrained to changed dependency and public-API edges, not overall architectural quality.
 4. Distinguish clear violations from uncertainty; say when the local architecture rule is inferred rather than explicit.
 5. Recommend the smallest fix, such as using a public API, dependency inversion, or moving code downward.
-6. If the diff does not touch architectural edges, say so explicitly.
+6. If the diff does not touch architectural edges, say `No relevant architectural edge touched in diff.`
 7. If there are no findings, return `No architecture boundary findings.`
 
-Return a concise review with file references, the edge or boundary concern, and why it matters.
+## Output format
+
+1. Review Scope
+2. Verdict
+3. Findings
+4. Assumptions / Uncertainty
+
+For each finding include:
+
+- Title
+- Severity
+- File(s)
+- Evidence
+- Why it matters
+- Smallest safe fix

@@ -76,4 +76,24 @@ If the handoff says `no-contract mode`, there is no published type contract for 
 - In normal mode, import and use **only the signatures declared in the type contract**. In `no-contract mode`, use only the public API shape supported by the handoff's named source of truth. Do not invent APIs. If the contract or public API evidence is missing something the spec requires, report the gap instead of inventing — the orchestrator will route it appropriately.
 - The test must be runnable and must **fail for the expected behavioral reason** (a missing/stub implementation counts). Run it and capture the failure output — this is your RED evidence.
 - Do not write or modify implementation code or type files (enforced by permissions). Do not write extra tests.
-- Report back: the test file path, the behavior it asserts, the contract signatures it exercises, and the verbatim RED evidence.
+
+## Required return format
+
+Return exactly these sections:
+
+1. Status
+   - `completed` | `blocked`
+2. Test File
+3. Behavior Asserted
+4. Contract Signatures Used
+5. Command Run
+6. Expected Failure Reason
+7. Actual RED Evidence
+8. Contract / API Gaps
+
+## Return rules
+
+- Under **Behavior Asserted**, describe the single observable behavior under test.
+- Under **Contract Signatures Used**, list only the signatures or public API surfaces relied on.
+- Under **Actual RED Evidence**, include the relevant failing output excerpt verbatim.
+- If the test passed, failed for the wrong reason, or required an invented API, return `blocked` and explain why.
