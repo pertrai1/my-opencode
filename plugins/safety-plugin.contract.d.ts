@@ -1,38 +1,50 @@
-import type { Event } from "@opencode-ai/sdk";
+import type { PluginInput } from "@opencode-ai/plugin";
+import type { Event, Part, Permission, UserMessage } from "@opencode-ai/sdk";
 
-export type SafetyPluginTrackedSessionEvent = Extract<
-  Event,
-  { type: "session.created" | "session.updated" | "session.deleted" }
->;
+export type SafetyPluginEvent = Event;
 
-export interface SafetyPluginUnhandledEvent {
-  type: string;
-  properties?: Record<string, unknown>;
+export type SafetyPluginInput = PluginInput;
+
+export interface SafetyPluginTruncationOptions {
+  maxLength?: number;
+  headLength?: number;
+  tailLength?: number;
+  tempDir?: string;
+  retentionHours?: number;
+  maxTempDirSizeMB?: number;
 }
 
-export type SafetyPluginEvent = SafetyPluginTrackedSessionEvent | SafetyPluginUnhandledEvent;
-
-export interface SafetyPluginInput {
-  directory: string;
+export interface SafetyPluginDoomLoopOptions {
+  enabled?: boolean;
+  bufferSize?: number;
+  maxRepetitions?: number;
+  exemptTools?: string[];
 }
 
-export type SafetyPluginOptions = Readonly<Record<string, unknown>>;
+export interface SafetyPluginOptions {
+  truncation?: SafetyPluginTruncationOptions;
+  doomLoop?: SafetyPluginDoomLoopOptions;
+}
+
+export interface SafetyPluginChatMessageModel {
+  providerID: string;
+  modelID: string;
+}
 
 export interface SafetyPluginChatMessageInput {
   sessionID: string;
   agent?: string;
+  model?: SafetyPluginChatMessageModel;
+  messageID?: string;
+  variant?: string;
 }
 
 export interface SafetyPluginChatMessageOutput {
-  message: unknown;
-  parts: unknown[];
+  message: UserMessage;
+  parts: Part[];
 }
 
-export interface SafetyPluginPermissionAskInput {
-  sessionID: string;
-  type?: string;
-  [key: string]: unknown;
-}
+export type SafetyPluginPermissionAskInput = Permission;
 
 export interface SafetyPluginPermissionAskOutput {
   status: "ask" | "allow" | "deny";
@@ -44,18 +56,17 @@ export interface SafetyPluginToolExecuteBeforeInput {
   callID: string;
 }
 
-export interface SafetyPluginReadArgs {
-  filePath: string;
-  [key: string]: unknown;
-}
-
-export interface SafetyPluginCommandArgs {
-  command: string;
-  [key: string]: unknown;
-}
-
 export interface SafetyPluginGenericArgs {
   [key: string]: unknown;
+}
+
+export interface SafetyPluginReadArgs extends SafetyPluginGenericArgs {
+  filePath?: string;
+  path?: string;
+}
+
+export interface SafetyPluginCommandArgs extends SafetyPluginGenericArgs {
+  command: string;
 }
 
 export interface SafetyPluginReadToolExecuteBeforeInput extends SafetyPluginToolExecuteBeforeInput {
@@ -93,10 +104,49 @@ export interface SafetyPluginToolExecuteBeforeHook {
   ): Promise<void>;
 }
 
+export interface SafetyPluginToolExecuteAfterInput {
+  tool: string;
+  sessionID: string;
+  callID: string;
+  args: SafetyPluginGenericArgs;
+}
+
+export interface SafetyPluginReadToolExecuteAfterInput extends SafetyPluginToolExecuteAfterInput {
+  tool: "read";
+  args: SafetyPluginReadArgs;
+}
+
+export interface SafetyPluginCommandToolExecuteAfterInput extends SafetyPluginToolExecuteAfterInput {
+  tool: "bash" | "shell";
+  args: SafetyPluginCommandArgs;
+}
+
+export interface SafetyPluginToolExecuteAfterOutput {
+  title: string;
+  output: string;
+  metadata: unknown;
+}
+
+export interface SafetyPluginToolExecuteAfterHook {
+  (
+    input: SafetyPluginReadToolExecuteAfterInput,
+    output: SafetyPluginToolExecuteAfterOutput,
+  ): Promise<void>;
+  (
+    input: SafetyPluginCommandToolExecuteAfterInput,
+    output: SafetyPluginToolExecuteAfterOutput,
+  ): Promise<void>;
+  (
+    input: SafetyPluginToolExecuteAfterInput,
+    output: SafetyPluginToolExecuteAfterOutput,
+  ): Promise<void>;
+}
+
 export interface SafetyPluginHooks {
+  dispose: () => Promise<void>;
   "chat.message": (
     input: SafetyPluginChatMessageInput,
-    output?: SafetyPluginChatMessageOutput,
+    output: SafetyPluginChatMessageOutput,
   ) => Promise<void>;
   event: (input: { event: SafetyPluginEvent }) => Promise<void>;
   "permission.ask": (
@@ -104,6 +154,7 @@ export interface SafetyPluginHooks {
     output: SafetyPluginPermissionAskOutput,
   ) => Promise<void>;
   "tool.execute.before": SafetyPluginToolExecuteBeforeHook;
+  "tool.execute.after": SafetyPluginToolExecuteAfterHook;
 }
 
 export interface SafetyPluginFactory {

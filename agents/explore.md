@@ -3,6 +3,7 @@ description: Create a restricted, specialized agent called explore dedicated sol
 mode: subagent
 model: openai/gpt-5.6-luna
 permission:
+  "*": deny
   edit: deny
   task: deny
   read:
@@ -35,8 +36,6 @@ permission:
     "tail *": allow
     "rtk tail": allow
     "rtk tail *": allow
-    "find *": allow
-    "rtk find *": allow
     "rg *": allow
     "rtk rg *": allow
     "grep *": allow
@@ -46,29 +45,19 @@ permission:
     "rtk git status": allow
     "rtk git status *": allow
     "git diff": allow
-    "git diff *": allow
     "rtk git diff": allow
-    "rtk git diff *": allow
     "git log": allow
-    "git log *": allow
     "rtk git log": allow
-    "rtk git log *": allow
     "git show": allow
     "git show *": allow
     "rtk git show": allow
     "rtk git show *": allow
     "git branch": allow
-    "git branch *": allow
     "rtk git branch": allow
-    "rtk git branch *": allow
     "git stash list": allow
     "git stash list *": allow
     "rtk git stash list": allow
     "rtk git stash list *": allow
-    "sed *": allow
-    "rtk sed *": allow
-    "awk *": allow
-    "rtk awk *": allow
   agentmemory_memory_audit: deny
   agentmemory_memory_export: deny
   agentmemory_memory_governance_delete: deny

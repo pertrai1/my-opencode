@@ -116,6 +116,17 @@ function setSessionBuffer(sessionID: string, buffer: string[]): void {
   sessionBuffers.set(sessionID, buffer);
 }
 
+function setSessionAgent(sessionID: string, agent: string): void {
+  sessionAgents.delete(sessionID);
+  if (sessionAgents.size >= MAX_TRACKED_SESSIONS) {
+    const oldestSessionID = sessionAgents.keys().next().value;
+    if (oldestSessionID) {
+      sessionAgents.delete(oldestSessionID);
+    }
+  }
+  sessionAgents.set(sessionID, agent);
+}
+
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 && Number.isInteger(value);
 }
@@ -409,27 +420,17 @@ function createOutputArtifact(
 }
 
 
-function getExecutableFromCommand(command: string): string {
-  const trimmed = command.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const tokens = trimmed.split(/\s+/);
-  if (tokens.length === 0) {
-    return "";
-  }
-
-  if (tokens[0]?.toLowerCase() === "rtk" && tokens.length > 1) {
-    return tokens[1] ?? "";
-  }
-
-  return tokens[0] ?? "";
-}
-
 function isDestructive(cmd: string): boolean {
   const normalized = cmd.toLowerCase().trim();
-  const executable = getExecutableFromCommand(normalized);
+  if (!normalized) {
+    return false;
+  }
+
+  const tokens = normalized.split(/\s+/);
+  const [firstToken = ""] = tokens;
+  const commandStart = firstToken === "rtk" ? 1 : 0;
+  const executable = tokens[commandStart] ?? "";
+  const argsStart = commandStart + 1;
 
   const blockedRoots = [
     "cp", "chmod", "ln", "touch", "truncate", "tee", "rm", "mv", "mkdir",
@@ -440,14 +441,59 @@ function isDestructive(cmd: string): boolean {
     }
   }
 
-  if (executable === "npm" && /^npm\s+install(\s|$)/i.test(normalized)) return true;
-  if (executable === "git" && /^git\s+checkout(\s|$)/i.test(normalized)) return true;
-  if (executable === "git" && /^git\s+restore(\s|$)/i.test(normalized)) return true;
-  if (executable === "git" && /^git\s+merge(\s|$)/i.test(normalized)) return true;
-  if (executable === "git" && /^git\s+reset(\s|$)/i.test(normalized)) return true;
+  const firstArg = tokens[argsStart]?.toLowerCase();
+  const secondArg = tokens[argsStart + 1]?.toLowerCase();
 
-  if (executable === "git" && /^git\s+stash(\s|$)/i.test(normalized)) {
-    if (!/^git\s+stash\s+list(\s|$)/i.test(normalized)) {
+  if (executable === "find") {
+    const args = tokens.slice(argsStart);
+    if (args.includes("-delete") || args.includes("-exec")) {
+      return true;
+    }
+  }
+
+  if (executable === "npm" && firstArg === "install") {
+    return true;
+  }
+  if (executable === "rg" && (tokens.includes("--pre") || tokens.some((arg) => arg.startsWith("--pre=")))) {
+    return true;
+  }
+  if (executable === "git" && firstArg === "checkout") {
+    return true;
+  }
+  if (executable === "git" && firstArg === "restore") {
+    return true;
+  }
+  if (executable === "git" && firstArg === "merge") {
+    return true;
+  }
+  if (executable === "git" && firstArg === "reset") {
+    return true;
+  }
+
+  if (executable === "git" && firstArg === "diff") {
+    for (const arg of tokens.slice(argsStart + 1)) {
+      if (arg === "--output" || arg.startsWith("--output=")) {
+        return true;
+      }
+    }
+  }
+
+  if (executable === "git" && firstArg === "branch") {
+    if (secondArg) {
+      const isOption = secondArg.startsWith("-");
+      const readOnlyBranchOptions = new Set(["-a", "-r", "-l", "--all", "--remotes", "--list", "-v", "-vv"]);
+
+      if (!isOption) {
+        return true;
+      }
+      if (!readOnlyBranchOptions.has(secondArg)) {
+        return true;
+      }
+    }
+  }
+
+  if (executable === "git" && firstArg === "stash") {
+    if (secondArg !== "list") {
       return true;
     }
   }
@@ -455,6 +501,16 @@ function isDestructive(cmd: string): boolean {
   if (executable === "sed") {
     if (/(^|\s)-[^\s]*i[^\s]*(\s|$)/i.test(normalized)
       || /(^|\s)--in-place(=\S*)?(\s|$)/i.test(normalized)) {
+      return true;
+    }
+
+    if (/\b\d+e(?=\s|$|['"])/i.test(normalized)) {
+      return true;
+    }
+  }
+
+  if (executable === "awk") {
+    if (/\bsystem\s*\(/i.test(normalized)) {
       return true;
     }
   }
@@ -544,7 +600,7 @@ function splitChainedCommands(command: string): string[] {
     }
 
     if (!inSingleQuotes && !inDoubleQuotes) {
-      if (char === ";") {
+      if (char === ";" || char === "\n" || char === "\r") {
         parts.push(current);
         current = "";
         continue;
@@ -578,6 +634,50 @@ function splitChainedCommands(command: string): string[] {
   return parts.map((part) => part.trim()).filter(Boolean);
 }
 
+function hasCommandSubstitution(command: string): boolean {
+  let inSingleQuotes = false;
+  let inDoubleQuotes = false;
+  let escaped = false;
+
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i] ?? "";
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (char === "'" && !inDoubleQuotes) {
+      inSingleQuotes = !inSingleQuotes;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuotes) {
+      inDoubleQuotes = !inDoubleQuotes;
+      continue;
+    }
+
+    if (inSingleQuotes) {
+      continue;
+    }
+
+    if (char === "`") {
+      return true;
+    }
+
+    if (char === "$" && command[i + 1] === "(") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function stripWrappingQuotes(value: string): string {
   if (value.length >= 2) {
     if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
@@ -597,11 +697,6 @@ function hasSensitiveEnvFileReadInCommand(command: string): boolean {
   for (const cmd of splitChainedCommands(command)) {
     const normalizedCommand = cmd.trim();
     if (!normalizedCommand) {
-      continue;
-    }
-
-    const executable = getExecutableFromCommand(normalizedCommand);
-    if (executable !== "cat" && executable !== "head") {
       continue;
     }
 
@@ -659,7 +754,7 @@ export const SafetyPlugin: Plugin = async (
       }
       setSessionBuffer(sessionID, []);
       if (agent) {
-        sessionAgents.set(sessionID, agent);
+          setSessionAgent(sessionID, agent);
       }
     },
 
@@ -671,7 +766,7 @@ export const SafetyPlugin: Plugin = async (
         const sid = (info?.id as string) || (properties.sessionID as string);
         const agent = (info?.agent as string) || (properties.agent as string);
         if (sid && agent) {
-          sessionAgents.set(sid, agent);
+          setSessionAgent(sid, agent);
         }
         return;
       }
@@ -687,7 +782,7 @@ export const SafetyPlugin: Plugin = async (
     },
 
     "permission.ask": async (input, output) => {
-      const agent = sessionAgents.get(input.sessionID);
+        const agent = sessionAgents.get(input.sessionID);
       if (agent === "explore") {
         const type = String(input.type ?? "").toLowerCase();
         if (type === "edit" || type === "task") {
@@ -710,24 +805,27 @@ export const SafetyPlugin: Plugin = async (
         throw new Error("Permission denied: MCP 'agentmemory' is disabled for the explore agent.");
       }
         if (tool === "read") {
-        const filePath = String((output.args as { filePath?: string; path?: string } | undefined)?.filePath ?? output.args?.path ?? "").toLowerCase();
-        if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
-          throw new Error("Permission denied: Reading sensitive env files is blocked.");
-        }
-      }
-      if (tool === "bash" || tool === "shell") {
-        const command = String(output.args?.command ?? "");
-        if (hasWriteRedirection(command)) {
-          throw new Error("Permission denied: Write redirection operator is blocked.");
-        }
-        if (hasSensitiveEnvFileReadInCommand(command)) {
-          throw new Error("Permission denied: Reading sensitive env files is blocked.");
-        }
-        for (const cmd of splitChainedCommands(command)) {
-          if (isDestructive(cmd)) {
-            throw new Error(`Permission denied: Command '${cmd}' is blocked for the explore agent.`);
+          const filePath = String((output.args as { filePath?: string; path?: string } | undefined)?.filePath ?? output.args?.path ?? "").toLowerCase();
+          if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
+            throw new Error("Permission denied: Reading sensitive env files is blocked.");
           }
         }
+        if (tool === "bash" || tool === "shell") {
+          const command = String(output.args?.command ?? "");
+          if (hasWriteRedirection(command)) {
+            throw new Error("Permission denied: Write redirection operator is blocked.");
+          }
+          if (hasSensitiveEnvFileReadInCommand(command)) {
+            throw new Error("Permission denied: Reading sensitive env files is blocked.");
+          }
+          if (hasCommandSubstitution(command)) {
+            throw new Error("Permission denied: Command substitution is blocked for the explore agent.");
+          }
+          for (const cmd of splitChainedCommands(command)) {
+            if (isDestructive(cmd)) {
+              throw new Error(`Permission denied: Command '${cmd}' is blocked for the explore agent.`);
+            }
+          }
       }
     },
 
