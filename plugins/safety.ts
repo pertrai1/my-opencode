@@ -409,33 +409,52 @@ function createOutputArtifact(
 }
 
 
+function getExecutableFromCommand(command: string): string {
+  const trimmed = command.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const tokens = trimmed.split(/\s+/);
+  if (tokens.length === 0) {
+    return "";
+  }
+
+  if (tokens[0]?.toLowerCase() === "rtk" && tokens.length > 1) {
+    return tokens[1] ?? "";
+  }
+
+  return tokens[0] ?? "";
+}
+
 function isDestructive(cmd: string): boolean {
   const normalized = cmd.toLowerCase().trim();
+  const executable = getExecutableFromCommand(normalized);
 
   const blockedRoots = [
     "cp", "chmod", "ln", "touch", "truncate", "tee", "rm", "mv", "mkdir",
   ];
   for (const root of blockedRoots) {
-    const regex = new RegExp(`(^|\\s)${root}(\\s|$)`, "i");
-    if (regex.test(normalized)) {
+    if (executable === root) {
       return true;
     }
   }
 
-  if (/(^|\s)npm\s+install(\s|$)/i.test(normalized)) return true;
-  if (/(^|\s)git\s+checkout(\s|$)/i.test(normalized)) return true;
-  if (/(^|\s)git\s+restore(\s|$)/i.test(normalized)) return true;
-  if (/(^|\s)git\s+merge(\s|$)/i.test(normalized)) return true;
-  if (/(^|\s)git\s+reset(\s|$)/i.test(normalized)) return true;
+  if (executable === "npm" && /^npm\s+install(\s|$)/i.test(normalized)) return true;
+  if (executable === "git" && /^git\s+checkout(\s|$)/i.test(normalized)) return true;
+  if (executable === "git" && /^git\s+restore(\s|$)/i.test(normalized)) return true;
+  if (executable === "git" && /^git\s+merge(\s|$)/i.test(normalized)) return true;
+  if (executable === "git" && /^git\s+reset(\s|$)/i.test(normalized)) return true;
 
-  if (/(^|\s)git\s+stash(\s|$)/i.test(normalized)) {
-    if (!/(^|\s)git\s+stash\s+list(\s|$)/i.test(normalized)) {
+  if (executable === "git" && /^git\s+stash(\s|$)/i.test(normalized)) {
+    if (!/^git\s+stash\s+list(\s|$)/i.test(normalized)) {
       return true;
     }
   }
 
-  if (/(^|\s)sed(\s|$)/i.test(normalized)) {
-    if (/\s-i(\s|$)/i.test(normalized) || /\s--in-place(\s|$)/i.test(normalized)) {
+  if (executable === "sed") {
+    if (/(^|\s)-[^\s]*i[^\s]*(\s|$)/i.test(normalized)
+      || /(^|\s)--in-place(=\S*)?(\s|$)/i.test(normalized)) {
       return true;
     }
   }
@@ -559,6 +578,55 @@ function splitChainedCommands(command: string): string[] {
   return parts.map((part) => part.trim()).filter(Boolean);
 }
 
+function stripWrappingQuotes(value: string): string {
+  if (value.length >= 2) {
+    if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
+      return value.slice(1, -1);
+    }
+  }
+
+  return value;
+}
+
+function isSensitiveEnvFilePath(filePath: string): boolean {
+  const normalized = stripWrappingQuotes(filePath.toLowerCase());
+  return normalized.endsWith(".env") || (normalized.includes(".env.") && !normalized.endsWith(".env.example"));
+}
+
+function hasSensitiveEnvFileReadInCommand(command: string): boolean {
+  for (const cmd of splitChainedCommands(command)) {
+    const normalizedCommand = cmd.trim();
+    if (!normalizedCommand) {
+      continue;
+    }
+
+    const executable = getExecutableFromCommand(normalizedCommand);
+    if (executable !== "cat" && executable !== "head") {
+      continue;
+    }
+
+    const tokens = normalizedCommand.split(/\s+/);
+    if (tokens.length === 0) {
+      continue;
+    }
+
+    const [firstToken = ""] = tokens;
+    const startIndex = firstToken?.toLowerCase() === "rtk" ? 1 : 0;
+    for (let i = startIndex + 1; i < tokens.length; i++) {
+      const token = stripWrappingQuotes(tokens[i] ?? "").toLowerCase();
+      if (!token || token.startsWith("-")) {
+        continue;
+      }
+
+      if (isSensitiveEnvFilePath(token)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export const SafetyPlugin: Plugin = async (
   _input: PluginInput,
   options?: SafetyPluginOptions,
@@ -605,6 +673,16 @@ export const SafetyPlugin: Plugin = async (
         if (sid && agent) {
           sessionAgents.set(sid, agent);
         }
+        return;
+      }
+
+      if (type === "session.deleted") {
+        const info = properties.info as Record<string, unknown> | undefined;
+        const sid = (info?.id as string) || (properties.sessionID as string);
+        if (sid) {
+          sessionAgents.delete(sid);
+          sessionBuffers.delete(sid);
+        }
       }
     },
 
@@ -631,8 +709,8 @@ export const SafetyPlugin: Plugin = async (
       if (tool.startsWith("agentmemory")) {
         throw new Error("Permission denied: MCP 'agentmemory' is disabled for the explore agent.");
       }
-      if (tool === "read") {
-        const filePath = String(output.args?.path ?? "").toLowerCase();
+        if (tool === "read") {
+        const filePath = String((output.args as { filePath?: string; path?: string } | undefined)?.filePath ?? output.args?.path ?? "").toLowerCase();
         if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
           throw new Error("Permission denied: Reading sensitive env files is blocked.");
         }
@@ -641,6 +719,9 @@ export const SafetyPlugin: Plugin = async (
         const command = String(output.args?.command ?? "");
         if (hasWriteRedirection(command)) {
           throw new Error("Permission denied: Write redirection operator is blocked.");
+        }
+        if (hasSensitiveEnvFileReadInCommand(command)) {
+          throw new Error("Permission denied: Reading sensitive env files is blocked.");
         }
         for (const cmd of splitChainedCommands(command)) {
           if (isDestructive(cmd)) {

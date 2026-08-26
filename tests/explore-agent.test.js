@@ -275,3 +275,53 @@ test('Explore Agent - Allowed Exploration Utilities', async (t) => {
     }
   });
 });
+
+test('Explore Agent - blocks every sed in-place option form', async () => {
+  const plugin = await SafetyPlugin({ directory: __dirname });
+
+  await plugin["chat.message"]({
+    sessionID: 'session-explore-sed-flags',
+    agent: 'explore'
+  }, { message: {}, parts: [] });
+
+  const commands = [
+    'sed -i.bak "s/foo/bar/g" file',
+    'sed -Ei "s/foo/bar/g" file',
+    'sed --in-place=.bak "s/foo/bar/g" file'
+  ];
+
+  for (const command of commands) {
+    await assert.rejects(async () => {
+      await plugin["tool.execute.before"]({
+        tool: 'bash',
+        sessionID: 'session-explore-sed-flags',
+        callID: command
+      }, { args: { command } });
+    }, /Permission denied: Command .* is blocked/, `Expected '${command}' to be blocked`);
+  }
+});
+
+test('Explore Agent - allows read-only search commands even when arguments name blocked executables', async () => {
+  const plugin = await SafetyPlugin({ directory: __dirname });
+
+  await plugin["chat.message"]({
+    sessionID: 'session-explore-executable-matching',
+    agent: 'explore'
+  }, { message: {}, parts: [] });
+
+  const commands = [
+    'rg rm',
+    'grep touch file',
+    'rtk rg rm'
+  ];
+
+  for (const command of commands) {
+    await assert.doesNotReject(async () => {
+      await plugin["tool.execute.before"]({
+        tool: 'bash',
+        sessionID: 'session-explore-executable-matching',
+        callID: command
+      }, { args: { command } });
+    }, `Expected read-only command '${command}' to remain allowed`);
+  }
+});
