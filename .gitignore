@@ -1,6 +1,8 @@
 node_modules
 bun.lock
 service.json
+*.openchamber.backup
 .omc/
+/.gitnexus/
 .agents/docs/verification/*
 !.agents/docs/verification/README.md

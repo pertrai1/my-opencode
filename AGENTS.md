@@ -1,5 +1,7 @@
 # AGENTS.md
 
+@RTK.md
+
 ## Agent skills
 
 ### Issue tracker

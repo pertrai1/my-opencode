@@ -21,6 +21,11 @@ type SafetyConfig = {
   };
 };
 
+type SafetyPluginOptions = Partial<{
+  truncation: Partial<SafetyConfig["truncation"]>;
+  doomLoop: Partial<SafetyConfig["doomLoop"]>;
+}>;
+
 const sessionAgents = new Map<string, string>();
 
 // Stateful memory buffer for Doom Loop Detection
@@ -61,6 +66,7 @@ const ARTIFACT_SUFFIX = ".txt";
 const ARTIFACT_CREATION_ATTEMPTS = 5;
 const MAX_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const MIN_CLEANUP_INTERVAL_MS = 1000;
+const REDACTED_VALUE = "[REDACTED]";
 
 // Helper: resolve paths starting with ~/
 function resolvePath(p: string): string {
@@ -76,6 +82,23 @@ function resolvePath(p: string): string {
 function sanitizeFilenameComponent(value: string): string {
   const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_");
   return sanitized.length > 0 ? sanitized : "unknown";
+}
+
+function redactSensitiveOutput(value: string): string {
+  return value
+    .replace(
+      /(authorization\s*:\s*(?:bearer|basic)\s+)[^\s"'`]+/gi,
+      `$1${REDACTED_VALUE}`,
+    )
+    .replace(
+      /((?:api[_-]?key|secret|token|password|passwd|pwd|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*["']?)[^\s"',`]+/gi,
+      `$1${REDACTED_VALUE}`,
+    )
+    .replace(
+      /(-----BEGIN [^-]+-----)[\s\S]*?(-----END [^-]+-----)/g,
+      `$1\n${REDACTED_VALUE}\n$2`,
+    )
+    .replace(/\bsk-[A-Za-z0-9_-]{10,}\b/g, REDACTED_VALUE);
 }
 
 function isTrackedTool(toolName: string): boolean {
@@ -163,11 +186,11 @@ function takeLastCodePoints(value: string, count: number): string {
     index--;
     const codeUnit = value.charCodeAt(index);
     if (
-      codeUnit >= 0xdc00 &&
-      codeUnit <= 0xdfff &&
-      index > 0 &&
-      value.charCodeAt(index - 1) >= 0xd800 &&
-      value.charCodeAt(index - 1) <= 0xdbff
+      codeUnit >= 0xdc00
+      && codeUnit <= 0xdfff
+      && index > 0
+      && value.charCodeAt(index - 1) >= 0xd800
+      && value.charCodeAt(index - 1) <= 0xdbff
     ) {
       index--;
     }
@@ -216,65 +239,10 @@ function canonicalStringify(obj: unknown): string {
   return "{" + parts.join(",") + "}";
 }
 
-// Helper: clean JSONC comments and trailing commas
-function parseJsonc(content: string): unknown {
-  let output = "";
-  let state = "default";
-  let i = 0;
-  while (i < content.length) {
-    const char = content[i];
-    const nextChar = content[i + 1] ?? "";
-
-    if (state === "default") {
-      if (char === '"') {
-        state = "string";
-        output += char;
-      } else if (char === "/" && nextChar === "/") {
-        state = "line-comment";
-        i++; // skip next /
-      } else if (char === "/" && nextChar === "*") {
-        state = "block-comment";
-        i++; // skip next *
-      } else {
-        output += char;
-      }
-    } else if (state === "string") {
-      if (char === "\\") {
-        state = "escape";
-        output += char;
-      } else if (char === '"') {
-        state = "default";
-        output += char;
-      } else {
-        output += char;
-      }
-    } else if (state === "escape") {
-      state = "string";
-      output += char;
-    } else if (state === "line-comment") {
-      if (char === "\n" || char === "\r") {
-        state = "default";
-        output += char;
-      }
-    } else if (state === "block-comment") {
-      if (char === "*" && nextChar === "/") {
-        state = "default";
-        i++; // skip /
-      }
-    }
-    i++;
-  }
-  const clean = output.replace(/,(\s*[\]}])/g, "$1");
-  return JSON.parse(clean);
-}
-
-function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
-  if (!isRecord(parsed) || !isRecord(parsed.safety)) {
-    return null;
-  }
-
-  const truncation = isRecord(parsed.safety.truncation) ? parsed.safety.truncation : {};
-  const doomLoop = isRecord(parsed.safety.doomLoop) ? parsed.safety.doomLoop : {};
+function mergeSafetyConfig(options: unknown): SafetyConfig {
+  const parsedOptions = isRecord(options) ? options : {};
+  const truncation = isRecord(parsedOptions.truncation) ? parsedOptions.truncation : {};
+  const doomLoop = isRecord(parsedOptions.doomLoop) ? parsedOptions.doomLoop : {};
 
   const maxLength = isPositiveInteger(truncation.maxLength)
     ? truncation.maxLength
@@ -344,27 +312,6 @@ function mergeSafetyConfig(parsed: unknown): SafetyConfig | null {
   };
 }
 
-// Helper: load safety config from opencode.jsonc
-function loadSafetyConfig(projectDir: string): SafetyConfig {
-  const configPath = path.join(projectDir, "opencode.jsonc");
-  if (fs.existsSync(configPath)) {
-    let parsed: unknown;
-    try {
-      const raw = fs.readFileSync(configPath, "utf8");
-      parsed = parseJsonc(raw);
-    } catch (error) {
-      console.warn("Failed to load or parse opencode.jsonc, using defaults", { error });
-      return DEFAULT_CONFIG;
-    }
-
-    const config = mergeSafetyConfig(parsed);
-    if (config) {
-      return config;
-    }
-  }
-  return DEFAULT_CONFIG;
-}
-
 // Helper: perform retention and size cleanup on temp directory
 function pruneTempDir(
   dir: string,
@@ -405,9 +352,9 @@ function pruneTempDir(
     const remainingFiles = listFileInfos(dir);
     const remainingArtifactFiles = remainingFiles
       .filter((info) =>
-        info.name.startsWith(ARTIFACT_PREFIX) &&
-        info.name.endsWith(ARTIFACT_SUFFIX) &&
-        info.path !== protectedPath
+        info.name.startsWith(ARTIFACT_PREFIX)
+        && info.name.endsWith(ARTIFACT_SUFFIX)
+        && info.path !== protectedPath
       )
       .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs); // oldest first
 
@@ -461,12 +408,12 @@ function createOutputArtifact(
   return null;
 }
 
+
 function isDestructive(cmd: string): boolean {
   const normalized = cmd.toLowerCase().trim();
 
-  // Blocked destructive/mutation commands
   const blockedRoots = [
-    "cp", "chmod", "ln", "touch", "truncate", "tee", "rm", "mv", "mkdir"
+    "cp", "chmod", "ln", "touch", "truncate", "tee", "rm", "mv", "mkdir",
   ];
   for (const root of blockedRoots) {
     const regex = new RegExp(`(^|\\s)${root}(\\s|$)`, "i");
@@ -475,21 +422,18 @@ function isDestructive(cmd: string): boolean {
     }
   }
 
-  // Compound destructive commands
   if (/(^|\s)npm\s+install(\s|$)/i.test(normalized)) return true;
   if (/(^|\s)git\s+checkout(\s|$)/i.test(normalized)) return true;
   if (/(^|\s)git\s+restore(\s|$)/i.test(normalized)) return true;
   if (/(^|\s)git\s+merge(\s|$)/i.test(normalized)) return true;
   if (/(^|\s)git\s+reset(\s|$)/i.test(normalized)) return true;
 
-  // For git stash: allow git stash list, deny other git stash commands
   if (/(^|\s)git\s+stash(\s|$)/i.test(normalized)) {
     if (!/(^|\s)git\s+stash\s+list(\s|$)/i.test(normalized)) {
       return true;
     }
   }
 
-  // Restrict sed and awk from any in-place write flags (e.g. sed -i is blocked)
   if (/(^|\s)sed(\s|$)/i.test(normalized)) {
     if (/\s-i(\s|$)/i.test(normalized) || /\s--in-place(\s|$)/i.test(normalized)) {
       return true;
@@ -527,21 +471,19 @@ function hasWriteRedirection(command: string): boolean {
       continue;
     }
 
-    if (!inSingleQuotes && !inDoubleQuotes) {
-      if (char === ">") {
-        let nextIdx = i + 1;
-        if (command[nextIdx] === ">") {
-          nextIdx++;
-        }
-        while (nextIdx < command.length && /\s/.test(command[nextIdx])) {
-          nextIdx++;
-        }
-        if (command[nextIdx] === "&" && (command[nextIdx + 1] === "1" || command[nextIdx + 1] === "2")) {
-          i = nextIdx + 1;
-          continue;
-        }
-        return true;
+    if (!inSingleQuotes && !inDoubleQuotes && char === ">") {
+      let nextIdx = i + 1;
+      if (command[nextIdx] === ">") {
+        nextIdx++;
       }
+      while (nextIdx < command.length && /\s/.test(command[nextIdx])) {
+        nextIdx++;
+      }
+      if (command[nextIdx] === "&" && (command[nextIdx + 1] === "1" || command[nextIdx + 1] === "2")) {
+        i = nextIdx + 1;
+        continue;
+      }
+      return true;
     }
   }
 
@@ -600,12 +542,7 @@ function splitChainedCommands(command: string): string[] {
         i++;
         continue;
       }
-      if (char === "|") {
-        parts.push(current);
-        current = "";
-        continue;
-      }
-      if (char === "&") {
+      if (char === "|" || char === "&") {
         parts.push(current);
         current = "";
         continue;
@@ -619,11 +556,14 @@ function splitChainedCommands(command: string): string[] {
     parts.push(current);
   }
 
-  return parts.map(p => p.trim()).filter(Boolean);
+  return parts.map((part) => part.trim()).filter(Boolean);
 }
 
-export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<Hooks> => {
-  const config = loadSafetyConfig(directory);
+export const SafetyPlugin: Plugin = async (
+  _input: PluginInput,
+  options?: SafetyPluginOptions,
+): Promise<Hooks> => {
+  const config = mergeSafetyConfig(options);
   const scheduledCleanup = (): void => {
     const { truncation } = config;
     pruneTempDir(
@@ -644,10 +584,11 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
     dispose: async () => {
       clearInterval(cleanupTimer);
     },
-
     // Reset buffer on new user message, and capture agent
     "chat.message": async ({ sessionID, agent }) => {
-      if (!sessionID) return;
+      if (!sessionID) {
+        return;
+      }
       setSessionBuffer(sessionID, []);
       if (agent) {
         sessionAgents.set(sessionID, agent);
@@ -673,49 +614,37 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
         const type = String(input.type ?? "").toLowerCase();
         if (type === "edit" || type === "task") {
           output.status = "deny";
-          return;
         }
       }
     },
 
     "tool.execute.before": async (input, output) => {
       const agent = sessionAgents.get(input.sessionID);
-      if (agent === "explore") {
-        const tool = String(input.tool ?? "").toLowerCase();
+      if (agent !== "explore") {
+        return;
+      }
 
-        // 1. Block edit and task tools
-        if (tool === "edit" || tool === "task") {
-          throw new Error(`Permission denied: Tool '${input.tool}' is blocked for the explore agent.`);
+      const tool = String(input.tool ?? "").toLowerCase();
+      if (tool === "edit" || tool === "task") {
+        throw new Error(`Permission denied: Tool '${input.tool}' is blocked for the explore agent.`);
+      }
+      if (tool.startsWith("agentmemory")) {
+        throw new Error("Permission denied: MCP 'agentmemory' is disabled for the explore agent.");
+      }
+      if (tool === "read") {
+        const filePath = String(output.args?.path ?? "").toLowerCase();
+        if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
+          throw new Error("Permission denied: Reading sensitive env files is blocked.");
         }
-
-        // 2. Block agentmemory MCP state-writing/mutation tools or MCP entirely
-        if (tool.startsWith("agentmemory")) {
-          throw new Error(`Permission denied: MCP 'agentmemory' is disabled for the explore agent.`);
+      }
+      if (tool === "bash" || tool === "shell") {
+        const command = String(output.args?.command ?? "");
+        if (hasWriteRedirection(command)) {
+          throw new Error("Permission denied: Write redirection operator is blocked.");
         }
-
-        // 3. Preserve Secret Protection
-        if (tool === "read") {
-          const filePath = String(output.args?.path ?? "").toLowerCase();
-          if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
-            throw new Error(`Permission denied: Reading sensitive env files is blocked.`);
-          }
-        }
-
-        // 4. Validate bash command execution
-        if (tool === "bash" || tool === "shell") {
-          const command = String(output.args?.command ?? "");
-
-          // Check write redirections
-          if (hasWriteRedirection(command)) {
-            throw new Error(`Permission denied: Write redirection operator is blocked.`);
-          }
-
-          // Split chained commands and check each
-          const subcommands = splitChainedCommands(command);
-          for (const cmd of subcommands) {
-            if (isDestructive(cmd)) {
-              throw new Error(`Permission denied: Command '${cmd}' is blocked for the explore agent.`);
-            }
+        for (const cmd of splitChainedCommands(command)) {
+          if (isDestructive(cmd)) {
+            throw new Error(`Permission denied: Command '${cmd}' is blocked for the explore agent.`);
           }
         }
       }
@@ -729,10 +658,11 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
       // ─── 1. Output Size Truncation ───
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const rawOutput = output.output ?? "";
+      const retainedOutput = redactSensitiveOutput(rawOutput);
       const resolvedTempDir = resolvePath(tempDir);
 
       if (rawOutput.length > maxLength) {
-        if (exceedsCodePointLength(rawOutput, maxLength)) {
+        if (exceedsCodePointLength(retainedOutput, maxLength)) {
           // Ensure secure directory with 0700 permissions
           let tempDirSecured = true;
           try {
@@ -752,7 +682,7 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
           }
 
           const fullPath = tempDirSecured
-            ? createOutputArtifact(resolvedTempDir, sessionID, rawOutput)
+            ? createOutputArtifact(resolvedTempDir, sessionID, retainedOutput)
             : null;
           if (fullPath) {
             // Apply Head-and-Tail Truncation
@@ -761,11 +691,14 @@ export const SafetyPlugin: Plugin = async ({ directory }: PluginInput): Promise<
               headLength,
               tailLength,
             );
-            const head = takeFirstCodePoints(rawOutput, effectiveLengths.headLength);
+            const head = takeFirstCodePoints(retainedOutput, effectiveLengths.headLength);
             const tail = effectiveLengths.tailLength > 0
-              ? takeLastCodePoints(rawOutput, effectiveLengths.tailLength)
+              ? takeLastCodePoints(retainedOutput, effectiveLengths.tailLength)
               : "";
-            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.]\n`;
+            const redactionNote = retainedOutput !== rawOutput
+              ? " Sensitive values were redacted before retention."
+              : "";
+            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
 
             output.output = head + warningMarker + tail;
 

@@ -1,0 +1,8 @@
+title = "OpenCode gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# Prefer this file for durable repo-level tuning such as shared allowlists or
+# disabled rules. Use `.gitleaksignore` only for reviewed, specific finding
+# fingerprints that you intentionally want to suppress.

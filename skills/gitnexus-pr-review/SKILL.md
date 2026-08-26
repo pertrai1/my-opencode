@@ -26,7 +26,9 @@ description: "Use when the user wants to review a pull request, understand what 
 6. Summarize findings with risk assessment
 ```
 
-> If the index is stale, or the repo is not indexed yet, do not re-index automatically. Resolve the repo root, check indexed repos, and use the `question` tool to ask for approval first. If approved, ensure the repo root `.gitignore` contains `/.gitnexus/`, verify the CLI supports `--skip-agents-md` and `--skip-skills`, then run `gitnexus analyze --skip-agents-md --skip-skills` from the repo root before reviewing.
+> If the index is stale, or the repo is not indexed yet, do not re-index automatically. Resolve the repo root, check indexed repos, and use the `question` tool to ask for approval first. If approved, ensure the repo root `.gitignore` contains `/.gitnexus/`, verify `gitnexus analyze --help` for the flags supported by the installed CLI, then run `gitnexus analyze --skip-agents-md` from the repo root before reviewing. Use plain `gitnexus analyze` or add `--skills` only when the user explicitly asks for instruction-file updates or generated skills. Do not assume a project-local `node .gitnexus/run.cjs` wrapper exists.
+
+> If multiple repositories are indexed globally, pass `--repo <name>` to `gitnexus query`, `gitnexus context`, and `gitnexus impact`.
 
 ## Checklist
 
