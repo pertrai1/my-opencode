@@ -61,11 +61,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Security
 
-- `plugins/secret-scan.ts` — runs `gitleaks dir` on session start and after edits, then warns with redacted findings. If `gitleaks` is not installed, it logs a one-time disabled warning.
 - `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
-- `.gitleaks.toml` — extends the default `gitleaks` ruleset for repo-level tuning.
-- Prefer `.gitleaks.toml` for durable shared policy such as path allowlists or disabled rules.
-- Use `.gitleaksignore` only for reviewed, specific finding fingerprints that you intentionally want to suppress.
 
 ## Workflow
 
@@ -120,6 +116,5 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 2. `rtk init -g --opencode` to install the RTK plugin
 3. `code-review-graph install --platform opencode` to install the graph plugin
 4. herdr install for agent-state reporting
-5. `brew install gitleaks` to enable secret scanning
-6. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
-7. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)
+5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
+6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)

@@ -112,7 +112,6 @@
     "./plugins/herdr-agent-state.js",
     "./plugins/rtk.ts",
     "./plugins/sonarqube-mcp.ts",
-    "./plugins/secret-scan.ts",
     [
       "./plugins/safety.ts",
       {
