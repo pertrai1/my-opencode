@@ -53,8 +53,10 @@ Global configuration for [opencode](https://opencode.ai).
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
 - `.github/workflows/ci.yml` — continuously runs `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
+- `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
 - **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
 - **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
+- **OpenSpec Verification Summary** — change-local `verification.md` files now record intent, completed work, evidence checked, functional check, test coverage check, integration check, documentation impact, scope control, unverified areas, actions not taken, divergences, and recommendation.
 - **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
 - **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
 - **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
@@ -68,11 +70,17 @@ Global configuration for [opencode](https://opencode.ai).
 - `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
+- `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
 - `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
 - `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 - `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
+- `agents/sdlc-orchestrator.md` — primary OpenSpec workflow owner for change selection, lifecycle routing, delegated planning, verification, sync decisions, human approval, and archive gating.
+- `agents/proposal-author.md`, `agents/spec-author.md`, `agents/design-author.md`, `agents/task-planner.md` — planning authors with artifact-scoped write access.
+- `agents/spec-syncer.md` — merges change-local delta specs into `openspec/specs/**` after orchestrator gating.
+- `.opencode/commands/opsx-*.md` — thin command wrappers that preserve user-facing intent while delegating lifecycle logic to `sdlc-orchestrator`.
+- **Commit policy** — commit only when explicitly requested. When committing, prefer small atomic commits. For behavior-changing work, commit after REFACTOR and final verification, not after GREEN.
 - [GitHub CLI (`gh`)](https://cli.github.com/) — GitHub operations from the terminal.
 - [gh-dash](https://github.com/dlvhdr/gh-dash) — terminal dashboard for GitHub pull requests and issues.
 - [RTK](https://github.com/rtk-ai/rtk) — token-saving command proxy for terminal workflows.
@@ -82,7 +90,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 ### Type-Driven TDD Pipeline
 
-Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow openspec pipeline. Separation defeats confirmation bias: the agent that writes tests never sees the implementation plan, and the agent that writes code can't touch the tests or the type contract.
+Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow openspec pipeline. It is now the delegated behavioral implementation subsystem under `sdlc-orchestrator`, not the only workflow entrypoint. Separation defeats confirmation bias: the agent that writes tests never sees the implementation plan, and the agent that writes code can't touch the tests or the type contract.
 
 Run it with `/apply <change or task description>`.
 
@@ -101,12 +109,24 @@ How enforcement works:
 - **Scoped reads and shell** — the test-author only gets contract/test file reads plus sanitized spec excerpts in its handoff, and the pipeline agents can only run narrow verification commands.
 - **Checksum verification** — the orchestrator hashes contract files after Phase 0 and test files after Phase 1, and rejects Phase 2 work if either changed.
 - **Independent verification** — the orchestrator re-runs typecheck and tests itself between phases; agent reports are claims, not evidence.
+- **RED integrity gate** — the orchestrator checks that RED touched only the test surface, records observed failing-test evidence before implementation, and rejects retrofitted cycles.
+- **Test-quality gate** — before GREEN, the orchestrator checks that the RED test targets observable behavior, uses strong assertions, avoids implementation mirroring, and covers relevant edge/error cases.
+- **Contract confirmation gate** — complex new contracts can require user confirmation before RED proceeds.
 - **Self-correction loop** — up to 3 retries per phase with failure evidence, then hard stop and escalate to the human.
 - **Disagreement protocol** — an agent that disputes a test or type escalates to the orchestrator, which routes the fix to the owning agent.
 
 Task classification: behavioral code gets the full pipeline; type/schema-only tasks go to `type-author` alone (the compiler verifies); config/docs/trivial changes go straight to `implementer` in direct-task mode with explicit acceptance criteria and verification commands.
 
-Language support: the orchestrator detects the type checker at intake: TypeScript (`tsc --noEmit`), Python (`mypy`/`pyright`), JS with `checkJs` (`tsc --checkJs`), and passes the verifier command in handoffs. Contracts are declarations only in dedicated files (no stubs), so the implementer never edits them. **Projects with no viable type checker (plain JS) skip Phase 0** and switch to explicit `no-contract mode`, recorded in `progress.md` with the public API source of truth used for RED/GREEN.
+Language support: the orchestrator detects the type checker at intake: TypeScript (`tsc --noEmit`), Python (`mypy`/`pyright`), JS with `checkJs` (`tsc --checkJs`), and passes the verifier command in handoffs. Contracts are declarations only in dedicated files (no stubs), so the implementer never edits them. Public contracts prefer explicit domain/input/output/error types over loose signatures. **Projects with no viable type checker (plain JS) skip Phase 0** and switch to explicit `no-contract mode`, recorded in `progress.md` with the public API source of truth used for RED/GREEN.
+
+## OpenSpec SDLC Workflow
+
+The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
+
+- Use the `opsx-*` commands for OpenSpec change lifecycle work: new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard.
+- The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
+- Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
+- OpenSpec verification is persisted in change-local `verification.md` and used as the canonical human review surface before archive.
 
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
 
