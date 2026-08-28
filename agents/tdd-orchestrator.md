@@ -108,6 +108,7 @@ Must include:
 - relevant spec/design context
 - typechecker command
 - allowed contract file locations
+- instruction to report whether the contract needs user confirmation before RED proceeds
 - instruction to return the required Phase 0 result schema
 
 ### Phase 1 handoff minimums
@@ -118,6 +119,7 @@ Must include only:
 - relevant spec excerpts
 - contract file paths and signatures, or `no-contract mode` instructions
 - allowed public API source of truth when Phase 0 was skipped
+- instruction to write tests against observable behavior with strong assertions, avoid implementation mirroring, and cover relevant edge or error cases for the slice
 - instruction to return the required Phase 1 result schema
 
 Must not include:
@@ -145,18 +147,21 @@ Must include:
 
 1. Verify the reported files are contract-only files.
 2. Run the verifier yourself.
-3. Record checksums for every contract file touched.
-4. Reject the phase if the verifier fails, the output schema is incomplete, or runtime logic appears in contract files.
+3. If the return says contract confirmation is required, pause and ask the user before RED proceeds.
+4. Record checksums for every contract file touched only after any required confirmation is received.
+5. Reject the phase if the verifier fails, the output schema is incomplete, runtime logic appears in contract files, or required contract confirmation has not been received.
 
 These are the CONTRACT FILES.
 
 **Phase 1 — RED.** Task `test-author`. Its handoff must contain ONLY: the behavioral requirement, spec excerpts, and the contract file paths/signatures. **Never include implementation strategy, task internals, or existing code internals** — the blindness is the anti-bias mechanism. On return:
 
 1. Verify exactly one test was added or changed for the slice.
-2. Run the reported test yourself.
-3. Confirm it fails for the expected behavioral reason.
-4. Record test file checksums.
-5. Reject the phase if the test passes, fails for the wrong reason, or depends on invented API surface.
+2. Review the new test as a quality gate before implementation: it should assert observable behavior, use strong assertions, avoid implementation mirroring, and cover relevant edge or error cases when the slice requires them.
+3. Confirm the RED edit touched only the test surface before any implementation work for that cycle.
+4. Run the reported test yourself before opening or delegating implementation.
+5. Confirm it fails for the expected behavioral reason.
+6. Record the failure output as RED evidence and record test file checksums.
+7. Reject the phase if the test is weak, passes, fails for the wrong reason, depends on invented API surface, or shows signs of retrofitting.
 
 When Phase 0 was skipped, the Phase 1 handoff must explicitly say `no-contract mode`, name the public entrypoint under test, include the exact public signature the test may rely on, and state the allowed API source of truth for that slice. The test-author may then derive the test-facing signature only from that named public evidence instead of a published contract file.
 
@@ -169,6 +174,15 @@ When Phase 0 was skipped, the Phase 1 handoff must explicitly say `no-contract m
 5. The output schema is complete.
 
 Any checksum mismatch is a contract violation → reject the work, instruct the implementer to restore the files and resolve properly (or escalate a disagreement).
+
+## RED integrity rules
+
+- No implementation without a failing test for the current behavior slice.
+- No retrofitting: do not let implementation and test edits for the same cycle happen before observed RED evidence is recorded.
+- Treat the RED checkpoint as invalid if the new test passes immediately, fails for a typo or harness error unrelated to the target behavior, or relies on private or invented API surface.
+- One behavior per test and one test per cycle unless the user explicitly approved a tightly bounded eligible batch and the acceptance matrix is fully defined in advance.
+- Before GREEN, make a test-quality judgment on the RED test: observable behavior, strong assertions, minimal mocking, and appropriate edge/error coverage for the slice.
+- If the RED evidence is invalid, stop the cycle, return to `test-author`, and do not delegate `implementer` yet.
 
 ## Direct-task mode
 
@@ -222,3 +236,5 @@ If test-author reports a contract gap, route back to type-author (then re-verify
 - One slice at a time. Small slices are the speed limit, not the bottleneck.
 - Verify everything yourself; agent reports are claims, not evidence.
 - Never commit unless the user explicitly asks.
+- If the user explicitly asks for commits, prefer one small atomic commit per verified behavior, slice, or other inseparable unit of work.
+- For behavior-changing work, commit only after REFACTOR and final verification. Do not commit at GREEN.

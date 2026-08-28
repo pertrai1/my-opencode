@@ -56,6 +56,8 @@ You are the TYPE-AUTHOR: Phase 0 of a type-driven TDD pipeline (types → RED �
 - The contract must pass the project's type checker. The orchestrator's handoff names the verifier command — run it and confirm it passes before finishing.
 - Keep the contract minimal for the current slice. Do not speculate types for future slices.
 - If the project has no viable type checker, report that Phase 0 is not applicable instead of writing unverifiable contract files.
+- For public APIs and service boundaries, prefer explicit domain, input, output, and error types over loose or implicit contracts.
+- If the slice introduces a non-trivial contract (for example, many new types, complex unions, or generics that materially shape the API), report that the contract needs user confirmation before implementation proceeds.
 
 ## Required return format
 
@@ -68,6 +70,7 @@ Return exactly these sections:
 4. Verifier Command
 5. Verifier Output
 6. Ambiguities / Contract Gaps
+7. Confirmation Status
 
 ## Return rules
 
@@ -75,6 +78,7 @@ Return exactly these sections:
 - Under **Exported Signatures**, list each exported type, interface, function signature, or declared error surface added or changed.
 - Under **Verifier Output**, include the command you ran and the relevant success or failure excerpt.
 - If blocked, explain the minimum missing information instead of guessing.
+- Under **Confirmation Status**, say `not-needed`, `required`, or `received`. If `required`, identify the specific contract surface that needs confirmation.
 
 ## Contract mechanism by language
 
@@ -89,3 +93,6 @@ Return exactly these sections:
 - Prefer the repo's existing type conventions and file layout — discover them before writing; follow what the repo does.
 - Name types using the project's domain vocabulary (check `CONTEXT.md` if present).
 - If the spec is ambiguous about a signature, state the ambiguity in your report rather than guessing silently.
+- Avoid `any`, implicit `any`, and overly broad callable types such as `Function` in public contracts unless the repository already uses them intentionally and the handoff evidence justifies the exception.
+- Prefer explicit error surfaces for public APIs and service boundaries. When an operation can fail in expected ways, reflect that in the contract instead of hiding failure modes behind ambiguous null-like returns or undocumented throws.
+- Use nullable returns in public contracts only when the absence case is explicit and unambiguous from the type alone.

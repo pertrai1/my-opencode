@@ -25,6 +25,7 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 - After editing, run the narrowest relevant formatter, lint, typecheck, and test commands. State explicitly if verification could not run or fails.
 - For behavior changes, add or update a focused regression test when the repository has an appropriate test layer.
 - Before committing, inspect `git status`, `git diff`, and recent commit messages. Commit only when explicitly requested.
+- When a commit is explicitly requested, prefer small atomic commits. For behavior-changing work, commit after REFACTOR and final verification, not after GREEN. Keep each commit scoped to one verified behavior, slice, or other inseparable unit of work.
 
 ## Documentation
 
