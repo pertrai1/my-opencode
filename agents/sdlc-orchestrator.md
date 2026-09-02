@@ -383,9 +383,10 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
   - **public surface constraints**:
     - allowed scope for the behavioral slice (artifact paths and acceptance boundary);
     - any no-contract public API source-of-truth and exact signature used for RED test generation.
-  - **expected acceptance and return format**:
-    - acceptance condition for the slice (what must be observed as completed);
-    - required return schema that `tdd-orchestrator` must emit.
+- **expected acceptance and return format**:
+  - acceptance condition for the slice (what must be observed as completed);
+  - for JavaScript or TypeScript implementation work with multi-file edits or refactor risk, instruction for `tdd-orchestrator` to include a final `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` complexity check in the implementer handoff;
+  - required return schema that `tdd-orchestrator` must emit.
 
 - The top-level orchestrator must **not** prescribe implementation strategy, architecture changes, or provide type-author/test-author/implementer workflow details. It must provide only the handoff constraints above and then defer to `tdd-orchestrator` for contract/RED/GREEN orchestration.
 
@@ -404,6 +405,7 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
 ### Behavioral vs direct-task routing
 
 - Keep config-only, docs-only, or trivial non-behavioral changes as direct-task mode for `implementer` with explicit acceptance criteria and verification constraints.
+- For JavaScript or TypeScript direct-task coding work with multi-file edits or refactor risk, tell `implementer` to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final anti-slop complexity check.
 - Route behavioral implementation work exclusively to `tdd-orchestrator`, and only after the execution-readiness gate passes.
 - Never mark readiness for `tdd-orchestrator` handoff if any readiness condition is unresolved.
 

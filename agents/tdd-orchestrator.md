@@ -139,6 +139,7 @@ Must include:
 - verifier commands
 - contract file list and checksums when Phase 0 exists
 - test file checksums
+- for JavaScript or TypeScript implementation work that spans multiple files or looks structurally risky, instruction to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final complexity smell check
 - instruction to return the required Phase 2 result schema
 
 ## The pipeline (per behavioral task)
@@ -193,6 +194,7 @@ For config, docs, and trivial non-behavioral changes, bypass the TDD pipeline an
   - acceptance criteria
   - allowed edit scope
   - exact verification commands
+  - for JavaScript or TypeScript coding tasks with multi-file edits or refactor risk, instruction to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final anti-slop complexity check
   - required return format
 
 - No failing test, RED evidence, Phase 0 contract, or checksum gates are required.
