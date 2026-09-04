@@ -7,13 +7,20 @@ Global configuration for [opencode](https://opencode.ai).
 - **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
+- **Providers** — `openai`, `ollama`, and `magnitude` (local models served by the Magnitude background service; see Local models below).
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
+
+## Local models
+
+- Magnitude manages local model downloads and serving via its CLI (`npm i -g @magnitudedev/cli`). The background service (`magnitude service install`, `magnitude service start`) serves models at `http://127.0.0.1:10100`.
+- Pick a model with `magnitude catalog status`, then `magnitude catalog recommendations [--preference balanced|faster|smarter]`; inspect with `magnitude catalog show <model-id>`, download with `magnitude catalog pull <model-id>`, check progress with `magnitude models status <model-id>`, and load with `magnitude models load <model-id>`.
+- Connected to OpenCode with `magnitude connections add opencode --set-model <model-id> --install-skill` (refresh later with `magnitude connections sync opencode`). Switch models in-session with `/models` (`magnitude/<model-id>`). Current default: `magnitude/qwen3.8-27b:gguf:q4` (Qwen3.8 27B Q4, chosen for coding).
+- Repo convention: keep provider and model settings in `opencode.jsonc`. Magnitude writes `opencode.json`, so fold its changes into `opencode.jsonc` and delete the stray file.
 
 ## Graph
 
@@ -152,3 +159,4 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
 6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)
+7. `npm i -g @magnitudedev/cli`, then `magnitude service install` and `magnitude service start` for local models (see Local models above)
