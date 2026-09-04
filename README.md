@@ -50,6 +50,20 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Verification
 
+Run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` from a JavaScript/TypeScript target worktree to check staged, unstaged, and untracked source files. This is also the default scope when no `--target` is supplied. Select checks with repeatable `--check` (`cyclomatic`, `cognitive`, `halstead`, `loc`, `coverage`, `crap`, `dead-code`, `duplicates`, or `types`); use `--target`, `--test-arg`, and `--fallow-arg` to control scope and analyzers. Each run writes JSON evidence and a Markdown summary to `.agents/reports/quality-report-<TIMESTAMP>.{json,md}`. Mutation testing is not included.
+
+| Check | Passing requirement |
+| --- | --- |
+| Cyclomatic complexity | `< 22` |
+| Cognitive complexity | `< 22` |
+| Halstead difficulty | `< 80` |
+| Lines per file | `< 500` |
+| Test coverage | `100%` lines, branches, functions, and statements |
+| CRAP | `< 25` |
+| Dead code | `0` findings |
+| Duplicate code | `0` findings |
+| Explicit `any` or `unknown` types | `0` findings |
+
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
 - `.github/workflows/ci.yml` — continuously runs `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.

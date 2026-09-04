@@ -32,6 +32,8 @@ permission:
     "npm run test*": allow
     "npm run typecheck": allow
     "npm run lint*": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs *": allow
     "pnpm test*": allow
     "pnpm run test*": allow
     "pnpm run typecheck*": allow
@@ -89,6 +91,14 @@ You are the IMPLEMENTER: Phase 2 (GREEN) of a type-driven TDD pipeline. You have
 - If the task is branch-scoped rather than worktree-scoped, prefer `node ~/.config/opencode/scripts/halstead-analyzer.js --git-diff-base <base-ref>`.
 - Use the result as a slop detector, not a hard gate: if a touched file shows unexpectedly high difficulty or volume, simplify the implementation when a smaller design would still satisfy the contract and tests.
 - Do not widen scope just to improve the metric, and do not replace repository evidence or tests with metric-driven guesses.
+
+## Changed-file quality gate
+
+- Run this gate only when the target repository is a JavaScript or TypeScript project and changes JavaScript or TypeScript source files. Do not attempt it for repositories implemented in other languages.
+- Do not run the gate for OpenSpec planning artifacts, task-checkbox updates, or documentation-only changes. OpenSpec changes do not count as eligible source changes.
+- The command analyzes only staged, unstaged, and untracked source files in the active worktree. Use `--check` only when the handoff explicitly limits the required gate.
+- Read the generated `.agents/reports/quality-report-<TIMESTAMP>.json` and include failed or errored checks in the return evidence. Fix quality-gate failures within the assigned scope before claiming `completed`; report failures caused by out-of-scope code as blockers with the report path.
+- Run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` from the target worktree, like the Halstead analyzer. Do not require a `quality` package script in that repository.
 
 ## Required return format
 

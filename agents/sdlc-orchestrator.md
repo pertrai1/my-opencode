@@ -38,6 +38,8 @@ permission:
     "npm run test*": allow
     "npm run typecheck": allow
     "npm run lint*": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs *": allow
     "npm run typecheck*": allow
     "tsc --noEmit": allow
     "tsc --checkJs": allow
@@ -385,7 +387,9 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
     - any no-contract public API source-of-truth and exact signature used for RED test generation.
 - **expected acceptance and return format**:
   - acceptance condition for the slice (what must be observed as completed);
-  - for JavaScript or TypeScript implementation work with multi-file edits or refactor risk, instruction for `tdd-orchestrator` to include a final `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` complexity check in the implementer handoff;
+   - for JavaScript or TypeScript implementation work with multi-file edits or refactor risk, instruction for `tdd-orchestrator` to include a final `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` complexity check in the implementer handoff;
+   - when the target repository is a JavaScript or TypeScript project and the task changes JavaScript or TypeScript source files, instruction for `tdd-orchestrator` to include `node ~/.config/opencode/scripts/quality-verification.mjs --changed` and require its JSON report as completion evidence;
+   - no quality-gate requirement for OpenSpec planning artifacts, task-checkbox updates, or documentation-only changes;
   - required return schema that `tdd-orchestrator` must emit.
 
 - The top-level orchestrator must **not** prescribe implementation strategy, architecture changes, or provide type-author/test-author/implementer workflow details. It must provide only the handoff constraints above and then defer to `tdd-orchestrator` for contract/RED/GREEN orchestration.
@@ -406,6 +410,8 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
 
 - Keep config-only, docs-only, or trivial non-behavioral changes as direct-task mode for `implementer` with explicit acceptance criteria and verification constraints.
 - For JavaScript or TypeScript direct-task coding work with multi-file edits or refactor risk, tell `implementer` to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final anti-slop complexity check.
+- For JavaScript or TypeScript direct-task coding work in a JavaScript or TypeScript target, tell `implementer` to run `node ~/.config/opencode/scripts/quality-verification.mjs --changed`, inspect its JSON report, and resolve in-scope failures before returning completion. Do not add this requirement for non-JavaScript/TypeScript targets.
+- Do not request this gate for OpenSpec planning, task-state updates, or documentation-only work.
 - Route behavioral implementation work exclusively to `tdd-orchestrator`, and only after the execution-readiness gate passes.
 - Never mark readiness for `tdd-orchestrator` handoff if any readiness condition is unresolved.
 

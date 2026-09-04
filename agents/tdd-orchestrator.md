@@ -25,6 +25,8 @@ permission:
     "npm test*": allow
     "npm run test*": allow
     "npm run typecheck": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs": allow
+    "node ~/.config/opencode/scripts/quality-verification.mjs *": allow
     "pnpm test*": allow
     "pnpm run test*": allow
     "pnpm run typecheck*": allow
@@ -140,6 +142,8 @@ Must include:
 - contract file list and checksums when Phase 0 exists
 - test file checksums
 - for JavaScript or TypeScript implementation work that spans multiple files or looks structurally risky, instruction to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final complexity smell check
+- when the target repository is a JavaScript or TypeScript project and the slice changes JavaScript or TypeScript source files, instruction to run `node ~/.config/opencode/scripts/quality-verification.mjs --changed`, read its timestamped JSON report, and return the result as changed-file quality evidence
+- never require the quality gate for OpenSpec planning artifacts, task-checkbox updates, or documentation-only changes
 - instruction to return the required Phase 2 result schema
 
 ## The pipeline (per behavioral task)
@@ -173,6 +177,8 @@ When Phase 0 was skipped, the Phase 1 handoff must explicitly say `no-contract m
 3. CONTRACT FILES unchanged (`shasum` matches Phase 0 — skip when Phase 0 was skipped)
 4. Test files unchanged (`shasum` matches Phase 1)
 5. The output schema is complete.
+6. When the target is a JavaScript or TypeScript project and the slice changed JavaScript or TypeScript source files, run `node ~/.config/opencode/scripts/quality-verification.mjs --changed`, inspect its JSON report, and reject the phase on failures or errors within the slice.
+7. Do not run the quality gate solely because OpenSpec planning artifacts, task checkboxes, or documentation changed.
 
 Any checksum mismatch is a contract violation → reject the work, instruct the implementer to restore the files and resolve properly (or escalate a disagreement).
 
@@ -195,6 +201,8 @@ For config, docs, and trivial non-behavioral changes, bypass the TDD pipeline an
   - allowed edit scope
   - exact verification commands
   - for JavaScript or TypeScript coding tasks with multi-file edits or refactor risk, instruction to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final anti-slop complexity check
+  - when the target is a JavaScript or TypeScript project and the task changes JavaScript or TypeScript source files, instruction to run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` and include its JSON report path and outcome in the return evidence
+  - no quality-gate requirement for OpenSpec planning artifacts, task-checkbox updates, or documentation-only changes
   - required return format
 
 - No failing test, RED evidence, Phase 0 contract, or checksum gates are required.

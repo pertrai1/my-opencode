@@ -25,12 +25,13 @@ Determine the source of truth by checking in order:
 6. **Ask the User:** If no source is found and `--core-only` is not set, prompt the user to select or provide a source.
 
 ### 2. Perform Verification Using Standard Core Rubric
-Reference the full guidance in `.agents/docs/verification/README.md`. Execute and document each of the 7 required sections:
+Reference the full guidance in `.agents/docs/verification/README.md` and use `.agents/docs/verification/TEMPLATE.md` as the report structure. Replace every template placeholder with evidence or explicitly mark it `None`, `not verified`, or `blocked`; an empty section is not a passing result. Execute and document each of the 7 required sections:
 1. **Source & Scope Identification:** Document the source and scope (commits, files, directories).
 2. **Work Summary:** Include a concise summary detailing what changed, which requirements were addressed, intended behavioral effects, what was not changed, and any remaining risks or tradeoffs.
+2a. **Agent Work Provenance and Independent Validation:** Identify the agent role, session or task identity, handoff acceptance criteria, files and behavior the agent claimed to change, and any phase-specific evidence it reported. Record the agent-reported commands, outputs, test or contract checksums, and delegated results when available. Independently inspect the repository and rerun relevant checks; treat agent summaries, task checkboxes, and claimed completion as claims rather than proof. Record every mismatch between claimed and observed work. State explicitly that verification proves the observed repository state and executed evidence, not agent authorship or identity.
 3. **Working-Tree Diff Review:** Resolve the repository's actual base branch (e.g., via `git symbolic-ref refs/remotes/origin/HEAD` falling back to main or develop) and inspect the complete change set—including tracked, staged, and untracked files—against that base branch for code quality and styling conventions while checking for stray debugging statements.
 4. **Automated Checks:** Run relevant automated checks (tests, linters, types) and report the exact commands, exit statuses, and condensed results.
-5. **Requirements-to-Evidence Table:** Construct a table mapping claims to concrete evidence. Use status values: `verified`, `failed`, `not verified`, or `blocked`.
+5. **Requirements-to-Evidence Table:** Construct a table mapping every source requirement, scenario, acceptance criterion, and claimed completed task to concrete evidence. Use status values: `verified`, `failed`, `not verified`, or `blocked`.
 6. **Assumptions, Unverified Areas, and Blockers:** Outline assumptions, unknowns, and blockers clearly.
 7. **Disposition:** Conclude with an unambiguous disposition: `ready`, `not ready`, or `needs human decision`.
    - *Note:* `ready` is strict and requires all required core and source-specific checks to be verified and passed. List all waivers prominently if applicable.
