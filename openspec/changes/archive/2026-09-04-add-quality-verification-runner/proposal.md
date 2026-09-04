@@ -7,7 +7,7 @@ The repository has linting and test commands but no single, consistent way to as
 - Add a Node.js quality-verification runner that evaluates selected quality checks or the full suite and reports a pass/fail result.
 - Default analysis to staged and unstaged tracked changes plus untracked source files, while allowing callers to pass additional CLI arguments through to the underlying tools.
 - Run Fallow through `npx` without a project installation and configure its execution to avoid repository-local `.fallow` artifacts where possible.
-- Combine Fallow findings with ESLint and `eslint-plugin-llm-core` results for the supported complexity, dead-code, duplication, line-count, and type-policy checks.
+- Combine Fallow findings with direct line-count and TypeScript AST checks for the supported complexity, dead-code, duplication, line-count, and type-policy checks.
 - Persist a timestamped machine-readable report under `.agents/reports/quality-report-<TIMESTAMP>.json`.
 - Exclude mutation testing from the initial runner.
 

@@ -45,7 +45,7 @@ Alternative considered: use only `--changed-since`. Rejected because it does not
 
 Fallow is run with `npx --yes fallow`, JSON output, the target repository as its root, and `--no-cache`. `--no-cache` prevents Fallow's incremental cache from creating `.fallow`; temporary diffs and parsed output are kept in the operating-system temporary directory and removed after the run. Fallow provides cyclomatic complexity, cognitive complexity, CRAP, dead-code, and duplicate-code evidence.
 
-ESLint runs against the normalized target files for file length and explicit type-policy findings, while preserving the repository's ESLint configuration and its `eslint-plugin-llm-core` rules. The runner will add focused ESLint rules/configuration for `max-lines` and the prohibition of explicit `any` and `unknown` types where they are not already present.
+The runner counts physical source lines for file-length verification and uses the TypeScript AST to identify explicit `any` and `unknown` types. These checks do not require ESLint or repository configuration in target worktrees.
 
 Halstead difficulty requires a dedicated JavaScript/TypeScript metrics analyzer, selected and invoked by the runner rather than inferred from Fallow. Coverage is collected through the repository's configured test command, with coverage data normalized to the changed source inventory before enforcing all four coverage dimensions. The test command receives repeatable `--test-arg` values so callers can select individual tests.
 

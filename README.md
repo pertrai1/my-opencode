@@ -50,7 +50,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Verification
 
-Run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` from a JavaScript/TypeScript target worktree to check staged, unstaged, and untracked source files. This is also the default scope when no `--target` is supplied. Select checks with repeatable `--check` (`cyclomatic`, `cognitive`, `halstead`, `loc`, `coverage`, `crap`, `dead-code`, `duplicates`, or `types`); use `--target`, `--test-arg`, and `--fallow-arg` to control scope and analyzers. Each run writes JSON evidence and a Markdown summary to `.agents/reports/quality-report-<TIMESTAMP>.{json,md}`. Mutation testing is not included.
+Run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` from a JavaScript/TypeScript target worktree to check staged, unstaged, and untracked source files. This is also the default scope when no `--target` is supplied. Select checks with repeatable `--check` (`cyclomatic`, `cognitive`, `halstead`, `loc`, `coverage`, `crap`, `dead-code`, `duplicates`, or `types`); use `--target` to control scope. `--fallow-arg` supports only `--top <positive-integer>`. `--test-arg` supports test-file paths, `--test-only`, and `--test-name-pattern <pattern>`. Each run writes JSON evidence and a Markdown summary to `.agents/reports/quality-report-<TIMESTAMP>.{json,md}`. Mutation testing is not included.
 
 | Check | Passing requirement |
 | --- | --- |
