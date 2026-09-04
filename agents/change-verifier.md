@@ -1,7 +1,7 @@
 ---
 description: Verifies a change against planning artifacts, task state, and implementation evidence, and distinguishes blocking issues from warnings before archive readiness.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-terra
 reasoningEffort: high
 temperature: 0.2
 permission:

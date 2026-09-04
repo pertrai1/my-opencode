@@ -1,7 +1,7 @@
 ---
 description: Reviews diffs for missing, weak, brittle, or misleading tests when behavior changes or tests are added or modified.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-luna
 textVerbosity: low
 permission:
   edit: deny

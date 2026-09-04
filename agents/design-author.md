@@ -1,7 +1,7 @@
 ---
 description: Design author for OpenSpec design artifacts. Converts validated spec intent into concrete design with explicit ambiguity handling.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-sol
 reasoningEffort: high
 temperature: 0.2
 permission:

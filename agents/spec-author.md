@@ -1,7 +1,7 @@
 ---
 description: Spec planning author for OpenSpec delta-spec markdown. Produces delta spec updates from evidence and reports ambiguity explicitly.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-sol
 reasoningEffort: high
 temperature: 0.2
 permission:

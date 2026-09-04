@@ -1,7 +1,7 @@
 ---
 description: Proposal planning author for OpenSpec proposal artifact updates. Writes proposal text from evidence, resolves ambiguities, and returns structured planning output.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-sol
 reasoningEffort: high
 temperature: 0.2
 permission:

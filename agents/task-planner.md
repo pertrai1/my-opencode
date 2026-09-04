@@ -1,7 +1,7 @@
 ---
 description: Task-planning author that writes execution-ready, verifiable tasks from proposal/spec/design dependency artifacts.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-luna
 reasoningEffort: high
 temperature: 0.2
 permission:

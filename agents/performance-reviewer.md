@@ -1,7 +1,7 @@
 ---
 description: Reviews diffs for performance risks and optimization opportunities when code paths are performance-sensitive.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-luna
 permission:
   edit: deny
 ---

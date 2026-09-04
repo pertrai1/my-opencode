@@ -1,7 +1,7 @@
 ---
 description: Phase 1 (RED) of the type-driven TDD pipeline. Writes one failing test against the published type contract or, in no-contract mode, a named public API source of truth; remains blind to implementation strategy and task details. Invoked by tdd-orchestrator after type-author or directly when Phase 0 is skipped.
 mode: subagent
-model: openai/gpt-5.4
+model: openai/gpt-5.6-luna
 temperature: 0.2
 permission:
   edit:
