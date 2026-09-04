@@ -22,6 +22,7 @@
   },
   "scripts": {
     "quality": "node scripts/quality-verification.mjs",
+    "checks:runner": "node scripts/checks-runner.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node --test",

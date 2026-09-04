@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "magnitude/qwen3.8-27b:gguf:q4",
+  "model": "openai/gpt-5.6-sol",
   "small_model": "openai/gpt-5.6-terra",
   "default_agent": "lean",
   "agent": {
@@ -149,76 +149,6 @@
       "models": {
         "qwen3-coder-30b-64k:latest": {
           "name": "Qwen-3-Coder-30B-64K",
-        },
-      },
-    },
-    "magnitude": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Magnitude",
-      "options": {
-        "baseURL": "http://127.0.0.1:10100/inference/v1",
-        "apiKey": "magnitude-local",
-      },
-      "models": {
-        "qwen3.8-27b:gguf:q4": {
-          "name": "Qwen3.8 27B (Q4)",
-          "limit": {
-            "context": 100000,
-            "output": 32768,
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"],
-          },
-          "variants": {
-            "off": {
-              "reasoningEffort": "none",
-            },
-            "low": {
-              "reasoningEffort": "low",
-            },
-            "medium": {
-              "reasoningEffort": "medium",
-            },
-            "xhigh": {
-              "reasoningEffort": "xhigh",
-            },
-          },
-        },
-        "hf:ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF/qwen2.5-coder-1.5b-q8_0.gguf": {
-          "name": "qwen2.5-coder-1.5b-q8_0",
-          "limit": {
-            "context": 32768,
-            "output": 32768,
-          },
-          "modalities": {
-            "input": ["text"],
-            "output": ["text"],
-          },
-          "variants": {
-            "off": {
-              "reasoningEffort": "none",
-            },
-          },
-        },
-        "hf:unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf": {
-          "name": "Qwen3.6-27B-Q4_K_M",
-          "limit": {
-            "context": 100000,
-            "output": 32768,
-          },
-          "modalities": {
-            "input": ["text"],
-            "output": ["text"],
-          },
-          "variants": {
-            "off": {
-              "reasoningEffort": "none",
-            },
-            "high": {
-              "reasoningEffort": "high",
-            },
-          },
         },
       },
     },

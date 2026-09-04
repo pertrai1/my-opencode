@@ -40,6 +40,8 @@ permission:
     "npm run lint*": allow
     "node ~/.config/opencode/scripts/quality-verification.mjs": allow
     "node ~/.config/opencode/scripts/quality-verification.mjs *": allow
+    "node ~/.config/opencode/scripts/checks-runner.mjs": allow
+    "node ~/.config/opencode/scripts/checks-runner.mjs *": allow
     "npm run typecheck*": allow
     "tsc --noEmit": allow
     "tsc --checkJs": allow
@@ -455,9 +457,11 @@ When an implementation slice or change claims completion, delegate verification 
 - active change identity and selected target root;
 - proposal, spec, design, and tasks artifacts for the active change;
 - current coordination notes from `progress.md` and `intent.md`;
-- implementation return summaries and verifier/test/typecheck evidence;
+- implementation return summaries and verifier/test/typecheck evidence, including the current-run `.agents/reports/checks-<RUN_ID>.{json,md}` pair when baseline Node checks apply;
 - relevant changed files or changed areas;
 - current task ids claimed as complete.
+
+After the ordered target-evidence discovery pass, run `node ~/.config/opencode/scripts/checks-runner.mjs` when the target is a Node repository with applicable baseline scripts. Provide its JSON and Markdown paths, exact invocation, exit status, stage results, and before/after repository-state metadata to `change-verifier`. Preserve supplemental checks required by target instructions; the runner does not replace them.
 
 Require the `change-verifier` to compare artifacts, task state, and implementation evidence, then classify results as:
 

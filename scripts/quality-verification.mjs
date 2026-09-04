@@ -144,6 +144,14 @@ function collectSources(root, directory, matcher) {
   return files;
 }
 
+export function isTestSource(file) { return /(^|\/)(?:__tests__|tests?|spec)(?:\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file); }
+export function productionSources(inventory) { return inventory.filter((file) => !isTestSource(file)); }
+export function cliEntrypoints(root) {
+  const manifest = path.join(root, "package.json");
+  if (!fs.existsSync(manifest)) return new Set();
+  const scripts = JSON.parse(fs.readFileSync(manifest, "utf8")).scripts ?? {};
+  return new Set(Object.values(scripts).flatMap((script) => typeof script === "string" ? [...script.matchAll(/\bnode\s+([^\s"']+\.[cm]?[jt]s)/g)].map((match) => match[1]) : []));
+}
 function item(check, status, value, paths = [], diagnostic = "") { return { check, status, threshold: THRESHOLDS[check], value, paths, diagnostic }; }
 export function parseFallow(parsed, checks, inventory) {
   let data;
@@ -185,8 +193,12 @@ export function fallow(root, checks, args, inventory, coveragePath) {
     result.push(...parseFallow(parsed, runnableHealth, inventory));
   }
   if (checks.includes("dead-code")) {
-    const parsed = run("npx", ["--yes", "fallow", "dead-code", "--format", "json", "--no-cache", ...inventory.flatMap((file) => ["--file", file]), ...args], root);
-    result.push(...parseFallow(parsed, ["dead-code"], inventory));
+    const analyzable = inventory.filter((file) => !cliEntrypoints(root).has(file));
+    if (!analyzable.length) result.push(item("dead-code", "pass", 0, [], "Only declared CLI entrypoints in scope"));
+    else {
+      const parsed = run("npx", ["--yes", "fallow", "dead-code", "--format", "json", "--no-cache", ...analyzable.flatMap((file) => ["--file", file]), ...args], root);
+      result.push(...parseFallow(parsed, ["dead-code"], analyzable));
+    }
   }
   if (checks.includes("duplicates")) {
     const parsed = run("npx", ["--yes", "fallow", "dupes", "--format", "json", "--no-cache", "--threshold", "0", ...args], root);
@@ -220,7 +232,10 @@ function halstead(root, inventory) {
   try {
     const data = JSON.parse(fs.readFileSync(out, "utf8"));
     const missing = inventory.filter((file) => data[file]?.difficulty == null);
-    if (parsed.code !== 0 || missing.length) return item("halstead", "error", null, missing.length ? missing : inventory, "Halstead output unavailable");
+    if (parsed.code !== 0 || missing.length) {
+      if (missing.length && missing.every((file) => file.endsWith(".mjs"))) return item("halstead", "skipped", null, missing, "Halstead analyzer does not support ESM syntax");
+      return item("halstead", "error", null, missing.length ? missing : inventory, "Halstead output unavailable");
+    }
     return evaluateHalstead(data, inventory);
   } catch { return item("halstead", "error", null, inventory, "Halstead output unavailable"); } finally { if (fs.existsSync(out)) fs.unlinkSync(out); }
 }
@@ -335,6 +350,7 @@ export function main(argv = process.argv.slice(2)) {
   }
   let options; try { options = parseArgs(argv); } catch (error) { console.error(error.message); return 2; }
   const root = path.resolve(process.cwd()); const inventory = options.target ? targetSources(root, options.target) : discoverSources(root);
+  const production = productionSources(inventory);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const reportsDirectory = path.join(root, ".agents/reports");
   const reportPath = path.join(reportsDirectory, `quality-report-${timestamp}.json`);
@@ -343,13 +359,13 @@ export function main(argv = process.argv.slice(2)) {
   let results;
   if (!inventory.length) results = options.checks.map((check) => item(check, "pass", 0, [], "No changed source files available"));
   else {
-    const coverageRun = options.checks.some((check) => check === "coverage" || check === "crap") ? coverage(root, options.testArgs, inventory) : null;
+    const coverageRun = production.length && options.checks.some((check) => check === "coverage" || check === "crap") ? coverage(root, options.testArgs, production) : null;
     try {
       results = [
         ...localChecks(root, options.checks.filter((c) => ["loc", "types"].includes(c)), inventory),
-        ...(options.checks.some((c) => FALLOW.has(c)) ? fallow(root, options.checks.filter((c) => FALLOW.has(c)), options.fallowArgs, inventory, coverageRun?.coveragePath) : []),
-        ...(options.checks.includes("halstead") ? [halstead(root, inventory)] : []),
-        ...(options.checks.includes("coverage") ? [coverageRun.result] : []),
+        ...(options.checks.some((c) => FALLOW.has(c)) ? fallow(root, options.checks.filter((c) => FALLOW.has(c)), options.fallowArgs, production, coverageRun?.coveragePath) : []),
+        ...(options.checks.includes("halstead") ? [halstead(root, production)] : []),
+        ...(options.checks.includes("coverage") ? [coverageRun?.result ?? item("coverage", "pass", 0, [], "No changed production source files")] : []),
       ];
     } finally { coverageRun?.cleanup(); }
   }

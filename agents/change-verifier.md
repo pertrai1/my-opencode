@@ -28,7 +28,7 @@ Before writing `verification.md`, reason from the evidence provided by the orche
 
 - proposal, spec, design, and tasks artifacts for the active change
 - selected target-workspace evidence and command-selection notes
-- implementation return summaries and verifier/test results
+- implementation return summaries and verifier/test results, including supplied `.agents/reports/checks-<RUN_ID>.{json,md}` evidence when baseline Node checks applied
 - relevant changed paths or areas
 - any human-confirmed command outcomes supplied in coordination notes
 
@@ -65,7 +65,7 @@ Section requirements:
 
 - `Intent`: summarize the change goal from proposal/spec context.
 - `Completed Work`: list verified completed slices or tasks only; separate any unverified claims.
-- `Evidence Checked`: list verifier commands, human-confirmed outcomes, planning artifacts, and other evidence actually used.
+- `Evidence Checked`: list verifier commands, human-confirmed outcomes, planning artifacts, and other evidence actually used. For a supplied checks report, cite both paths, its run status, configured/missing stages, and recorded repository state; label it `historical` or `stale` when the supplied evidence does not establish it matches the currently claimed workspace.
 - `Functional Check`: identify at least one direct behavior hit that supports the intended outcome and at least one clean-pass or no-regression check when applicable. If not applicable or unavailable, mark it explicitly as `unverified` and explain why.
 - `Test Coverage Check`: name the passing tests or checked scenarios that matter, including happy path, failure path, and edge coverage when applicable. A command exit alone is not enough. If this cannot be established, mark it `unverified` with the evidence gap.
 - `Integration Check`: state whether registration, exports, configuration wiring, public API shape, and actionable errors were inspected when applicable. Mark each important unchecked item as `unverified` rather than omitting it.
@@ -79,7 +79,7 @@ Section requirements:
 - `Divergences`: describe any mismatch between implementation, tasks, design, or spec. State `None.` when there is no material divergence.
 - `Recommendation`: state one of `ready for human approval`, `needs follow-up before human approval`, or `not ready for archive`, with a short explanation.
 
-Do not claim evidence you did not receive. If a required section has no applicable content, say so explicitly.
+Do not claim evidence you did not receive. A checks report is durable historical memory, not automatic proof of the current workspace: if its repository-state metadata is missing, mismatched, or superseded by later changes, mark baseline checks `unverified` and request a current-run report from the orchestrator. If a required section has no applicable content, say so explicitly.
 
 Visible `unverified` is required whenever evidence is missing, unavailable, or intentionally not gathered. Do not silently omit a judgment area and do not treat an omitted check as a pass.
 
