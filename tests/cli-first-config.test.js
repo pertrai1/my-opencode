@@ -4,27 +4,61 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const config = fs.readFileSync(path.join(root, "opencode.jsonc"), "utf8");
+const configSource = fs.readFileSync(path.join(root, "opencode.jsonc"), "utf8");
 const cliFirst = fs.readFileSync(path.join(root, "docs/agents/cli-first.md"), "utf8");
 const catalog = fs.readFileSync(path.join(root, "docs/agents/cli-tools.md"), "utf8");
 const namespaces = ["mdn_*", "llm-core_*", "sonarqube_*", "agentmemory_*"];
+const config = JSON.parse(configSource.replace(/,(\s*[}\]])/g, "$1"));
 
-test("CLI-first MCP defaults deny namespaces and richer agents explicitly restore them", () => {
-  for (const namespace of namespaces) {
-    assert.ok(config.includes(`"${namespace}": "deny"`));
-  }
+function stringRules(permission = {}) {
+  return Object.entries(permission).filter(([, value]) => typeof value === "string");
+}
 
-  for (const agent of ["build", "plan"]) {
-    const start = config.indexOf(`"${agent}": {`);
-    const end = config.indexOf("\n    },", start);
-    const section = config.slice(start, end);
-    for (const namespace of namespaces) {
-      assert.ok(section.includes(`"${namespace}": "allow"`));
+function matchesConfiguredToolPrefix(tool, pattern) {
+  return pattern.endsWith("*")
+    ? tool.startsWith(pattern.slice(0, -1))
+    : tool === pattern;
+}
+
+function effectivePermission(agent, tool) {
+  const agentPermission = config.agent[agent]?.permission ?? {};
+  const matching = [...stringRules(config.permission), ...stringRules(agentPermission)]
+    .filter(([pattern]) => matchesConfiguredToolPrefix(tool, pattern));
+  return matching.at(-1)?.[1];
+}
+
+test("CLI-first MCP rules resolve by agent and wildcard namespace", () => {
+  const representatives = ["mdn_new_tool", "llm-core_new_tool", "sonarqube_new_tool", "agentmemory_new_tool"];
+  const defaultAgents = [
+    "lean",
+    "explore",
+    "sdlc-orchestrator",
+    "tdd-orchestrator",
+    "implementer",
+    "type-author",
+    "test-author",
+    "proposal-author",
+    "spec-author",
+    "design-author",
+    "task-planner",
+    "spec-syncer",
+    "change-verifier",
+    "architecture-reviewer",
+    "architecture-boundary-reviewer",
+    "performance-reviewer",
+    "production-readiness-reviewer",
+    "test-reviewer",
+    "prompt-agent",
+  ];
+
+  for (const tool of representatives) {
+    assert.ok(namespaces.some((pattern) => matchesConfiguredToolPrefix(tool, pattern)));
+    for (const agent of defaultAgents) {
+      assert.equal(effectivePermission(agent, tool), "deny", `${agent} must hide ${tool}`);
     }
-  }
-
-  for (const tool of ["mdn_new_tool", "llm-core_new_tool", "sonarqube_new_tool", "agentmemory_new_tool"]) {
-    assert.ok(namespaces.some((pattern) => path.matchesGlob(tool, pattern)));
+    for (const agent of ["build", "plan"]) {
+      assert.equal(effectivePermission(agent, tool), "allow", `${agent} must retain ${tool}`);
+    }
   }
 });
 
