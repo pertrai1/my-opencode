@@ -13,6 +13,7 @@ Global configuration for [opencode](https://opencode.ai).
 - **Compaction** — auto with pruning (12K token reserved buffer).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
+- **CLI-first workflow** — all agents receive concise CLI-first guidance. Optional MCP namespaces are hidden by default and restored only for `build` and `plan`; see [CLI-first workflow](docs/agents/cli-first.md) and the [CLI tool catalog](docs/agents/cli-tools.md).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
 
 ## Local models
