@@ -18,6 +18,9 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 ## Working protocol
 
+- **NEVER commit directly to the `main` or `master` branch. No exceptions.** Always create a feature branch, commit changes there, push, and open a pull request (PR) for review.
+- **When starting work on a GitHub Issue, always add the `in-progress` label to the issue immediately so everyone knows it is actively being worked on.**
+- This repository has an active `pre-commit` hook installed that programmatically blocks direct commits to `main` and `master`.
 - Before editing, inspect the relevant code, tests, project instructions, and current `git status`/diff.
 - Treat user requirements, repository documentation, tests, and existing behavior as the source of truth, in that order. Ask a concise question when they conflict or leave a material ambiguity.
 - Make the smallest change that fully resolves the request. Do not refactor unrelated code or add compatibility paths without a concrete need.

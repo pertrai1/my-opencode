@@ -57,10 +57,10 @@ def main():
         run_command([
             "gh", "issue", "edit", str(issue_num),
             "--repo", "pertrai1/my-opencode",
-            "--add-label", "claimed"
+            "--add-label", "claimed,in-progress"
         ], workdir=repo_path)
     except Exception as e:
-        print(f"Warning: Failed to add 'claimed' label: {e}", file=sys.stderr)
+        print(f"Warning: Failed to add 'claimed' and 'in-progress' labels: {e}", file=sys.stderr)
 
     # 3. Create a clean branch task/issue-<number> from main
     branch_name = f"task/issue-{issue_num}"
