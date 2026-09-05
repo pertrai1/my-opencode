@@ -27,9 +27,13 @@ function serverConfig() {
 
 test("SonarQube MCP activates only for a configured target project", async (t) => {
   const withoutProject = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-empty-"));
+  const withoutUrl = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-url-missing-"));
+  const withoutProjectKey = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-key-missing-"));
   const withProject = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-configured-"));
   t.after(() => {
     fs.rmSync(withoutProject, { recursive: true, force: true });
+    fs.rmSync(withoutUrl, { recursive: true, force: true });
+    fs.rmSync(withoutProjectKey, { recursive: true, force: true });
     fs.rmSync(withProject, { recursive: true, force: true });
   });
 
@@ -39,6 +43,22 @@ test("SonarQube MCP activates only for a configured target project", async (t) =
   assert.equal(disabled.mcp.sonarqube.enabled, false);
   assert.equal(disabled.mcp.sonarqube.environment.SONARQUBE_URL, undefined);
   assert.equal(disabled.mcp.sonarqube.environment.SONARQUBE_PROJECT_KEY, undefined);
+
+  fs.writeFileSync(path.join(withoutUrl, "sonar-project.properties"), "sonar.projectKey=example-project\n");
+  const urlMissing = serverConfig();
+  const urlMissingHooks = await SonarqubeMcp({ worktree: withoutUrl });
+  await urlMissingHooks.config(urlMissing);
+  assert.equal(urlMissing.mcp.sonarqube.enabled, false);
+  assert.equal(urlMissing.mcp.sonarqube.environment.SONARQUBE_URL, undefined);
+  assert.equal(urlMissing.mcp.sonarqube.environment.SONARQUBE_PROJECT_KEY, undefined);
+
+  fs.writeFileSync(path.join(withoutProjectKey, "sonar-project.properties"), "sonar.host.url=http://127.0.0.1:9000\n");
+  const projectKeyMissing = serverConfig();
+  const projectKeyMissingHooks = await SonarqubeMcp({ worktree: withoutProjectKey });
+  await projectKeyMissingHooks.config(projectKeyMissing);
+  assert.equal(projectKeyMissing.mcp.sonarqube.enabled, false);
+  assert.equal(projectKeyMissing.mcp.sonarqube.environment.SONARQUBE_URL, undefined);
+  assert.equal(projectKeyMissing.mcp.sonarqube.environment.SONARQUBE_PROJECT_KEY, undefined);
 
   fs.writeFileSync(
     path.join(withProject, "sonar-project.properties"),

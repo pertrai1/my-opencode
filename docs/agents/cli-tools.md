@@ -39,9 +39,11 @@ source of truth for whether an invocation is permitted.
 
 | Agent | Required permitted CLI operations | MCP need | Removed exposure and rationale |
 | --- | --- | --- | --- |
+| `general` | Built-in general-purpose operations inherit the global non-destructive shell policy. | None by default. | All four namespaces are globally denied; no `general` override is configured. |
 | `lean` | Local OpenCode tools and permitted shell commands such as `rg`, Git, `gh`, and declared project scripts. | None by default. | `mdn_*`, `llm-core_*`, `sonarqube_*`, and `agentmemory_*` are hidden to keep routine work small; route a demonstrated need. |
 | `build` | Full implementation tooling, repository scripts, and permitted local shell commands. | All four namespaces. | No removal: broad access supports general implementation, diagnostics, documentation, memory, and project-integrated SonarQube work. |
 | `plan` | Repository inspection, Git history/diff, checks, and planning commands. | All four namespaces. | No removal: planning may need documentation, memory, and high-level diagnostics. |
+| `compaction` | Built-in context-compaction work; no routine repository CLI operation is required. | None by default. | All four namespaces are globally denied; no `compaction` override is configured. |
 | `explore` | `ls`, `pwd`, `cat`, `head`, `tail`, `rg`, `grep`, and read-only Git commands listed in its front matter. | None. | All four namespaces remain hidden; its read-only `*` deny protects reconnaissance boundaries. |
 | `sdlc-orchestrator` | `git status/diff`, `npm` checks, quality/checks runners, and allowlisted `openspec` lifecycle commands. | None. | All four namespaces removed; orchestration delegates specialized capability work. |
 | `tdd-orchestrator` | `git status/diff`, package-manager test/typecheck commands, checksums, and quality runner. | None. | All four namespaces removed; it delegates code and keeps coordination independent. |
@@ -54,11 +56,11 @@ source of truth for whether an invocation is permitted.
 | `task-planner` | No shell commands; `tasks.md` editing only. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
 | `spec-syncer` | No shell commands; scoped main-spec editing only. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
 | `change-verifier` | No shell commands; consumes supplied evidence and writes verification artifacts. | None. | All four namespaces removed; verification preserves read-only evidence boundaries. |
-| `architecture-reviewer` | No shell commands; read-only diff/design review. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
-| `architecture-boundary-reviewer` | No shell commands; read-only dependency-edge review. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
-| `performance-reviewer` | No shell commands; read-only performance review. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
-| `production-readiness-reviewer` | No shell commands; read-only operational-risk review. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
-| `test-reviewer` | No shell commands; read-only test-coverage review. | None. | All four namespaces removed; no documented MCP or CLI requirement. |
+| `architecture-reviewer` | No role-required command; inherits the global non-destructive shell policy while reviewing architecture. | None. | All four namespaces removed; no documented MCP requirement. |
+| `architecture-boundary-reviewer` | No role-required command; inherits the global non-destructive shell policy while reviewing dependency edges. | None. | All four namespaces removed; no documented MCP requirement. |
+| `performance-reviewer` | No role-required command; inherits the global non-destructive shell policy while reviewing performance. | None. | All four namespaces removed; no documented MCP requirement. |
+| `production-readiness-reviewer` | No role-required command; inherits the global non-destructive shell policy while reviewing operational risk. | None. | All four namespaces removed; no documented MCP requirement. |
+| `test-reviewer` | No role-required command; inherits the global non-destructive shell policy while reviewing coverage. | None. | All four namespaces removed; no documented MCP requirement. |
 | `prompt-agent` | `pwd`, `ls`, and read-only Git inspection listed in its front matter. | None. | All four namespaces removed; prompt/workflow edits do not need them. |
 
 ## MCP visibility inventory
@@ -122,8 +124,43 @@ SonarQube project activation states using isolated fixtures.
 The snapshot below is the requested per-tool evidence. `PATH` means the
 executable resolved in the login shell. “Provenance unrecorded” explicitly means
 the inventory cannot establish how the existing host installation was obtained.
-For those entries, use the linked official project documentation or the target
-repository's package manager rather than treating this catalog as an installer.
+For those entries, use the official source in the installation table or the
+target repository's package manager rather than treating this catalog as an
+installer.
+
+### Official installation sources
+
+Use the documented project method for new installations; never infer an install
+command from the host's existing PATH entry. `rtk`, `ubs`,
+`code-review-graph`, and `cass` have no independently verified public
+installation source in this inventory, so they are available-only and must not
+be added to another host without a separately verified source.
+
+| Available tool | Official source or supported method |
+| --- | --- |
+| `git` | [Git install guide](https://git-scm.com/install/) |
+| `gh` | [GitHub CLI installation](https://github.com/cli/cli#installation) |
+| `rg` | [ripgrep releases](https://github.com/BurntSushi/ripgrep#installation) |
+| `fd` | [fd installation](https://github.com/sharkdp/fd#installation) |
+| `jq` | [jq installation](https://jqlang.github.io/jq/download/) |
+| `curl` / `wget` | [curl install](https://curl.se/docs/install.html) / [GNU Wget](https://www.gnu.org/software/wget/) |
+| `ast-grep` | [ast-grep installation](https://ast-grep.github.io/guide/quick-start.html) |
+| `node`, `npm`, `npx` | [Node.js downloads](https://nodejs.org/en/download); npm and npx are bundled with Node. |
+| `pnpm` | [pnpm installation](https://pnpm.io/installation) |
+| `bun` / `bunx` | [Bun installation](https://bun.sh/docs/installation) |
+| `python3` | [Python downloads](https://www.python.org/downloads/) |
+| `uv` / `uvx` | [uv installation](https://docs.astral.sh/uv/getting-started/installation/) |
+| `fallow` | [npm package](https://www.npmjs.com/package/fallow) |
+| `biome` | [Biome installation](https://biomejs.dev/guides/getting-started/) |
+| `gitnexus` | [npm package](https://www.npmjs.com/package/gitnexus) |
+| `difit` / `diffity` / `hunk` | [difit](https://www.npmjs.com/package/difit), [diffity](https://www.npmjs.com/package/diffity), and [hunkdiff](https://www.npmjs.com/package/hunkdiff) npm package pages. |
+| `openspec` | [OpenSpec installation](https://github.com/Fission-AI/OpenSpec#installation) |
+| `lazygit` / `lazydocker` | [lazygit installation](https://github.com/jesseduffield/lazygit#installation) / [lazydocker installation](https://github.com/jesseduffield/lazydocker#installation) |
+| `docker` | [Docker installation](https://docs.docker.com/get-docker/) |
+| `magnitude` | This repository's [README](../../README.md#local-models-with-magnitude), which documents its supported global npm installation. |
+| `ollama` | [Ollama download](https://ollama.com/download) |
+| `opencode` | [OpenCode installation](https://opencode.ai/docs/) |
+| Project-local `tsc` / `eslint` and repository scripts | This repository's `package.json` and versioned `scripts/`; install with the declared package manager rather than globally. |
 
 | Tool | Executable/package identity and version | Install/provenance | Prerequisites and automation | Role fit |
 | --- | --- | --- | --- | --- |

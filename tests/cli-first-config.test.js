@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, "..");
 const configSource = fs.readFileSync(path.join(root, "opencode.jsonc"), "utf8");
 const cliFirst = fs.readFileSync(path.join(root, "docs/agents/cli-first.md"), "utf8");
 const catalog = fs.readFileSync(path.join(root, "docs/agents/cli-tools.md"), "utf8");
+const agentsDirectory = path.join(root, "agents");
 const namespaces = ["mdn_*", "llm-core_*", "sonarqube_*", "agentmemory_*"];
 const config = JSON.parse(configSource.replace(/,(\s*[}\]])/g, "$1"));
 
@@ -20,9 +21,36 @@ function matchesConfiguredToolPrefix(tool, pattern) {
     : tool === pattern;
 }
 
+function frontMatterPermission(agent) {
+  const filename = path.join(agentsDirectory, `${agent}.md`);
+  if (!fs.existsSync(filename)) return {};
+
+  const source = fs.readFileSync(filename, "utf8");
+  const frontMatter = source.match(/^---\n([\s\S]*?)\n---/u)?.[1] ?? "";
+  const permission = {};
+  let inPermission = false;
+
+  for (const line of frontMatter.split("\n")) {
+    if (line === "permission:") {
+      inPermission = true;
+      continue;
+    }
+    if (inPermission && !line.startsWith(" ")) break;
+
+    const rule = inPermission && line.match(/^ {2}([^:]+): (allow|deny)$/u);
+    if (rule) permission[rule[1].replace(/^"|"$/gu, "")] = rule[2];
+  }
+
+  return permission;
+}
+
 function effectivePermission(agent, tool) {
-  const agentPermission = config.agent[agent]?.permission ?? {};
-  const matching = [...stringRules(config.permission), ...stringRules(agentPermission)]
+  const configuredPermission = config.agent[agent]?.permission ?? {};
+  const matching = [
+    ...stringRules(config.permission),
+    ...stringRules(configuredPermission),
+    ...stringRules(frontMatterPermission(agent)),
+  ]
     .filter(([pattern]) => matchesConfiguredToolPrefix(tool, pattern));
   return matching.at(-1)?.[1];
 }
@@ -30,25 +58,12 @@ function effectivePermission(agent, tool) {
 test("CLI-first MCP rules resolve by agent and wildcard namespace", () => {
   const representatives = ["mdn_new_tool", "llm-core_new_tool", "sonarqube_new_tool", "agentmemory_new_tool"];
   const defaultAgents = [
+    "general",
+    "compaction",
     "lean",
-    "explore",
-    "sdlc-orchestrator",
-    "tdd-orchestrator",
-    "implementer",
-    "type-author",
-    "test-author",
-    "proposal-author",
-    "spec-author",
-    "design-author",
-    "task-planner",
-    "spec-syncer",
-    "change-verifier",
-    "architecture-reviewer",
-    "architecture-boundary-reviewer",
-    "performance-reviewer",
-    "production-readiness-reviewer",
-    "test-reviewer",
-    "prompt-agent",
+    ...fs.readdirSync(agentsDirectory)
+      .filter((filename) => filename.endsWith(".md"))
+      .map((filename) => path.basename(filename, ".md")),
   ];
 
   for (const tool of representatives) {
@@ -68,4 +83,7 @@ test("CLI-first guidance and catalog remain available to every agent", () => {
   assert.match(cliFirst, /build.*plan/s);
   assert.match(catalog, /## Agent capability matrix/);
   assert.match(catalog, /## MCP capability decisions/);
+  for (const agent of ["general", "compaction", ...fs.readdirSync(agentsDirectory).map((filename) => path.basename(filename, ".md"))]) {
+    assert.ok(catalog.includes(`| \`${agent}\``), `${agent} must appear in the capability matrix`);
+  }
 });
