@@ -1,6 +1,7 @@
 # AGENTS.md
 
 @RTK.md
+@docs/agents/cli-first.md
 
 ## Agent skills
 
