@@ -20,7 +20,8 @@ Focus on evidence-backed findings in these areas:
 - weak assertions that prove existence rather than correctness
 - missing edge-case coverage for empty, null, boundary, or error paths
 - brittle tests coupled to internals, call order, or hidden shared state
-- mocks that replace observable behavior checks instead of supporting them
+- mocks that replace observable behavior checks instead of supporting them, or mock leakage where assertions check mocked return values rather than exercised code
+- tautological tests or assertions that pass regardless of implementation state (failing the "do-nothing" test: would pass even if the changed logic were commented out or absent)
 
 Rules:
 
