@@ -12,9 +12,9 @@
 
 ## Slices & Tasks
 - [x] Task 1: OpenSpec change artifacts (proposal, design, tasks, intent, progress) <!-- id: task-prep -->
-- [ ] Task 2: Update `agents/change-verifier.md` <!-- id: task-1 -->
-- [ ] Task 3: Update `agents/test-reviewer.md` <!-- id: task-2 -->
-- [ ] Task 4: Update `agents/tdd-orchestrator.md` <!-- id: task-3 -->
-- [ ] Task 5: Update `.agents/docs/verification/README.md` & `README.md` <!-- id: task-4 -->
-- [ ] Task 6: Repository verification (lint, typecheck, tests) <!-- id: task-5 -->
-- [ ] Task 7: Pull Request creation <!-- id: task-6 -->
+- [x] Task 2: Update `agents/change-verifier.md` <!-- id: task-1 -->
+- [x] Task 3: Update `agents/test-reviewer.md` <!-- id: task-2 -->
+- [x] Task 4: Update `agents/tdd-orchestrator.md` <!-- id: task-3 -->
+- [x] Task 5: Update `.agents/docs/verification/README.md` & `README.md` <!-- id: task-4 -->
+- [x] Task 6: Repository verification (lint, typecheck, tests) <!-- id: task-5 -->
+- [x] Task 7: Pull Request creation <!-- id: task-6 -->

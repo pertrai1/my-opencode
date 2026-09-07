@@ -1,6 +1,6 @@
 # sdlc-orchestrator Specification Delta: Oracle and Do-Nothing Verifiers
 
-## MODIFIED Capability: Verification produces a persisted human summary
+## ADDED Requirements
 
 ### Requirement: Baseline sensitivity (Do-Nothing Verifier)
 The system MUST require that newly authored functional or integration verification checks demonstrate failure against the pre-change baseline (e.g. `git merge-base` or unmodified workspace) before they are accepted as proof of work.
