@@ -90,12 +90,13 @@ export async function SonarqubeMcp({ worktree }: PluginInput): Promise<Hooks> {
       const properties = parseProperties(readFileSync(propertiesPath, "utf8"));
       const sonarUrl = properties["sonar.host.url"];
       const sonarProjectKey = properties["sonar.projectKey"];
-      if (!sonarUrl || !sonarProjectKey) {
+      const sonarToken = environment.SONARQUBE_TOKEN ?? process.env.SONARQUBE_TOKEN;
+      if (!sonarUrl || !sonarProjectKey || !sonarToken?.trim()) {
         server.enabled = false;
         clearSonarqubeEnvironment(environment);
         server.environment = environment;
         console.warn(
-          "[sonarqube-mcp] MCP disabled because sonar.host.url or sonar.projectKey is missing",
+          "[sonarqube-mcp] MCP disabled because sonar.host.url, sonar.projectKey, or SONARQUBE_TOKEN is missing",
           {
             propertiesPath,
           },

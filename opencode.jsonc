@@ -80,6 +80,15 @@
     "question": "allow",
     "edit": "allow",
     "task": "allow",
+    "external_directory": {
+      "*": "ask",
+      "~/.coderabbit/reviews/**": "allow",
+      "~/.npm/_npx/**": "allow",
+      "~/.local/share/opencode/log/**": "allow",
+      "~/.cache/opencode/**": "allow",
+      "~/Library/Application Support/rtk/tee/**": "allow",
+      "/var/folders/7x/ywy68wn95m92s2l0kbrsxp5w0000gn/T/opencode/**": "allow",
+    },
     "bash": {
       "*": "allow",
       "rm *": "deny",

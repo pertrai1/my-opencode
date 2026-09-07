@@ -30,11 +30,14 @@ test("SonarQube MCP activates only for a configured target project", async (t) =
   const withoutUrl = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-url-missing-"));
   const withoutProjectKey = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-key-missing-"));
   const withProject = fs.mkdtempSync(path.join(os.tmpdir(), "sonarqube-mcp-configured-"));
+  const originalToken = process.env.SONARQUBE_TOKEN;
   t.after(() => {
     fs.rmSync(withoutProject, { recursive: true, force: true });
     fs.rmSync(withoutUrl, { recursive: true, force: true });
     fs.rmSync(withoutProjectKey, { recursive: true, force: true });
     fs.rmSync(withProject, { recursive: true, force: true });
+    if (originalToken === undefined) delete process.env.SONARQUBE_TOKEN;
+    else process.env.SONARQUBE_TOKEN = originalToken;
   });
 
   const disabled = serverConfig();
@@ -64,6 +67,13 @@ test("SonarQube MCP activates only for a configured target project", async (t) =
     path.join(withProject, "sonar-project.properties"),
     "sonar.host.url=http://127.0.0.1:9000\nsonar.projectKey=example-project\n",
   );
+  delete process.env.SONARQUBE_TOKEN;
+  const tokenMissing = serverConfig();
+  delete tokenMissing.mcp.sonarqube.environment.SONARQUBE_TOKEN;
+  const tokenMissingHooks = await SonarqubeMcp({ worktree: withProject });
+  await tokenMissingHooks.config(tokenMissing);
+  assert.equal(tokenMissing.mcp.sonarqube.enabled, false);
+
   const enabled = serverConfig();
   const enabledHooks = await SonarqubeMcp({ worktree: withProject });
   await enabledHooks.config(enabled);

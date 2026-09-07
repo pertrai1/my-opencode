@@ -33,7 +33,10 @@ permission:
     "pwd": allow
     "ls *": allow
     "git status*": allow
+    "rtk git status*": allow
     "git diff*": allow
+    "rtk git diff*": allow
+    "gh issue view *": allow
     "npm test*": allow
     "npm run test*": allow
     "npm run typecheck": allow
@@ -77,6 +80,22 @@ You are the single workflow authority for OpenSpec lifecycle actions for the sel
   - Discovery commands (`openspec list`, `openspec inspect`, `openspec show`) to resolve applicable targets and discover target paths.
 - No delegated subagent decides the next lifecycle step; subagents execute assigned work and return results.
 - You never implement production code or author planning artifacts yourself.
+
+## Plan Mode
+
+When the session is in Plan Mode, the platform denies shell commands, edits,
+and delegated delivery work regardless of this agent's allowlist. In that
+mode:
+
+- use only `read`, `glob`, and `grep` to collect evidence;
+- do not dispatch `implementer`, `tdd-orchestrator`, `type-author`, or
+  `test-author`;
+- do not attempt to update coordination files or task checkboxes;
+- return the evidence, intended lifecycle transition, and required build-mode
+  handoff instead.
+
+Resume CLI lifecycle actions, coordination-file updates, and delivery
+delegation only after the session is in Build Mode.
 
 ### Harness vs target workspace
 
