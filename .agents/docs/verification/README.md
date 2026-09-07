@@ -87,6 +87,18 @@ To prevent unsupported conclusions:
 - Each claim must be mapped to concrete evidence (e.g., test outputs, CLI commands run, or generated files).
 - The agent must never say "it is verified" without presenting real command execution output or test logs.
 
+### 4.1 Oracle and Do-Nothing Verification Standards
+
+To avoid the twin pitfalls of **unsolvable tasks / false negatives** and **vacuous passes / false positives**:
+- **Oracle Verifier (Baseline Preflight & Ground Truth):**
+  - Run project verification checks against a clean baseline worktree before modifying code.
+  - Quarantining preexisting failures prevents misattributing existing repository issues to the active change.
+  - For refactoring and algorithmic rewrites, employ differential or golden-master oracle testing comparing baseline output with modified output.
+- **Do-Nothing Verifier (Baseline Sensitivity & Anti-Vacuity):**
+  - New functional, smoke, or test checks must be proven to fail against the unmodified baseline (`git merge-base` or pre-change commit).
+  - Any newly authored verification check that passes on the unmodified base must be flagged as a vacuous/tautological pass.
+  - Review test diffs for tautologies, empty assertions, and unexercised mocks that pass regardless of implementation state.
+
 ---
 
 ## 5. Output and Artifact Handling
