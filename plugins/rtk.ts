@@ -1,15 +1,5 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
-function getCommandArgs(args: unknown): Record<string, unknown> | null {
-  if (!args || typeof args !== "object") return null
-  return args as Record<string, unknown>
-}
-
-function isShellTool(tool: unknown): boolean {
-  const normalizedTool = String(tool ?? "").toLowerCase()
-  return normalizedTool === "bash" || normalizedTool === "shell"
-}
-
 // RTK OpenCode plugin — rewrites commands to use rtk for token savings.
 // Requires: rtk >= 0.23.0 in PATH.
 //
@@ -17,7 +7,7 @@ function isShellTool(tool: unknown): boolean {
 // which is the single source of truth (src/discover/registry.rs).
 // To add or change rewrite rules, edit the Rust registry — not this file.
 
-export async function Rtk({ $ }: PluginInput): Promise<Hooks> {
+export const RtkOpenCodePlugin = async ({ $ }: PluginInput): Promise<Hooks> => {
   try {
     await $`which rtk`.quiet()
   } catch {
@@ -27,18 +17,19 @@ export async function Rtk({ $ }: PluginInput): Promise<Hooks> {
 
   return {
     "tool.execute.before": async (input, output) => {
-      if (!isShellTool(input?.tool)) return
-      const args = getCommandArgs(output?.args)
-      if (!args) return
+      const tool = String(input?.tool ?? "").toLowerCase()
+      if (tool !== "bash" && tool !== "shell") return
+      const args = output?.args
+      if (!args || typeof args !== "object") return
 
-      const command = args.command
+      const command = (args as Record<string, unknown>).command
       if (typeof command !== "string" || !command) return
 
       try {
         const result = await $`rtk rewrite ${command}`.quiet().nothrow()
         const rewritten = String(result.stdout).trim()
         if (rewritten && rewritten !== command) {
-          args.command = rewritten
+          ;(args as Record<string, unknown>).command = rewritten
         }
       } catch {
         return

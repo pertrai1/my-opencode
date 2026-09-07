@@ -6,7 +6,7 @@
     "ini": "6.0.0"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "1.17.11"
+    "@opencode-ai/plugin": "1.18.29"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
