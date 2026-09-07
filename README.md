@@ -18,9 +18,9 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Local models
 
-- Magnitude manages local model downloads and serving via its CLI (`npm i -g @magnitudedev/cli`). The background service (`magnitude service install`, `magnitude service start`) serves models at `http://127.0.0.1:10100`.
-- Pick a model with `magnitude catalog status`, then `magnitude catalog recommendations [--preference balanced|faster|smarter]`; inspect with `magnitude catalog show <model-id>`, download with `magnitude catalog pull <model-id>`, check progress with `magnitude models status <model-id>`, and load with `magnitude models load <model-id>`.
-- Connected to OpenCode with `magnitude connections add opencode --set-model <model-id> --install-skill` (refresh later with `magnitude connections sync opencode`). Switch models in-session with `/models` (`magnitude/<model-id>`). Current default: `magnitude/qwen3.8-27b:gguf:q4` (Qwen3.8 27B Q4, chosen for coding).
+- Magnitude manages local model downloads and serving via `npx -y @magnitudedev/cli`. Its background service (`npx -y @magnitudedev/cli service install`, `npx -y @magnitudedev/cli service start`) serves models at `http://127.0.0.1:10100`.
+- Pick a model with `npx -y @magnitudedev/cli catalog status`, then `npx -y @magnitudedev/cli catalog recommendations [--preference balanced|faster|smarter]`; inspect with `npx -y @magnitudedev/cli catalog show <model-id>`, download with `npx -y @magnitudedev/cli catalog pull <model-id>`, check progress with `npx -y @magnitudedev/cli models status <model-id>`, and load with `npx -y @magnitudedev/cli models load <model-id>`.
+- Connect to OpenCode with `npx -y @magnitudedev/cli connections add opencode --set-model <model-id> --install-skill` (refresh later with `npx -y @magnitudedev/cli connections sync opencode`). Switch models in-session with `/models` (`magnitude/<model-id>`). Current default: `magnitude/qwen3.8-27b:gguf:q4` (Qwen3.8 27B Q4, chosen for coding).
 - Repo convention: keep provider and model settings in `opencode.jsonc`. Magnitude writes `opencode.json`, so fold its changes into `opencode.jsonc` and delete the stray file.
 
 ## Graph
@@ -28,7 +28,7 @@ Global configuration for [opencode](https://opencode.ai).
 - `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
 - `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools.
+- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools, run with `npx -y gitnexus`.
 - [Code Review Graph](https://code-review-graph.com) — local-first knowledge graph tooling used by `crg-plugin.ts`.
 - **Optional repo tool: GitNexus** — repository knowledge graph and impact-analysis tooling for larger or unfamiliar codebases. Most useful when agents need to trace callers, dependency impact, architecture relationships, or PR risk across many files. Best added when a repository is large enough that ordinary grep-and-read workflows stop being efficient.
 
@@ -41,8 +41,8 @@ Global configuration for [opencode](https://opencode.ai).
 - `agents/production-readiness-reviewer.md` — reviews diffs for reliability and production safety risks.
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
 - `commands/code-review.md` — run a code review workflow against current changes.
-- [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review.
-- [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow.
+- [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review, run with `npx -y difit`.
+- [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow, run with `npx -y diffity`.
 - [hunk](https://hunk.dev) — review-first diff viewer for agent-authored changes.
 
 ## Memory
@@ -81,9 +81,9 @@ Run `node ~/.config/opencode/scripts/quality-verification.mjs --changed` from a 
 - **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
 - **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
 - **OpenSpec Verification Summary** — change-local `verification.md` files now record intent, completed work, evidence checked, functional check, test coverage check, integration check, documentation impact, scope control, unverified areas, actions not taken, divergences, and recommendation.
-- **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
-- **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
-- **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
+- **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Run with `npx -y jscpd`. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
+- **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Run with `npx -y knip`. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
+- **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Run Fallow with `npx -y fallow`. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
 
 ## Security
 
@@ -162,4 +162,4 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
 6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)
-7. `npm i -g @magnitudedev/cli`, then `magnitude service install` and `magnitude service start` for local models (see Local models above)
+7. `npx -y @magnitudedev/cli service install`, then `npx -y @magnitudedev/cli service start` for local models (see Local models above)
