@@ -8,11 +8,17 @@ This document defines the canonical evaluation rubric and operating expectations
 
 - **User-Invoked Only:** Verification is a user-invoked workflow (e.g., via `/verify`).
 - **No Automatic Gate:** Verification is never an automatic, mandatory workflow gate in the agent loop. The user decides when to request it.
-- **Progressive Disclosure:** Skills and commands must reference this shared guidance (e.g., pointing to `.agents/docs/verification/README.md`) instead of duplicating the full rubric, maintaining a single source of truth.
+- **Progressive Disclosure:** Resolve this shared guidance from `~/.config/opencode/.agents/docs/verification/README.md` and its sibling `TEMPLATE.md`, not from target-relative copies.
 
 ---
 
 ## 2. Source of Truth & Precedence
+
+Use the explicit target directory, otherwise cwd. Record the absolute command
+directory and Git root separately; preserve nested package scope and ask only
+for material ambiguity. User requirements and target instructions override
+harness metrics. Extra global quality checks are advisory unless explicitly
+adopted as gates.
 
 Verification must utilize a standard core rubric combined with source-specific checks. The selected source of truth is resolved via the following precedence:
 
@@ -50,6 +56,7 @@ Provide a concise, human-readable summary of the completed work so a human can a
 ### Section 4: Automated Checks & Test Results
 - Run and display the output of relevant automated checks, linters, and test suites (e.g., `pytest`, `npm test`, `eslint`, `mypy`).
 - Include the exact command run, exit status, and a condensed summary of passes/failures.
+- Use `node ~/.config/opencode/scripts/checks-runner.mjs --target <command-directory>` for Node defaults, or repeatable `--command '["executable","arg"]'` options for arbitrary target-authorized checks. Record the target-local report pair, tools/environment, and before/after content fingerprints. Missing or changed fingerprints, later edits, or changed commands/tools/dependencies/environment require reruns. Git status paths alone do not prove freshness; ignored inputs, submodules, non-Git targets, and concurrent edits need separate evidence.
 
 ### Section 5: Requirements-to-Evidence Table
 A structured matrix mapping each requirement from the source of truth to concrete, reproducible evidence.
@@ -91,7 +98,7 @@ To prevent unsupported conclusions:
 
 To avoid the twin pitfalls of **unsolvable tasks / false negatives** and **vacuous passes / false positives**:
 - **Oracle Verifier (Baseline Preflight & Ground Truth):**
-  - Run project verification checks against a clean baseline worktree before modifying code.
+   - Run project verification checks against the starting worktree before modifying code; record dirty state and existing failures. Do not create, reset, or stash baseline worktrees or automate integration lifecycle actions. Mark unavailable clean-baseline proof explicitly.
   - Quarantining preexisting failures prevents misattributing existing repository issues to the active change.
   - For refactoring and algorithmic rewrites, employ differential or golden-master oracle testing comparing baseline output with modified output.
 - **Do-Nothing Verifier (Baseline Sensitivity & Anti-Vacuity):**
@@ -104,7 +111,7 @@ To avoid the twin pitfalls of **unsolvable tasks / false negatives** and **vacuo
 ## 5. Output and Artifact Handling
 
 - **Concise Chat Output:** When run in interactive chat, the agent's output should be concise, providing only the final verdict (disposition) and the file path to the saved full artifact.
-- **Saved Artifact Path:** Save the full markdown report under `.agents/docs/verification/`.
+- **Saved Artifact Path:** Save the full markdown report under the target command directory's `.agents/reports/`.
 - **Saved Artifact Naming:** `verification-YYYYMMDD-HHMMSS-<source-slug>.md` (e.g., `verification-20260814-143022-issue-1.md`) containing a UTC timestamp with seconds to prevent collisions.
 - **Required Metadata:** The saved artifact must record:
   - Repository revision (git SHA).
@@ -117,9 +124,9 @@ To avoid the twin pitfalls of **unsolvable tasks / false negatives** and **vacuo
 
 ## 6. GitHub Issue & PR Integration
 
-- **Issue Comments:** When a linked GitHub Issue exists, the complete verification report should be posted as a comment on the issue by default.
+- **Issue Comments:** Local-only by default (no remote writes). Post to a linked GitHub Issue only when `--comment` is explicitly supplied. Verification does not authorize commits, pushes, or PR creation.
 - **Full Report:** The posted comment must contain the full verification report, not just a high-level summary.
-- **Opt-Out:** The user can opt out of posting comments by using the `--no-comment` flag.
+- **Opt-Out:** Retain `--no-comment`; it takes precedence over `--comment`.
 
 ---
 

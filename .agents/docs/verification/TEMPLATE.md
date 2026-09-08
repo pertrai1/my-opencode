@@ -3,7 +3,8 @@
 ## Metadata
 
 - Source of truth: <issue URL, issue number, OpenSpec change, or file path>
-- Target repository: `<absolute path>`
+- Command directory: `<absolute path; explicit target or cwd>`
+- Git root: `<absolute path or unavailable>`
 - Verification timestamp (UTC): `<YYYY-MM-DDTHH:MM:SSZ>`
 - Current revision: `<git SHA>`
 - Base branch and revision: `<branch>` / `<git SHA>`
@@ -51,6 +52,11 @@ repository conventions, scope control, and stray debugging statements.
 | `<exact command>` | `<path>` | `<status>` | `<pass/fail/blocked>` | `<output or path>` |
 
 Include relevant manual reproduction steps when automation is unavailable.
+Record the checks report pair, before/after content fingerprints, tools and
+relevant environment, and whether later changes invalidate the evidence.
+Separate target-required gates from unadopted advisory global quality checks.
+Record starting dirty state and existing failures; mark unavailable baseline
+proof explicitly rather than creating/resetting/stashing a baseline worktree.
 
 ## Requirements-to-Evidence Table
 

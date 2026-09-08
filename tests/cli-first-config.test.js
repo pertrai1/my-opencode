@@ -87,3 +87,13 @@ test("CLI-first guidance and catalog remain available to every agent", () => {
     assert.ok(catalog.includes(`| \`${agent}\``), `${agent} must appear in the capability matrix`);
   }
 });
+
+test("target precedence and lean escalation match available permissions", () => {
+  assert.equal(config.agent.lean.permission.task, "deny");
+  assert.equal(config.agent.lean.permission.question, "deny");
+  assert.match(cliFirst, /explicit target directory, otherwise.*current working\ndirectory/);
+  assert.match(cliFirst, /nested package stays the command directory/);
+  assert.match(cliFirst, /advisory unless the user\nor target explicitly adopts/);
+  assert.match(cliFirst, /ask the user to switch to `build`/);
+  assert.match(cliFirst, /Before\/after mismatch, absent fingerprints/);
+});
