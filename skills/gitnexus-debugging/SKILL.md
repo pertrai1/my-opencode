@@ -1,9 +1,14 @@
 ---
 name: gitnexus-debugging
-description: "Use when the user is debugging a bug, tracing an error, or asking why something fails. Examples: \"Why is X failing?\", \"Where does this error come from?\", \"Trace this bug\""
+description: "Use only when the user explicitly requests GitNexus graph analysis for debugging an error or failure."
 ---
 
 # Debugging with GitNexus
+
+Use the GitNexus CLI in this configuration. Run `gitnexus <command>` when it
+is installed, otherwise use `npx --yes gitnexus@1.6.11 <command>`. Do not
+assume GitNexus MCP resources are available; translate the examples below to
+their matching CLI subcommands.
 
 ## When to Use
 

@@ -1,7 +1,7 @@
 ---
 name: grill-with-docs
-description: A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.
+description: Use when the user explicitly asks for a design interview that records resulting decisions in ADRs or domain documentation.
 disable-model-invocation: true
 ---
 
-Run a `/grilling` session, using the `/domain-modeling` skill.
+Ask focused questions one decision at a time. Record only durable decisions and approved vocabulary in the repository's existing ADR or domain-documentation format.

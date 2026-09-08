@@ -1,11 +1,14 @@
 ---
 name: gitnexus-cli
-description: "Use when the user needs to run GitNexus CLI commands like analyze/index a repo, check status, clean the index, generate a wiki, or list indexed repos. Examples: \"Index this repo\", \"Reanalyze the codebase\", \"Generate a wiki\""
+description: "Use only when the user explicitly requests a GitNexus CLI operation, such as indexing, status, cleanup, or wiki generation."
 ---
 
 # GitNexus CLI Commands
 
-Commands below prefer the direct `gitnexus <command>` CLI. Some installations may also create a project-local `node .gitnexus/run.cjs <command>` wrapper, but that file is not guaranteed to exist, so do not assume it is present.
+Commands below prefer the direct `gitnexus <command>` CLI. When it is not
+installed, use `npx --yes gitnexus@1.6.11 <command>`. Some installations may
+also create a project-local `node .gitnexus/run.cjs <command>` wrapper, but
+that file is not guaranteed to exist, so do not assume it is present.
 
 > **Not analyzed yet, or a project-local wrapper like `node .gitnexus/run.cjs` reports `Cannot find module`**? Do not assume the wrapper should exist. First try the direct CLI from the repo root. After explicit user approval, add `/.gitnexus/` to the repo root `.gitignore` if needed, confirm `gitnexus analyze --help` supports the flags you plan to use, then prefer:
 >

@@ -1,9 +1,14 @@
 ---
 name: gitnexus-pr-review
-description: "Use when the user wants to review a pull request, understand what a PR changes, assess risk of merging, or check for missing test coverage. Examples: \"Review this PR\", \"What does PR #42 change?\", \"Is this PR safe to merge?\""
+description: "Use only when the user explicitly requests a GitNexus-assisted pull-request review or graph-based risk analysis."
 ---
 
 # PR Review with GitNexus
+
+Use the GitNexus CLI in this configuration. Run `gitnexus <command>` when it
+is installed, otherwise use `npx --yes gitnexus@1.6.11 <command>`. Do not
+assume GitNexus MCP resources are available; translate the examples below to
+their matching CLI subcommands.
 
 ## When to Use
 

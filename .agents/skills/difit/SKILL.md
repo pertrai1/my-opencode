@@ -1,6 +1,6 @@
 ---
 name: difit
-description: Ask the user for a code review through difit after code changes.
+description: Use when the user explicitly requests an interactive difit review of a diff.
 ---
 
 # Difit

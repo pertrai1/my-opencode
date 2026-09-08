@@ -1,9 +1,14 @@
 ---
 name: gitnexus-refactoring
-description: "Use when the user wants to rename, extract, split, move, or restructure code safely. Examples: \"Rename this function\", \"Extract this into a module\", \"Refactor this class\", \"Move this to a separate file\""
+description: "Use only when the user explicitly requests GitNexus graph analysis before a refactor."
 ---
 
 # Refactoring with GitNexus
+
+Use the GitNexus CLI in this configuration. Run `gitnexus <command>` when it
+is installed, otherwise use `npx --yes gitnexus@1.6.11 <command>`. Do not
+assume GitNexus MCP resources are available; translate the examples below to
+their matching CLI subcommands.
 
 ## When to Use
 
