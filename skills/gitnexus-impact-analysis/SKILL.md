@@ -1,9 +1,14 @@
 ---
 name: gitnexus-impact-analysis
-description: "Use when the user wants to know what will break if they change something, or needs safety analysis before editing code. Examples: \"Is it safe to change X?\", \"What depends on this?\", \"What will break?\""
+description: "Use only when the user explicitly requests GitNexus graph analysis of a change's impact or blast radius."
 ---
 
 # Impact Analysis with GitNexus
+
+Use the GitNexus CLI in this configuration. Run `gitnexus <command>` when it
+is installed, otherwise use `npx --yes gitnexus@1.6.11 <command>`. Do not
+assume GitNexus MCP resources are available; translate the examples below to
+their matching CLI subcommands.
 
 ## When to Use
 

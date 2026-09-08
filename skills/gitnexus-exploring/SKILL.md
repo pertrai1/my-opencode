@@ -1,9 +1,14 @@
 ---
 name: gitnexus-exploring
-description: "Use when the user asks how code works, wants to understand architecture, trace execution flows, or explore unfamiliar parts of the codebase. Examples: \"How does X work?\", \"What calls this function?\", \"Show me the auth flow\""
+description: "Use only when the user explicitly requests GitNexus graph analysis to explore code, architecture, or execution flows."
 ---
 
 # Exploring Codebases with GitNexus
+
+Use the GitNexus CLI in this configuration. Run `gitnexus <command>` when it
+is installed, otherwise use `npx --yes gitnexus@1.6.11 <command>`. Do not
+assume GitNexus MCP resources are available; translate `query`, `context`, and
+`impact` examples below to their matching CLI subcommands.
 
 ## When to Use
 

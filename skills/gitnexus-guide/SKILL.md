@@ -1,17 +1,19 @@
 ---
 name: gitnexus-guide
-description: "Use when the user asks about GitNexus itself — available tools, how to query the knowledge graph, MCP resources, graph schema, or workflow reference. Examples: \"What GitNexus tools are available?\", \"How do I use GitNexus?\""
+description: "Use only when the user explicitly asks how to use GitNexus, its graph, resources, or CLI."
 ---
 
 # GitNexus Guide
 
-Quick reference for all GitNexus MCP tools, resources, and the knowledge graph schema.
+Quick reference for the GitNexus CLI and knowledge graph. Run `gitnexus
+<command>` when it is installed, otherwise use `npx --yes gitnexus@1.6.11
+<command>`. Do not assume GitNexus MCP resources are available.
 
-## Always Start Here
+## When GitNexus Is Requested
 
-For any task involving code understanding, debugging, impact analysis, or refactoring:
+For an explicit GitNexus task:
 
-1. **Read `gitnexus://repo/{name}/context`** — codebase overview + check index freshness
+1. **Run `gitnexus status`** — check index freshness from the repository root
 2. **Match your task to a skill below** and **read that skill file**
 3. **Follow the skill's workflow and checklist**
 

@@ -1,6 +1,6 @@
 ---
 name: openspec-bulk-archive-change
-description: Archive multiple completed changes at once. Use when archiving several parallel changes.
+description: Use only when the user explicitly invokes the OpenSpec bulk-archive workflow.
 allowed-tools: Bash(openspec:*)
 license: MIT
 compatibility: Requires openspec CLI.
@@ -11,6 +11,11 @@ metadata:
 ---
 
 Archive multiple completed changes in a single operation.
+
+In this configuration, route `/opsx-bulk-archive` through
+`sdlc-orchestrator`, which owns verification gates, human approval, and
+archive readiness. Do not use the direct steps below when the orchestrator is
+available.
 
 This skill allows you to batch-archive changes, handling spec conflicts intelligently by checking the codebase to determine what's actually implemented.
 

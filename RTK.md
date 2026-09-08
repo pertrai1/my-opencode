@@ -21,9 +21,10 @@ which rtk             # Verify correct binary
 
 ⚠️ **Name collision**: If `rtk gain` fails, you may have reachingforthejack/rtk (Rust Type Kit) installed instead.
 
-## Hook-Based Usage
+## OpenCode Plugin Usage
 
-All other commands are automatically rewritten by the Claude Code hook.
+When `plugins/rtk.ts` is installed and OpenCode is restarted, Bash and shell
+commands are automatically rewritten before execution.
 Example: `git status` → `rtk git status` (transparent, 0 tokens overhead)
 
-Refer to CLAUDE.md for full command reference.
+Refer to RTK's command reference for supported rewrites.

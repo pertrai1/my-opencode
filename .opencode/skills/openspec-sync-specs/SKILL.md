@@ -1,6 +1,6 @@
 ---
 name: openspec-sync-specs
-description: Sync delta specs from a change to main specs. Use when the user wants to update main specs with changes from a delta spec, without archiving the change.
+description: Use only when the user explicitly invokes the OpenSpec spec-sync workflow.
 allowed-tools: Bash(openspec:*)
 license: MIT
 compatibility: Requires openspec CLI.
@@ -11,6 +11,10 @@ metadata:
 ---
 
 Sync delta specs from a change to main specs.
+
+In this configuration, route `/opsx-sync` through `sdlc-orchestrator`, which
+owns sync gating and delegates the merge. Do not use the direct steps below
+when the orchestrator is available.
 
 This is an **agent-driven** operation - you will read delta specs and directly edit main specs to apply the changes. This allows intelligent merging (e.g., adding a scenario without copying the entire requirement).
 
