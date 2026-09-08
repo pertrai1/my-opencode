@@ -35,6 +35,11 @@ permission:
     "*": deny
     "pwd": allow
     "ls *": allow
+    "docker version*": allow
+    "docker info*": allow
+    "docker ps*": allow
+    "docker compose *": allow
+    "docker run *": allow
     "npm test*": allow
     "npm run test*": allow
     "pnpm test*": allow

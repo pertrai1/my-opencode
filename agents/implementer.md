@@ -26,6 +26,11 @@ permission:
     "*": deny
     "pwd": allow
     "ls *": allow
+    "docker version*": allow
+    "docker info*": allow
+    "docker ps*": allow
+    "docker compose *": allow
+    "docker run *": allow
     "node ~/.config/opencode/scripts/halstead-analyzer.js": allow
     "node ~/.config/opencode/scripts/halstead-analyzer.js *": allow
     "npm test*": allow

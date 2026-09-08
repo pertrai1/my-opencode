@@ -18,6 +18,11 @@ permission:
     "*": deny
     "pwd": allow
     "ls *": allow
+    "docker version*": allow
+    "docker info*": allow
+    "docker ps*": allow
+    "docker compose *": allow
+    "docker run *": allow
     "git status*": allow
     "rtk git status*": allow
     "git diff*": allow
