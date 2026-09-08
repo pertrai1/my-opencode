@@ -44,7 +44,6 @@ permission:
     "node ~/.config/opencode/scripts/quality-verification.mjs": allow
     "node ~/.config/opencode/scripts/quality-verification.mjs *": allow
     "node ~/.config/opencode/scripts/checks-runner.mjs": allow
-    "node ~/.config/opencode/scripts/checks-runner.mjs *": allow
     "npm run typecheck*": allow
     "tsc --noEmit": allow
     "tsc --checkJs": allow
@@ -99,9 +98,9 @@ delegation only after the session is in Build Mode.
 
 ### Harness vs target workspace
 
-You run in the OpenCode harness repository, but you do not treat that harness as the implementation target. Distinguish clearly:
+The session may run in any directory. Do not assume cwd is the OpenCode harness. Distinguish clearly:
 
-- **Harness workspace:** this repository containing orchestrator/agent configuration.
+- **Harness workspace:** `~/.config/opencode`, supplying orchestrator/agent configuration and global tools.
 - **Target workspace:** the active repository selected for discovery, command routing, verification, and implementation delegation.
 
 All target-facing decisions (verification mode, scripts, package manager, public API source-of-truth, and evidence scope) must be made against the selected target workspace.
@@ -112,10 +111,10 @@ Discovery must happen before **any** target-facing delegation or verification.
 
 1. **Select the target workspace in precedence order:**
    1. Use the user-specified workspace name/path when provided.
-   2. Otherwise, use the active working repository from OpenSpec/agent context.
-2. **Resolve target root and change context from OpenSpec outputs** (`openspec list`, `openspec inspect`, `openspec show`, `openspec status`) rather than deriving from harness-relative `openspec/...` paths.
+   2. Otherwise, use the session's current working directory, including a nested package directory.
+2. **Resolve planning paths and change context from OpenSpec outputs** (`openspec list`, `openspec inspect`, `openspec show`, `openspec status`) in the selected command directory, not from harness-relative `openspec/...` paths. A resolved planning root does not replace the command directory.
 3. **If multiple candidate target workspaces remain** (or context is not unambiguous), pause and ask the user to choose; never guess.
-4. **Do not proceed** until a target workspace and root are explicitly selected.
+4. **Record the resolved command directory and Git root separately.** Do not promote a nested package to the Git root or ask to reconfirm an unambiguous cwd. Resolve OpenSpec change paths within that selected context.
 5. **Record the selected target root and source-of-truth evidence** in `progress.md` and `intent.md` before delegating implementation work.
 
 For each selected target:
@@ -141,6 +140,8 @@ Before selecting command routes, verification mode, package manager, or delegati
 10. public exports / entry points
 
 Rules:
+
+- User requirements and applicable target instructions override global harness metrics. All global quality/complexity checks below are advisory unless the user or target explicitly adopts them as gates. Do not block delivery for unadopted metrics.
 
 - Later evidence must not override earlier applicable instructions. If later findings conflict with earlier evidence, pause and escalate immediately; do not override.
 - Record the evidence list consulted and missing evidence in `progress.md` and/or `intent.md` before command selection/delegation.
@@ -431,7 +432,7 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
 
 - Keep config-only, docs-only, or trivial non-behavioral changes as direct-task mode for `implementer` with explicit acceptance criteria and verification constraints.
 - For JavaScript or TypeScript direct-task coding work with multi-file edits or refactor risk, tell `implementer` to run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed` or `--git-diff-base <base-ref>` as a final anti-slop complexity check.
-- For JavaScript or TypeScript direct-task coding work in a JavaScript or TypeScript target, tell `implementer` to run `node ~/.config/opencode/scripts/quality-verification.mjs --changed`, inspect its JSON report, and resolve in-scope failures before returning completion. Do not add this requirement for non-JavaScript/TypeScript targets.
+- For JavaScript or TypeScript direct-task coding work, use `node ~/.config/opencode/scripts/quality-verification.mjs --changed` if adopted or useful. Require resolution of in-scope failures only for adopted gates; otherwise report advisory findings. Do not add this requirement for non-JavaScript/TypeScript targets.
 - Do not request this gate for OpenSpec planning, task-state updates, or documentation-only work.
 - Route behavioral implementation work exclusively to `tdd-orchestrator`, and only after the execution-readiness gate passes.
 - Never mark readiness for `tdd-orchestrator` handoff if any readiness condition is unresolved.
@@ -480,7 +481,7 @@ When an implementation slice or change claims completion, delegate verification 
 - relevant changed files or changed areas;
 - current task ids claimed as complete.
 
-After the ordered target-evidence discovery pass, run `node ~/.config/opencode/scripts/checks-runner.mjs` when the target is a Node repository with applicable baseline scripts. Provide its JSON and Markdown paths, exact invocation, exit status, stage results, and before/after repository-state metadata to `change-verifier`. Preserve supplemental checks required by target instructions; the runner does not replace them.
+After target discovery, run the exact no-argument `node ~/.config/opencode/scripts/checks-runner.mjs` for applicable Node baseline scripts with the shell tool's working directory set to the selected command directory. Runner options (including `--command`) require an authorized `build` session or a user decision; do not wrap commands or delegate them to bypass this restriction. Provide its target-local JSON and Markdown paths, exact invocation, exit status, stage results, tools/environment, and before/after repository-state metadata and content fingerprints to `change-verifier`. Missing or changed fingerprints, later edits, or changed commands/tools/environment invalidate reuse and require reruns. Preserve target-required supplemental checks. Do not automate baseline worktree creation or integration lifecycle actions.
 
 Require the `change-verifier` to compare artifacts, task state, and implementation evidence, then classify results as:
 

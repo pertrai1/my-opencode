@@ -1,14 +1,18 @@
 ---
-description: Run target-repository baseline Node checks and preserve reusable evidence.
+description: Run target-repository checks and preserve reusable evidence.
 agent: general
 model: openai/gpt-5.6-luna
 ---
 
-Run the checks runner from the active target worktree. Before running it, inspect
+Use the explicit target directory, otherwise cwd. Keep the command directory
+separate from the Git root (especially for nested packages); ask only if ambiguous.
+Run the checks runner from that directory. Before running it, inspect
 applicable target-repository instructions (`AGENTS.md`, README, and project
-verification documentation). The runner covers only the conventional Node
-`typecheck`, `lint`, and `test` package scripts; it does not replace any
-additional project-required checks.
+verification documentation). User requirements and target instructions override
+harness metrics; extra global quality checks are advisory unless adopted.
+By default the runner covers conventional Node `typecheck`, `lint`, and `test`
+package scripts. Repeatable `--command` JSON argv arrays replace these defaults
+for arbitrary target-required commands, without an implicit shell or new manifest.
 
 Interpret `$ARGUMENTS` as runner options:
 
@@ -16,6 +20,7 @@ Interpret `$ARGUMENTS` as runner options:
 no arguments: node ~/.config/opencode/scripts/checks-runner.mjs
 target path:  node ~/.config/opencode/scripts/checks-runner.mjs --target <path>
 raw options:  node ~/.config/opencode/scripts/checks-runner.mjs <options>
+custom:       node ~/.config/opencode/scripts/checks-runner.mjs --command '["make","test"]'
 ```
 
 After completion:
@@ -29,6 +34,7 @@ After completion:
    condensed redacted diagnostics; distinguish a project-check failure from a
    runner/setup/report error.
 5. State whether the report is current-run evidence. A prior report is only
-   historical memory; compare its recorded repository state with the current
-   target workspace and rerun before presenting it as current verification.
+    historical memory; compare its before/after content fingerprints and current
+    target workspace, commands, tools, and relevant environment. Missing or changed
+    evidence requires a rerun; status paths alone do not establish freshness.
 6. State which target-required checks remain outside this baseline runner.

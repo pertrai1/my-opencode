@@ -79,7 +79,7 @@ Section requirements:
 - `Divergences`: describe any mismatch between implementation, tasks, design, or spec. State `None.` when there is no material divergence.
 - `Recommendation`: state one of `ready for human approval`, `needs follow-up before human approval`, or `not ready for archive`, with a short explanation.
 
-Do not claim evidence you did not receive. A checks report is durable historical memory, not automatic proof of the current workspace: if its repository-state metadata is missing, mismatched, or superseded by later changes, mark baseline checks `unverified` and request a current-run report from the orchestrator. If a required section has no applicable content, say so explicitly.
+Do not claim evidence you did not receive. A checks report is durable historical memory, not automatic proof of the current workspace: missing or mismatched before/after content fingerprints, later content edits, or changed commands/tools/environment invalidate reuse. Status paths alone are insufficient. Mark affected checks `unverified` and request a current-run report from the orchestrator. User requirements and target instructions override harness metrics; unadopted global quality checks are advisory, not blockers. Distinguish the command directory from the Git root. If a required section has no applicable content, say so explicitly.
 
 Visible `unverified` is required whenever evidence is missing, unavailable, or intentionally not gathered. Do not silently omit a judgment area and do not treat an omitted check as a pass.
 
