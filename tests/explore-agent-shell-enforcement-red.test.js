@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 require('./helpers/register-ts');
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 test('Explore Agent - shell hook rejects RTK-wrapped destructive commands and shell-eval bypasses', async () => {
   const plugin = await SafetyPlugin({ directory: __dirname });

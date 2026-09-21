@@ -35,7 +35,7 @@ test.after(() => {
   delete require.extensions['.ts'];
 });
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 function createMockProjectDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-test-'));

@@ -1,4 +1,8 @@
-import type { Hooks, PluginInput } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
+
+const execFileAsync = promisify(execFile)
 
 function getCommandArgs(args: unknown): Record<string, unknown> | null {
   if (!args || typeof args !== "object") return null
@@ -10,39 +14,29 @@ function isShellTool(tool: unknown): boolean {
   return normalizedTool === "bash" || normalizedTool === "shell"
 }
 
-// RTK OpenCode plugin — rewrites commands to use rtk for token savings.
-// Requires: rtk >= 0.23.0 in PATH.
-//
-// This is a thin delegating plugin: all rewrite logic lives in `rtk rewrite`,
-// which is the single source of truth (src/discover/registry.rs).
-// To add or change rewrite rules, edit the Rust registry — not this file.
+export default Plugin.define({
+  id: "rtk",
+  async setup(ctx) {
+    try {
+      await execFileAsync("which", ["rtk"])
+    } catch {
+      console.warn("[rtk] rtk binary not found in PATH — plugin disabled")
+      return
+    }
 
-export async function Rtk({ $ }: PluginInput): Promise<Hooks> {
-  try {
-    await $`which rtk`.quiet()
-  } catch {
-    console.warn("[rtk] rtk binary not found in PATH — plugin disabled")
-    return {}
-  }
-
-  return {
-    "tool.execute.before": async (input, output) => {
-      if (!isShellTool(input?.tool)) return
-      const args = getCommandArgs(output?.args)
-      if (!args) return
-
-      const command = args.command
-      if (typeof command !== "string" || !command) return
+    await ctx.tool.hook("execute.before", async (event) => {
+      if (!isShellTool(event.tool)) return
+      const args = getCommandArgs(event.input)
+      if (!args || typeof args.command !== "string" || !args.command) return
 
       try {
-        const result = await $`rtk rewrite ${command}`.quiet().nothrow()
-        const rewritten = String(result.stdout).trim()
-        if (rewritten && rewritten !== command) {
-          args.command = rewritten
-        }
+        const { stdout } = await execFileAsync("rtk", ["rewrite", args.command])
+        const rewritten = stdout.trim()
+        if (rewritten && rewritten !== args.command) args.command = rewritten
       } catch {
+        // A failed rewrite must not prevent the original command from running.
         return
       }
-    },
-  }
-}
+    })
+  },
+})

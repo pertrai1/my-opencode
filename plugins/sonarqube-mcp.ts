@@ -1,5 +1,4 @@
-import type { Hooks, PluginInput } from "@opencode-ai/plugin";
-import { lookup } from "node:dns/promises";
+import { Plugin } from "@opencode/plugin";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -41,77 +40,44 @@ function removeDockerAddHost(command: string[]): string[] {
   return nextCommand;
 }
 
-async function addResolvedHostAlias(
-  command: string[],
-  sonarUrl: string,
-): Promise<string[]> {
-  try {
-    const hostname = new URL(sonarUrl).hostname;
-    if (!hostname) return command;
-
-    const { address } = await lookup(hostname);
-    const nextCommand = removeDockerAddHost(command);
-    const imageIndex = nextCommand.findIndex(
-      (part) => !part.startsWith("-") && part.includes("/"),
-    );
-    if (imageIndex === -1) return command;
-
-    nextCommand.splice(imageIndex, 0, "--add-host", `${hostname}:${address}`);
-    return nextCommand;
-  } catch {
-    return removeDockerAddHost(command);
-  }
-}
-
-export async function SonarqubeMcp({ worktree }: PluginInput): Promise<Hooks> {
-  return {
-    config: async (config) => {
-      const server = config.mcp?.sonarqube;
-      if (!server) return;
-      if (server.type !== "local") return;
-
-      const environment = {
-        ...(server.environment && typeof server.environment === "object"
-          ? server.environment
-          : {}),
-      } as Record<string, string>;
-
-      const propertiesPath = join(
-        worktree ?? process.cwd(),
-        "sonar-project.properties",
-      );
-      if (!existsSync(propertiesPath)) {
-        server.enabled = false;
+export default Plugin.define({
+  id: "sonarqube-mcp",
+  async setup(ctx) {
+    const propertiesPath = join(ctx.location.directory, "sonar-project.properties");
+    if (!existsSync(propertiesPath)) {
+      await ctx.mcp.transform((editor) => editor.update("sonarqube", (config) => {
+        const local = config as Extract<typeof config, { type: "local" }>;
+        const environment = local.environment ?? {};
+        local.disabled = true;
         clearSonarqubeEnvironment(environment);
-        server.environment = environment;
-        return;
-      }
-
-      const properties = parseProperties(readFileSync(propertiesPath, "utf8"));
-      const sonarUrl = properties["sonar.host.url"];
-      if (!sonarUrl) {
-        server.enabled = false;
+        local.environment = environment;
+      }));
+      return;
+    }
+    const properties = parseProperties(readFileSync(propertiesPath, "utf8"));
+    const sonarUrl = properties["sonar.host.url"];
+    if (!sonarUrl) {
+      console.warn("[sonarqube-mcp] MCP disabled because sonar.host.url is missing", { propertiesPath });
+      await ctx.mcp.transform((editor) => editor.update("sonarqube", (config) => {
+        const local = config as Extract<typeof config, { type: "local" }>;
+        const environment = local.environment ?? {};
+        local.disabled = true;
         clearSonarqubeEnvironment(environment);
-        server.environment = environment;
-        console.warn(
-          "[sonarqube-mcp] MCP disabled because sonar.host.url is missing",
-          {
-            propertiesPath,
-          },
-        );
-        return;
-      }
-
-      environment.SONARQUBE_URL = sonarUrl;
-      server.command = await addResolvedHostAlias(server.command, sonarUrl);
-      if (properties["sonar.projectKey"]) {
-        environment.SONARQUBE_PROJECT_KEY = properties["sonar.projectKey"];
-      } else {
-        delete environment.SONARQUBE_PROJECT_KEY;
-      }
-
-      server.enabled = true;
-      server.environment = environment;
-    },
-  };
-}
+        local.environment = environment;
+      }));
+      return;
+    }
+    const environment: Record<string, string> = {};
+    environment.SONARQUBE_URL = sonarUrl;
+    if (properties["sonar.projectKey"]) environment.SONARQUBE_PROJECT_KEY = properties["sonar.projectKey"];
+    else delete environment.SONARQUBE_PROJECT_KEY;
+    await ctx.mcp.transform((editor) => editor.update("sonarqube", (config) => {
+      const local = config as Extract<typeof config, { type: "local" }>;
+      local.disabled = false;
+      // Transforms are synchronous; resolve the Docker alias when the MCP config
+      // is next refreshed rather than performing asynchronous work here.
+      local.command = removeDockerAddHost(local.command);
+      local.environment = environment;
+    }));
+  },
+});

@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 require('./helpers/register-ts');
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 test('Explore Agent - command hook denies sensitive .env shell reads but allows .env.example', async () => {
   const plugin = await SafetyPlugin({ directory: __dirname });

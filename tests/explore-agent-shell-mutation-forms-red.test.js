@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 require('./helpers/register-ts');
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 test('Explore Agent - shell hook rejects mutation-capable allowed forms while preserving read-only exploration commands', async () => {
   const plugin = await SafetyPlugin({ directory: __dirname });

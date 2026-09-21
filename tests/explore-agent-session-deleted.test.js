@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 require('./helpers/register-ts');
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 test('Explore Agent - session.deleted stops applying explore-only runtime restrictions to that session', async () => {
   const plugin = await SafetyPlugin({ directory: __dirname });

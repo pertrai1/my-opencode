@@ -17,7 +17,7 @@ if (require.extensions && !require.extensions['.ts']) {
   };
 }
 
-const { SafetyPlugin } = require('../plugins/safety.ts');
+const { SafetyPlugin } = require('./helpers/safety-plugin');
 
 test('Explore Agent - Write/Delegation Denied', async (t) => {
   const plugin = await SafetyPlugin({ directory: __dirname });

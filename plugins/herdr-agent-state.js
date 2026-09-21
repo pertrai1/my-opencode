@@ -118,94 +118,38 @@ function reportState(state, sessionID) {
   return request("pane.report_agent", params);
 }
 
-export const HerdrAgentStatePlugin = async () => {
-  if (
-    process.env.HERDR_ENV !== "1" ||
-    !process.env.HERDR_SOCKET_PATH ||
-    !process.env.HERDR_PANE_ID
-  ) {
-    return {};
-  }
+import { Plugin } from "@opencode/plugin";
 
-  return {
-    "chat.message": async ({ sessionID }) => {
-      if (sessionID && childSessions.has(sessionID)) {
-        return;
-      }
-      await reportState("working", sessionID);
-    },
-    event: async ({ event }) => {
-      const type = event?.type;
-      const properties = event?.properties ?? {};
-      const sessionID = sessionIDFromProperties(properties);
-
-      const info = properties.info;
-      if (info?.id && info.parentID) {
-        childSessions.add(info.id);
-      }
-      if (sessionID && childSessions.has(sessionID)) {
-        // Child session events are dropped so they cannot clobber the pane's
-        // root-agent state, but a subagent waiting on the user must still
-        // surface as blocked (and clear once answered). Report state only,
-        // without an agent_session_id, so the pane keeps the root session.
-        switch (type) {
-          case "permission.asked":
-          case "question.asked":
-            await reportState("blocked");
-            break;
-          case "permission.replied":
-          case "question.replied":
-          case "question.rejected":
-            await reportState("working");
-            break;
-          default:
-            break;
+export default Plugin.define({
+  id: "herdr-agent-state",
+  setup(ctx) {
+    if (process.env.HERDR_ENV !== "1" || !process.env.HERDR_SOCKET_PATH || !process.env.HERDR_PANE_ID) return;
+    const controller = new AbortController();
+    void (async () => {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        const properties = event.data ?? {};
+        const sessionID = sessionIDFromProperties(properties);
+        const info = properties.info;
+        if (info?.id && info.parentID) childSessions.add(info.id);
+        if (sessionID && childSessions.has(sessionID)) {
+          if (event.type === "permission.asked" || event.type === "question.asked") await reportState("blocked");
+          if (["permission.replied", "question.replied", "question.rejected"].includes(event.type)) await reportState("working");
+          continue;
         }
-        return;
-      }
-
-      switch (type) {
-        case "session.created":
-          // A root session.created is a genuine new-session start (subagent
-          // creates are dropped above). Signal it so herdr replaces the pane's
-          // prior session id instead of treating the change as cross-talk.
-          await reportSession(sessionID, "new");
-          break;
-        case "session.updated":
-          if (sessionID && sessionID !== reportedRootSessionID) {
-            await reportSession(sessionID);
+        switch (event.type) {
+          case "session.created": await reportSession(sessionID, "new"); break;
+          case "session.updated": if (sessionID && sessionID !== reportedRootSessionID) await reportSession(sessionID); break;
+          case "session.status": {
+            const state = stateFromSessionStatus(properties.status);
+            if (state) await reportState(state, sessionID); else await reportSession(sessionID);
+            break;
           }
-          break;
-        case "session.status": {
-          const state = stateFromSessionStatus(properties.status);
-          if (state) {
-            await reportState(state, sessionID);
-          } else {
-            await reportSession(sessionID);
-          }
-          break;
+          case "tool.execute.before": case "tool.execute.after": case "permission.replied": case "question.replied": case "question.rejected": case "session.compacted": await reportState("working", sessionID); break;
+          case "permission.asked": case "question.asked": case "session.error": await reportState("blocked", sessionID); break;
+          case "session.idle": await reportState("idle", sessionID); break;
         }
-        case "tool.execute.before":
-        case "tool.execute.after":
-        case "permission.replied":
-        case "question.replied":
-        case "question.rejected":
-        case "session.compacted":
-          await reportState("working", sessionID);
-          break;
-        case "permission.asked":
-        case "question.asked":
-        case "session.error":
-          await reportState("blocked", sessionID);
-          break;
-        case "session.idle":
-          await reportState("idle", sessionID);
-          break;
-        case "session.deleted":
-          break;
-        default:
-          break;
       }
-    },
-  };
-};
+    })();
+    return () => controller.abort();
+  },
+});

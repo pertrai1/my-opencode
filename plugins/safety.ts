@@ -1,4 +1,4 @@
-import type { Plugin, PluginInput, Hooks } from "@opencode-ai/plugin";
+import type { Plugin } from "@opencode/plugin";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
@@ -20,11 +20,6 @@ type SafetyConfig = {
     exemptTools: string[];
   };
 };
-
-type SafetyPluginOptions = Partial<{
-  truncation: Partial<SafetyConfig["truncation"]>;
-  doomLoop: Partial<SafetyConfig["doomLoop"]>;
-}>;
 
 const sessionAgents = new Map<string, string>();
 
@@ -722,214 +717,105 @@ function hasSensitiveEnvFileReadInCommand(command: string): boolean {
   return false;
 }
 
-export const SafetyPlugin: Plugin = async (
-  _input: PluginInput,
-  options?: SafetyPluginOptions,
-): Promise<Hooks> => {
-  const config = mergeSafetyConfig(options);
-  const scheduledCleanup = (): void => {
-    const { truncation } = config;
-    pruneTempDir(
-      resolvePath(truncation.tempDir),
-      truncation.retentionHours,
-      truncation.maxTempDirSizeMB,
-    );
-  };
-  const cleanupIntervalMs = Math.min(
-    Math.max(config.truncation.retentionHours * 60 * 60 * 1000, MIN_CLEANUP_INTERVAL_MS),
-    MAX_CLEANUP_INTERVAL_MS,
-  );
-  const cleanupTimer = setInterval(scheduledCleanup, cleanupIntervalMs);
-  cleanupTimer.unref();
-  scheduledCleanup();
+const definePlugin = <T extends Plugin.Plugin>(plugin: T): T => plugin;
 
-  return {
-    dispose: async () => {
-      clearInterval(cleanupTimer);
-    },
-    // Reset buffer on new user message, and capture agent
-    "chat.message": async ({ sessionID, agent }) => {
-      if (!sessionID) {
-        return;
-      }
-      setSessionBuffer(sessionID, []);
-      if (agent) {
-          setSessionAgent(sessionID, agent);
-      }
-    },
+export default definePlugin({
+  id: "safety",
+  async setup(ctx) {
+    const config = mergeSafetyConfig(ctx.options);
+    const scheduledCleanup = (): void => {
+      const { truncation } = config;
+      pruneTempDir(resolvePath(truncation.tempDir), truncation.retentionHours, truncation.maxTempDirSizeMB);
+    };
+    const cleanupTimer = setInterval(scheduledCleanup, Math.min(Math.max(config.truncation.retentionHours * 60 * 60 * 1000, MIN_CLEANUP_INTERVAL_MS), MAX_CLEANUP_INTERVAL_MS));
+    cleanupTimer.unref();
+    scheduledCleanup();
 
-    event: async ({ event }) => {
-      const type = event?.type;
-      const properties = (event?.properties ?? {}) as Record<string, unknown>;
-      if (type === "session.created" || type === "session.updated") {
-        const info = properties.info as Record<string, unknown> | undefined;
-        const sid = (info?.id as string) || (properties.sessionID as string);
-        const agent = (info?.agent as string) || (properties.agent as string);
-        if (sid && agent) {
-          setSessionAgent(sid, agent);
-        }
-        return;
-      }
-
-      if (type === "session.deleted") {
-        const info = properties.info as Record<string, unknown> | undefined;
-        const sid = (info?.id as string) || (properties.sessionID as string);
-        if (sid) {
-          sessionAgents.delete(sid);
-          sessionBuffers.delete(sid);
+    const controller = new AbortController();
+    void (async () => {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        const data = event.data as Record<string, unknown> | undefined;
+        const info = data?.info as Record<string, unknown> | undefined;
+        const sessionID = (info?.id ?? data?.sessionID) as string | undefined;
+        const agent = (info?.agent ?? data?.agent) as string | undefined;
+        if (event.type === "session.created" && sessionID && agent) setSessionAgent(sessionID, agent);
+        if (event.type === "session.deleted" && sessionID) {
+          sessionAgents.delete(sessionID);
+          sessionBuffers.delete(sessionID);
         }
       }
-    },
+    })();
 
-    "permission.ask": async (input, output) => {
-        const agent = sessionAgents.get(input.sessionID);
-      if (agent === "explore") {
-        const type = String(input.type ?? "").toLowerCase();
-        if (type === "edit" || type === "task") {
-          output.status = "deny";
+    await ctx.session.hook("prompt", (event) => {
+      setSessionBuffer(event.sessionID, []);
+    });
+
+    await ctx.permission.hook("evaluate", (event) => {
+      if (event.agent === "explore" && (event.action === "edit" || event.action === "task")) event.effect = "deny";
+    });
+
+    await ctx.tool.hook("execute.before", (event) => {
+      if (event.agent !== "explore") return;
+      const tool = event.tool.toLowerCase();
+      if (tool === "edit" || tool === "task") throw new Error(`Permission denied: Tool '${event.tool}' is blocked for the explore agent.`);
+      if (tool.startsWith("agentmemory")) throw new Error("Permission denied: MCP 'agentmemory' is disabled for the explore agent.");
+      const args = isRecord(event.input) ? event.input : {};
+      if (tool === "read") {
+        const filePath = String(args.filePath ?? args.path ?? "").toLowerCase();
+        if (isSensitiveEnvFilePath(filePath)) throw new Error("Permission denied: Reading sensitive env files is blocked.");
+      }
+      if (tool === "bash" || tool === "shell") {
+        const command = String(args.command ?? "");
+        if (hasWriteRedirection(command)) throw new Error("Permission denied: Write redirection operator is blocked.");
+        if (hasSensitiveEnvFileReadInCommand(command)) throw new Error("Permission denied: Reading sensitive env files is blocked.");
+        if (hasCommandSubstitution(command)) throw new Error("Permission denied: Command substitution is blocked for the explore agent.");
+        for (const commandPart of splitChainedCommands(command)) {
+          if (isDestructive(commandPart)) throw new Error(`Permission denied: Command '${commandPart}' is blocked for the explore agent.`);
         }
       }
-    },
+    });
 
-    "tool.execute.before": async (input, output) => {
-      const agent = sessionAgents.get(input.sessionID);
-      if (agent !== "explore") {
-        return;
-      }
-
-      const tool = String(input.tool ?? "").toLowerCase();
-      if (tool === "edit" || tool === "task") {
-        throw new Error(`Permission denied: Tool '${input.tool}' is blocked for the explore agent.`);
-      }
-      if (tool.startsWith("agentmemory")) {
-        throw new Error("Permission denied: MCP 'agentmemory' is disabled for the explore agent.");
-      }
-        if (tool === "read") {
-          const filePath = String((output.args as { filePath?: string; path?: string } | undefined)?.filePath ?? output.args?.path ?? "").toLowerCase();
-          if (filePath.endsWith(".env") || (filePath.includes(".env.") && !filePath.endsWith(".env.example"))) {
-            throw new Error("Permission denied: Reading sensitive env files is blocked.");
-          }
-        }
-        if (tool === "bash" || tool === "shell") {
-          const command = String(output.args?.command ?? "");
-          if (hasWriteRedirection(command)) {
-            throw new Error("Permission denied: Write redirection operator is blocked.");
-          }
-          if (hasSensitiveEnvFileReadInCommand(command)) {
-            throw new Error("Permission denied: Reading sensitive env files is blocked.");
-          }
-          if (hasCommandSubstitution(command)) {
-            throw new Error("Permission denied: Command substitution is blocked for the explore agent.");
-          }
-          for (const cmd of splitChainedCommands(command)) {
-            if (isDestructive(cmd)) {
-              throw new Error(`Permission denied: Command '${cmd}' is blocked for the explore agent.`);
-            }
-          }
-      }
-    },
-
-    "tool.execute.after": async (input, output) => {
-      const toolName = input.tool;
-      const sessionID = input.sessionID;
-      const args = input.args ?? {};
-
-      // ─── 1. Output Size Truncation ───
-      const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
-      const rawOutput = output.output ?? "";
+    await ctx.tool.hook("execute.after", (event) => {
+      if (event.status !== "completed") return;
+      const rawOutput = typeof event.result.content === "string" ? event.result.content : "";
       const retainedOutput = redactSensitiveOutput(rawOutput);
+      const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const resolvedTempDir = resolvePath(tempDir);
-
-      if (rawOutput.length > maxLength) {
-        if (exceedsCodePointLength(retainedOutput, maxLength)) {
-          // Ensure secure directory with 0700 permissions
-          let tempDirSecured = true;
-          try {
-            if (fs.existsSync(resolvedTempDir)) {
-              const stat = fs.statSync(resolvedTempDir);
-              if (!stat.isDirectory()) {
-                throw new Error(`Target path exists but is not a directory: ${resolvedTempDir}`);
-              }
-              fs.chmodSync(resolvedTempDir, 0o700);
-            } else {
-              fs.mkdirSync(resolvedTempDir, { recursive: true, mode: 0o700 });
-              fs.chmodSync(resolvedTempDir, 0o700);
-            }
-          } catch (error: unknown) {
-            console.error("Failed to create or secure temp directory", { error });
-            tempDirSecured = false;
-          }
-
-          const fullPath = tempDirSecured
-            ? createOutputArtifact(resolvedTempDir, sessionID, retainedOutput)
-            : null;
+      if (exceedsCodePointLength(retainedOutput, maxLength)) {
+        try {
+          if (fs.existsSync(resolvedTempDir)) fs.chmodSync(resolvedTempDir, 0o700);
+          else fs.mkdirSync(resolvedTempDir, { recursive: true, mode: 0o700 });
+          const fullPath = createOutputArtifact(resolvedTempDir, event.sessionID, retainedOutput);
           if (fullPath) {
-            // Apply Head-and-Tail Truncation
-            const effectiveLengths = getEffectiveTruncationLengths(
-              maxLength,
-              headLength,
-              tailLength,
-            );
-            const head = takeFirstCodePoints(retainedOutput, effectiveLengths.headLength);
-            const tail = effectiveLengths.tailLength > 0
-              ? takeLastCodePoints(retainedOutput, effectiveLengths.tailLength)
-              : "";
+            const lengths = getEffectiveTruncationLengths(maxLength, headLength, tailLength);
             const redactionNote = retainedOutput !== rawOutput
               ? " Sensitive values were redacted before retention."
               : "";
-            const warningMarker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${effectiveLengths.headLength} and last ${effectiveLengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
-
-            output.output = head + warningMarker + tail;
-
-            // Cleanup old files in temp directory
+            const marker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${lengths.headLength} and last ${lengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
+            event.result = { ...event.result, content: takeFirstCodePoints(retainedOutput, lengths.headLength) + marker + takeLastCodePoints(retainedOutput, lengths.tailLength) };
             pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
           }
+        } catch (error) {
+          console.warn("Failed to retain oversized tool output", { error });
+          return;
         }
       }
-
-      // ─── 2. Doom Loop Detection ───
-      if (config.doomLoop.enabled && sessionID) {
-        const { bufferSize, maxRepetitions, exemptTools } = config.doomLoop;
-
-        // Check if the current tool is exempt
-        const isExempt = exemptTools.some(
-          (t) => t.toLowerCase() === toolName.toLowerCase()
-        );
-        const shouldTrack = isTrackedTool(toolName);
-
-        if (shouldTrack && !isExempt) {
-          // Outcome Comparison: Include the output text and/or error information from metadata
-          const outcome = rawOutput + "|" + (output.metadata ? canonicalStringify(output.metadata) : "");
-          const serializedArgs = canonicalStringify(args);
-          const rawHashString = `${toolName}:${serializedArgs}:${outcome}`;
-          const callHash = crypto.createHash("sha256").update(rawHashString).digest("hex");
-
-          // Retrieve or initialize the rolling history buffer for this session
-          const buffer = sessionBuffers.get(sessionID) ?? [];
-          buffer.push(callHash);
-
-          // Keep rolling window at configured size limit
-          if (buffer.length > bufferSize) {
-            buffer.shift();
-          }
-          setSessionBuffer(sessionID, buffer);
-
-          // Count repetitions of the current tool call hash in the rolling buffer
-          const repetitionCount = buffer.filter((h) => h === callHash).length;
-
-          if (repetitionCount >= maxRepetitions) {
-            // Immediately clear buffer upon breaking loop to avoid re-tripping
-            setSessionBuffer(sessionID, []);
-
-            // Log diagnostic warning to user
-            console.error("Tool call loop detected!", { toolName });
-
-            throw new Error("[DOOM LOOP DETECTED] Aborting execution due to repetitive tool calls.");
-          }
-        }
+      if (!config.doomLoop.enabled || !isTrackedTool(event.tool)) return;
+      const serializedArgs = canonicalStringify(event.input);
+      const callHash = crypto.createHash("sha256").update(`${event.tool}:${serializedArgs}:${rawOutput}`).digest("hex");
+      const buffer = sessionBuffers.get(event.sessionID) ?? [];
+      buffer.push(callHash);
+      if (buffer.length > config.doomLoop.bufferSize) buffer.shift();
+      setSessionBuffer(event.sessionID, buffer);
+      if (buffer.filter((hash) => hash === callHash).length >= config.doomLoop.maxRepetitions) {
+        setSessionBuffer(event.sessionID, []);
+        throw new Error("[DOOM LOOP DETECTED] Aborting execution due to repetitive tool calls.");
       }
-    },
-  };
-};
+    });
 
-export default SafetyPlugin;
+    return () => {
+      clearInterval(cleanupTimer);
+      controller.abort();
+    };
+  },
+});
