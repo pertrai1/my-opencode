@@ -4,6 +4,10 @@
 
 ## Agent skills
 
+### Frontend A11Y
+
+When developing the frontend, follow strictly the accessibility rules defined in A11Y.md: https://github.com/fecarrico/A11Y.md/blob/main/docs/en/A11Y.md"*
+
 ### Issue tracker
 
 Issues and specs are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.

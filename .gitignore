@@ -6,4 +6,5 @@ service.json
 /.gitnexus/
 .agents/docs/verification/*
 .agents/reports/*
+.agents/docs/security-audits/*
 !.agents/docs/verification/README.md

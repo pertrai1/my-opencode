@@ -92,6 +92,7 @@ The router sends working-tree file statuses (including file paths), tracked diff
 ## Security
 
 - `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
+- `skills/security-audit/` — vendored [security-audit](https://github.com/pertrai1/security-audit-skill) skill. Run `/security-audit [scope]` to load it and start a full audit. Full-audit artifacts default to `.agents/docs/security-audits/<repo-name>/run-<N>` in this configuration directory; generated runs are intentionally ignored by Git.
 
 ## Workflow
 
