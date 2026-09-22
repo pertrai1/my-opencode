@@ -1,7 +1,7 @@
 ---
 description: Reviews diffs for production safety risks when changes touch persistence, external services, async work, auth, deploy/config, privacy, critical paths, or cross-service compatibility.
 mode: subagent
-model: openai/gpt-5.6-terra
+model: openai/gpt-6-astra
 reasoningEffort: high
 textVerbosity: low
 permission:

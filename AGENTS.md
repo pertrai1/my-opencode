@@ -6,7 +6,7 @@
 
 ### Frontend A11Y
 
-When developing the frontend, follow strictly the accessibility rules defined in A11Y.md: https://github.com/fecarrico/A11Y.md/blob/main/docs/en/A11Y.md"*
+For frontend work, load and follow the `frontend-a11y` skill.
 
 ### Issue tracker
 

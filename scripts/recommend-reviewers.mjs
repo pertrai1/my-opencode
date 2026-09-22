@@ -30,6 +30,16 @@ const REVIEWERS = {
     true: "The change modifies behavior or tests in a way that merits test-review.",
     false: "The change is non-behavioral and does not need a test-quality review.",
   },
+  "security-audit-reviewer": {
+    question: "Does this change affect a security boundary, such as authentication, authorization, untrusted input, secrets, sensitive data, cryptography, external requests, or security configuration?",
+    true: "The change merits a focused, source-first security review.",
+    false: "The change does not affect a security-sensitive boundary or control.",
+  },
+  "frontend-a11y-reviewer": {
+    question: "Does this change alter a browser-facing interface, interaction, form, navigation, client-side rendering, or visual presentation that needs accessibility review?",
+    true: "The change merits a WCAG 2.2 AA accessibility review.",
+    false: "The change does not alter a browser-facing user interface or interaction.",
+  },
 };
 
 function questions() {

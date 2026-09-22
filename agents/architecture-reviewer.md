@@ -6,7 +6,7 @@ description: >-
   checkpoints, refactors, dependency changes, package boundary decisions, and
   intent-vs-implementation verification.
 mode: subagent
-model: openai/gpt-5.6-terra
+model: openai/gpt-6-astra
 reasoningEffort: high
 textVerbosity: low
 permission:

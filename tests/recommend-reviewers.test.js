@@ -19,6 +19,8 @@ test('recommends reviewers for positive and uncertain TypeSafe judgments', async
           'performance-reviewer': { noul: 0.1 },
           'production-readiness-reviewer': { noul: 0.5 },
           'test-reviewer': { noul: 0.8 },
+          'security-audit-reviewer': { noul: 0.9 },
+          'frontend-a11y-reviewer': { noul: 0.1 },
         },
       };
     },
@@ -27,7 +29,7 @@ test('recommends reviewers for positive and uncertain TypeSafe judgments', async
   const result = await recommendReviewers({ files: 'M plugins/example.ts', stat: '1 file changed' }, client);
 
   assert.equal(result.source, 'typesafe');
-  assert.deepEqual(result.selectedReviewers, ['architecture-boundary-reviewer', 'production-readiness-reviewer', 'test-reviewer']);
+  assert.deepEqual(result.selectedReviewers, ['architecture-boundary-reviewer', 'production-readiness-reviewer', 'test-reviewer', 'security-audit-reviewer']);
   assert.deepEqual(
     result.recommendations.map(({ reviewer, decision }) => [reviewer, decision]),
     [
@@ -35,6 +37,8 @@ test('recommends reviewers for positive and uncertain TypeSafe judgments', async
       ['performance-reviewer', 'not-selected'],
       ['production-readiness-reviewer', 'uncertain'],
       ['test-reviewer', 'selected'],
+      ['security-audit-reviewer', 'selected'],
+      ['frontend-a11y-reviewer', 'not-selected'],
     ],
   );
 });
@@ -60,6 +64,8 @@ test('asks all independent reviewer questions in one request', async () => {
     'performance-reviewer',
     'production-readiness-reviewer',
     'test-reviewer',
+    'security-audit-reviewer',
+    'frontend-a11y-reviewer',
   ]);
   assert.equal(request.state.change.files, 'M README.md');
 });
@@ -101,6 +107,8 @@ test('uses bounded, no-retry options for TypeSafe routing', async () => {
           'performance-reviewer': { noul: 0 },
           'production-readiness-reviewer': { noul: 0 },
           'test-reviewer': { noul: 0 },
+          'security-audit-reviewer': { noul: 0 },
+          'frontend-a11y-reviewer': { noul: 0 },
         },
       };
     },

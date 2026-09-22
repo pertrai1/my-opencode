@@ -1,7 +1,7 @@
 ---
 description: Review the current diff for architectural fit and launch Difit with findings.
 agent: plan
-model: openai/gpt-5.6-terra
+model: openai/gpt-6-astra
 ---
 
 Review the current change set in the working tree.
@@ -49,6 +49,14 @@ Then decide whether the diff touches production-sensitive surfaces, or whether t
 
 If yes, launch the `production-readiness-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. If not, skip the subagent.
 
+Then decide whether the diff affects a security boundary, or whether the user explicitly asked for a security review. Examples include authentication, authorization, untrusted input, secrets, sensitive data, cryptography, external requests, dependencies, and security configuration.
+
+If yes, launch the `security-audit-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. It must use the `security-audit` skill in guidance mode, not start a full audit.
+
+Then decide whether the diff changes a browser-facing interface, or whether the user explicitly asked for an accessibility review. Examples include components, forms, navigation, client-side rendering, visual presentation, and interaction behavior.
+
+If yes, launch the `frontend-a11y-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review.
+
 Then use the `difit-review` skill to perform a diff review of the current working tree diff, attach any findings as Difit comments, and launch Difit.
 
 In your final synthesis:
@@ -68,5 +76,7 @@ Focus on:
 - performance risks and optimization opportunities when the subagent is used
 - test quality and coverage risks when the subagent is used
 - production-safety and rollout risks when the subagent is used
+- security-boundary risks when the subagent is used
+- WCAG 2.2 AA accessibility risks and required human validation when the subagent is used
 
 If there are no findings, say so explicitly and still launch Difit for the diff.

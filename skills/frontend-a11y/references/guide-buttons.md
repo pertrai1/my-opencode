@@ -1,0 +1,36 @@
+# Accessibility Guide: Buttons & Actions
+
+> Scope: Semantic button usage, ARIA patterns, keyboard interactions, and labeling rules.
+
+## Good Examples
+
+### 1. Native Button element
+```html
+<button type="button" class="btn-primary">
+  Submit Application
+</button>
+```
+- **Why:** Native `<button>` elements have built-in keyboard support (Enter/Space) and are automatically identified as "button" by screen readers.
+
+### 2. Icon Buttons with Text
+```html
+<button aria-label="Close modal">
+  <svg>...</svg>
+</button>
+```
+- **Why:** For buttons without visible text, `aria-label` provides the necessary context for screen reader users.
+
+## Bad Examples
+
+### 1. The "Clickable Div"
+```html
+<div onclick="submit()" class="my-button">Submit</div>
+```
+- See *Clickable Divs* — core §6.
+
+### 2. Vague Labels
+```html
+<button>Click Here</button>
+<button>Learn More</button>
+```
+- **Implication:** Screen reader users often list all buttons on a page to navigate. "Click Here" provides no context about what the button actually does. Use "Download Report" or "Read about our history" instead.
