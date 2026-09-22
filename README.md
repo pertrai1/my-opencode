@@ -33,9 +33,37 @@ Global configuration for [opencode](https://opencode.ai).
 - `agents/production-readiness-reviewer.md` — reviews diffs for reliability and production safety risks.
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
 - `commands/code-review.md` — run a code review workflow against current changes.
+- `scripts/recommend-reviewers.mjs` — uses TypeSafe judgments over changed-file metadata to select read-only specialist reviewers for `/code-review`. It falls back to the command's manual rules if `TYPESAFE_API_KEY` is unavailable.
 - [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review.
 - [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow.
 - [hunk](https://hunk.dev) — review-first diff viewer for agent-authored changes.
+
+### TypeSafe reviewer selection
+
+`/code-review` uses the [TypeSafe](https://typesafe.ai/) System One API to recommend the read-only specialist reviewers that match the current change. The implementation is `scripts/recommend-reviewers.mjs` and uses the `@typesafe-ai/sdk` package.
+
+To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
+
+```sh
+export TYPESAFE_API_KEY="..."
+```
+
+Run `/code-review` normally. It invokes the router before inspecting the diff and launches the reviewers named in `selectedReviewers`. The router evaluates four independent questions in one request:
+
+- `architecture-boundary-reviewer` for public API, dependency, package, and layer changes.
+- `performance-reviewer` for performance-sensitive paths.
+- `production-readiness-reviewer` for persistence, external services, authentication, privacy, async work, deployment, and compatibility risks.
+- `test-reviewer` for behavioral or test-quality changes.
+
+You can inspect the routing result directly from a repository with changes:
+
+```sh
+node ~/.config/opencode/scripts/recommend-reviewers.mjs
+```
+
+The script prints JSON. A `typesafe` source selects reviewers with a probability of at least `0.75` and also includes `uncertain` recommendations at or above `0.35`; because the reviewers are read-only, uncertain cases receive review rather than being skipped. A `fallback` result means TypeSafe was unavailable (for example, no API key); `/code-review` then uses its existing manual selection rules. A `none` result means no working-tree changes were found.
+
+The router sends working-tree file statuses (including file paths), tracked diff statistics, and locally derived file-category counts to TypeSafe. It does not send raw diff content or credentials. File paths can contain sensitive identifiers; use this router only where that metadata may leave the machine.
 
 ## Memory
 

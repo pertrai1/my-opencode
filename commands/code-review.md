@@ -8,7 +8,9 @@ Review the current change set in the working tree.
 
 This is a review-only task. Do not edit files, apply patches, or change the repository state.
 
-First, inspect the working-tree diff and categorize the touched files so you understand which parts of the system changed.
+First, run `node ~/.config/opencode/scripts/recommend-reviewers.mjs`. It sends working-tree file status and diff statistics, plus locally derived file-category counts, to TypeSafe; it never sends raw diff content. It then returns JSON reviewer recommendations. When `source` is `typesafe`, launch every listed `selectedReviewers`; an `uncertain` recommendation is intentionally included because these reviews are read-only. When `source` is `fallback` or `none`, use the existing manual selection rules below. Do not send credentials or other sensitive material to the routing service.
+
+Then inspect the working-tree diff and categorize the touched files so you understand which parts of the system changed.
 
 Useful categories include:
 
