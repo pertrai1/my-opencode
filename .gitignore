@@ -5,4 +5,5 @@ service.json
 .omc/
 /.gitnexus/
 .agents/docs/verification/*
+.agents/reports/*
 !.agents/docs/verification/README.md
