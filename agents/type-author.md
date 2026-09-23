@@ -1,50 +1,122 @@
 ---
 description: Phase 0 of the type-driven TDD pipeline. Writes type definitions, interfaces, and function signatures for a slice BEFORE any tests or implementation exist. No runtime logic. Invoked by tdd-orchestrator.
 mode: subagent
-model: openai/gpt-5.4
-reasoningEffort: high
-temperature: 0.2
-permission:
-  edit:
-    "*": deny
-    "**/*.d.ts": allow
-    "**/types.ts": allow
-    "**/types.tsx": allow
-    "**/types/**/*.ts": allow
-    "**/types/**/*.tsx": allow
-    "**/contracts.py": allow
-    "**/types.py": allow
-    "**/*.pyi": allow
-    "**/*.test.*": deny
-    "**/*.spec.*": deny
-    "**/__tests__/**": deny
-    "**/test_*.py": deny
-    "**/*_test.py": deny
-    "tests/**": deny
-    "test/**": deny
-  bash:
-    "*": deny
-    "pwd": allow
-    "ls *": allow
-    "tsc*": allow
-    "npx tsc*": allow
-    "npm run typecheck": allow
-    "pnpm run typecheck*": allow
-    "yarn typecheck*": allow
-    "yarn run typecheck*": allow
-    "bun run typecheck*": allow
-    "mypy*": allow
-    "python -m mypy*": allow
-    "pyright*": allow
-    "rm *": deny
-    "git clean *": deny
-    "git reset --hard *": deny
-    "git push *": deny
-    "git rebase *": deny
-    "rtk git clean *": deny
-    "rtk git reset --hard *": deny
-    "rtk git push *": deny
-    "rtk git rebase *": deny
+model: openai/gpt-6-sol#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.d.ts"
+    effect: allow
+  - action: "edit"
+    resource: "**/types.ts"
+    effect: allow
+  - action: "edit"
+    resource: "**/types.tsx"
+    effect: allow
+  - action: "edit"
+    resource: "**/types/**/*.ts"
+    effect: allow
+  - action: "edit"
+    resource: "**/types/**/*.tsx"
+    effect: allow
+  - action: "edit"
+    resource: "**/contracts.py"
+    effect: allow
+  - action: "edit"
+    resource: "**/types.py"
+    effect: allow
+  - action: "edit"
+    resource: "**/*.pyi"
+    effect: allow
+  - action: "edit"
+    resource: "**/*.test.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.spec.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/__tests__/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/test_*.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/*_test.py"
+    effect: deny
+  - action: "edit"
+    resource: "tests/**"
+    effect: deny
+  - action: "edit"
+    resource: "test/**"
+    effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "tsc*"
+    effect: allow
+  - action: "shell"
+    resource: "npx tsc*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run typecheck"
+    effect: allow
+  - action: "shell"
+    resource: "pnpm run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "bun run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "mypy*"
+    effect: allow
+  - action: "shell"
+    resource: "python -m mypy*"
+    effect: allow
+  - action: "shell"
+    resource: "pyright*"
+    effect: allow
+  - action: "shell"
+    resource: "rm *"
+    effect: deny
+  - action: "shell"
+    resource: "git clean *"
+    effect: deny
+  - action: "shell"
+    resource: "git reset --hard *"
+    effect: deny
+  - action: "shell"
+    resource: "git push *"
+    effect: deny
+  - action: "shell"
+    resource: "git rebase *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git clean *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git reset --hard *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git push *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git rebase *"
+    effect: deny
 ---
 
 You are the TYPE-AUTHOR: Phase 0 of a type-driven TDD pipeline (types → RED → GREEN). You define the contract that both the test-author and implementer must follow.

@@ -1,75 +1,197 @@
 ---
 description: Phase 2 (GREEN) of the type-driven TDD pipeline. Writes minimal production code to pass the test-author's failing test while conforming to the published contract or, in direct-task mode, the orchestrator's acceptance criteria and verification constraints. Cannot modify tests. Invoked by tdd-orchestrator after test-author or directly for config, docs, and trivial tasks.
 mode: subagent
-model: openai/gpt-5.3-codex-spark
-reasoningEffort: low
-temperature: 0.2
-permission:
-  edit:
-    "*": allow
-    "**/*.d.ts": deny
-    "**/types.ts": deny
-    "**/types.tsx": deny
-    "**/types/**/*.ts": deny
-    "**/types/**/*.tsx": deny
-    "**/contracts.py": deny
-    "**/types.py": deny
-    "**/*.pyi": deny
-    "**/*.test.*": deny
-    "**/*.spec.*": deny
-    "**/__tests__/**": deny
-    "**/test_*.py": deny
-    "**/*_test.py": deny
-    "tests/**": deny
-    "test/**": deny
-  bash:
-    "*": deny
-    "pwd": allow
-    "ls *": allow
-    "node ~/.config/opencode/scripts/halstead-analyzer.js": allow
-    "node ~/.config/opencode/scripts/halstead-analyzer.js *": allow
-    "npm test*": allow
-    "npm run test*": allow
-    "npm run typecheck": allow
-    "npm run lint*": allow
-    "pnpm test*": allow
-    "pnpm run test*": allow
-    "pnpm run typecheck*": allow
-    "pnpm run lint*": allow
-    "yarn test*": allow
-    "yarn run test*": allow
-    "yarn typecheck*": allow
-    "yarn run typecheck*": allow
-    "yarn lint*": allow
-    "yarn run lint*": allow
-    "bun test*": allow
-    "bun run test*": allow
-    "bun run typecheck*": allow
-    "bun run lint*": allow
-    "vitest*": allow
-    "npx vitest*": allow
-    "jest*": allow
-    "npx jest*": allow
-    "pytest*": allow
-    "python -m pytest*": allow
-    "tsc*": allow
-    "npx tsc*": allow
-    "mypy*": allow
-    "python -m mypy*": allow
-    "pyright*": allow
-    "eslint *": allow
-    "npx eslint *": allow
-    "prettier * --check*": allow
-    "npx prettier * --check*": allow
-    "rm *": deny
-    "git clean *": deny
-    "git reset --hard *": deny
-    "git push *": deny
-    "git rebase *": deny
-    "rtk git clean *": deny
-    "rtk git reset --hard *": deny
-    "rtk git push *": deny
-    "rtk git rebase *": deny
+model: openai/gpt-6-luna#medium
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: allow
+  - action: "edit"
+    resource: "**/*.d.ts"
+    effect: deny
+  - action: "edit"
+    resource: "**/types.ts"
+    effect: deny
+  - action: "edit"
+    resource: "**/types.tsx"
+    effect: deny
+  - action: "edit"
+    resource: "**/types/**/*.ts"
+    effect: deny
+  - action: "edit"
+    resource: "**/types/**/*.tsx"
+    effect: deny
+  - action: "edit"
+    resource: "**/contracts.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/types.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.pyi"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.test.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.spec.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/__tests__/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/test_*.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/*_test.py"
+    effect: deny
+  - action: "edit"
+    resource: "tests/**"
+    effect: deny
+  - action: "edit"
+    resource: "test/**"
+    effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "node ~/.config/opencode/scripts/halstead-analyzer.js"
+    effect: allow
+  - action: "shell"
+    resource: "node ~/.config/opencode/scripts/halstead-analyzer.js *"
+    effect: allow
+  - action: "shell"
+    resource: "npm test*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run test*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run typecheck"
+    effect: allow
+  - action: "shell"
+    resource: "npm run lint*"
+    effect: allow
+  - action: "shell"
+    resource: "pnpm test*"
+    effect: allow
+  - action: "shell"
+    resource: "pnpm run test*"
+    effect: allow
+  - action: "shell"
+    resource: "pnpm run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "pnpm run lint*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn test*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn run test*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn lint*"
+    effect: allow
+  - action: "shell"
+    resource: "yarn run lint*"
+    effect: allow
+  - action: "shell"
+    resource: "bun test*"
+    effect: allow
+  - action: "shell"
+    resource: "bun run test*"
+    effect: allow
+  - action: "shell"
+    resource: "bun run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "bun run lint*"
+    effect: allow
+  - action: "shell"
+    resource: "vitest*"
+    effect: allow
+  - action: "shell"
+    resource: "npx vitest*"
+    effect: allow
+  - action: "shell"
+    resource: "jest*"
+    effect: allow
+  - action: "shell"
+    resource: "npx jest*"
+    effect: allow
+  - action: "shell"
+    resource: "pytest*"
+    effect: allow
+  - action: "shell"
+    resource: "python -m pytest*"
+    effect: allow
+  - action: "shell"
+    resource: "tsc*"
+    effect: allow
+  - action: "shell"
+    resource: "npx tsc*"
+    effect: allow
+  - action: "shell"
+    resource: "mypy*"
+    effect: allow
+  - action: "shell"
+    resource: "python -m mypy*"
+    effect: allow
+  - action: "shell"
+    resource: "pyright*"
+    effect: allow
+  - action: "shell"
+    resource: "eslint *"
+    effect: allow
+  - action: "shell"
+    resource: "npx eslint *"
+    effect: allow
+  - action: "shell"
+    resource: "prettier * --check*"
+    effect: allow
+  - action: "shell"
+    resource: "npx prettier * --check*"
+    effect: allow
+  - action: "shell"
+    resource: "rm *"
+    effect: deny
+  - action: "shell"
+    resource: "git clean *"
+    effect: deny
+  - action: "shell"
+    resource: "git reset --hard *"
+    effect: deny
+  - action: "shell"
+    resource: "git push *"
+    effect: deny
+  - action: "shell"
+    resource: "git rebase *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git clean *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git reset --hard *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git push *"
+    effect: deny
+  - action: "shell"
+    resource: "rtk git rebase *"
+    effect: deny
 ---
 
 You are the IMPLEMENTER: Phase 2 (GREEN) of a type-driven TDD pipeline. You have full context — specs, design (including implementation strategy), tasks, and existing code.

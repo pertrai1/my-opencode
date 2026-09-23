@@ -1,7 +1,7 @@
 ---
 description: Audit this entire codebase for materially useful simplifications in its data structures, state representation, control flow, algorithms, and ownership.
 agent: plan
-model: opencode-go/deepseek-v4-flash
+model: openai/gpt-6-astra#xhigh
 ---
 
 Audit only.

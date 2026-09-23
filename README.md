@@ -4,7 +4,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## What's configured
 
-- **Models** — OpenAI `gpt-5.4` (default large), `gpt-5.6-luna` (small/titles). Build runs `gpt-5.4`, Plan runs `gpt-5.6-terra`.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. V2 does not retain a `#variant` on the root model selection. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents configure `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
@@ -14,6 +14,21 @@ Global configuration for [opencode](https://opencode.ai).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
+
+### Agent model assignments
+
+| Model | Agents |
+| --- | --- |
+| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
+| `openai/gpt-6-astra#high` | `prompt-agent` |
+| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
+| `openai/gpt-6-sol#high` | `test-author` |
+| `openai/gpt-6-luna#medium` | `implementer` |
+| `openai/gpt-6-luna` (no explicit variant) | `explore` |
+
+Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately for `sdlc-orchestrator` or `tdd-orchestrator` when its `#xhigh` tier matters. The same applies when switching among the inline `lean`, `build`, and `plan` agents.
+
+Command-level model selections are separate: `/code-review` configures `openai/gpt-6-astra` (model-level `high` reasoning), `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6-astra#xhigh`.
 
 ## Graph
 
@@ -35,7 +50,7 @@ Global configuration for [opencode](https://opencode.ai).
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
 - `agents/frontend-a11y-reviewer.md` — applies WCAG 2.2 AA accessibility review to browser-facing diffs.
 - `commands/code-review.md` — run a code review workflow against current changes.
-- **Review models** — `/code-review` and every reviewer use OpenAI `gpt-6-astra`.
+- **Review reasoning** — specialist reviewers use their configured OpenAI models at `#xhigh` reasoning effort.
 - `scripts/recommend-reviewers.mjs` — uses TypeSafe judgments over changed-file metadata to select read-only specialist reviewers for `/code-review`, including security and accessibility reviews. It falls back to the command's manual rules if `TYPESAFE_API_KEY` is unavailable.
 - [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review.
 - [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow.
@@ -134,12 +149,12 @@ Run it with `/apply <change or task description>`.
 
 | Phase | Agent | Model | Can edit | Mechanically blocked from |
 | --- | --- | --- | --- | --- |
-| 0 — Contract | `agents/type-author.md` | gpt-5.4 (reasoning: high) | dedicated contract files (`*.d.ts`, `types.ts`, `types/`, `contracts.py`, `types.py`, `*.pyi`) | test files |
-| 1 — RED | `agents/test-author.md` | gpt-5.4 | test files only | implementation files and `tasks.md` |
-| 2 — GREEN | `agents/implementer.md` | gpt-5.3-codex (reasoning: low) | implementation/config/docs, but not contract or test files | test files and contract files |
-| Orchestration | `agents/tdd-orchestrator.md` | gpt-5.6-terra | `progress.md` + `intent.md` only | all code; can only task the three agents above |
+| 0 — Contract | `agents/type-author.md` | gpt-6-sol#xhigh | dedicated contract files (`*.d.ts`, `types.ts`, `types/`, `contracts.py`, `types.py`, `*.pyi`) | test files |
+| 1 — RED | `agents/test-author.md` | gpt-6-sol#high | test files only | implementation files and `tasks.md` |
+| 2 — GREEN | `agents/implementer.md` | gpt-6-luna#medium | implementation/config/docs, but not contract or test files | test files and contract files |
+| Orchestration | `agents/tdd-orchestrator.md` | gpt-6-sol#xhigh | `progress.md` + `intent.md` only | all code; can only task the three agents above |
 
-Model philosophy: intelligence is front-loaded into the artifacts. The contract and tests carry the deep thinking (strong model, high reasoning), so implementation becomes constraint-satisfaction, pinned by the compiler, the failing test, and checksums, and runs on a cheaper coding specialist. If the implementer starts burning self-correction retries, bump its model back up.
+Model philosophy: specs, architecture, contracts, orchestration, verification, and specialist reviews use `#xhigh` reasoning. Test authoring uses `#high`; implementation uses `#medium`, pinned by the contract, failing test, compiler, and checksums. If the implementer starts burning self-correction retries, bump its reasoning effort up.
 
 How enforcement works:
 

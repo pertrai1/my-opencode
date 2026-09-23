@@ -1,10 +1,14 @@
 ---
 description: Reviews browser-facing diffs for WCAG 2.2 AA accessibility issues using the frontend-a11y skill.
 mode: subagent
-model: openai/gpt-6-astra
-textVerbosity: low
-permission:
-  edit: deny
+model: openai/gpt-6-sol#xhigh
+request:
+  body:
+    textVerbosity: low
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
 ---
 
 You are a focused accessibility review subagent.

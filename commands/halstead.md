@@ -1,7 +1,7 @@
 ---
 description: Run the Halstead analyzer on changed files, a branch diff, a directory, or an explicit file list.
 agent: general
-model: openai/gpt-5.4
+model: openai/gpt-6-luna#medium
 ---
 
 Run the Halstead analyzer script and summarize the results.

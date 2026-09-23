@@ -1,61 +1,155 @@
 ---
 description: Orchestrates OpenSpec change lifecycle from intake through archive readiness, owns workflow state transitions, and delegates planning/implementation/review work to existing role agents.
 mode: primary
-model: openai/gpt-5.6-terra
-temperature: 0.2
-permission:
-  edit:
-    "*": deny
-    "**/openspec/changes/**/progress.md": allow
-    "**/openspec/changes/**/intent.md": allow
-    "**/openspec/changes/**/verification.md": allow
-    "**/openspec/changes/**/tasks.md": allow
-  task:
-    "*": deny
-    explore: allow
-    change-verifier: allow
-    type-author: allow
-    test-author: allow
-    implementer: allow
-    tdd-orchestrator: allow
-    proposal-author: allow
-    spec-author: allow
-    spec-syncer: allow
-    design-author: allow
-    task-planner: allow
-    architecture-reviewer: allow
-    architecture-boundary-reviewer: allow
-    performance-reviewer: allow
-    production-readiness-reviewer: allow
-    test-reviewer: allow
-  bash:
-    "*": deny
-    "pwd": allow
-    "ls *": allow
-    "git status*": allow
-    "git diff*": allow
-    "npm test*": allow
-    "npm run test*": allow
-    "npm run typecheck": allow
-    "npm run lint*": allow
-    "npm run typecheck*": allow
-    "tsc --noEmit": allow
-    "tsc --checkJs": allow
-    "npx tsc --noEmit": allow
-    "npx tsc --checkJs": allow
-    "openspec status*": allow
-    "openspec instructions*": allow
-    "openspec new change*": allow
-    "openspec validate*": allow
-    "openspec archive*": allow
-    "openspec list*": allow
-    "openspec inspect*": allow
-    "openspec show*": allow
-    "openspec store list*": allow
-    "openspec schemas*": allow
-    "openspec context*": allow
-    "openspec view*": allow
-    "openspec doctor*": allow
+model: openai/gpt-6-sol#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "**/openspec/changes/**/progress.md"
+    effect: allow
+  - action: "edit"
+    resource: "**/openspec/changes/**/intent.md"
+    effect: allow
+  - action: "edit"
+    resource: "**/openspec/changes/**/verification.md"
+    effect: allow
+  - action: "edit"
+    resource: "**/openspec/changes/**/tasks.md"
+    effect: allow
+  - action: "subagent"
+    resource: "*"
+    effect: deny
+  - action: "subagent"
+    resource: "explore"
+    effect: allow
+  - action: "subagent"
+    resource: "change-verifier"
+    effect: allow
+  - action: "subagent"
+    resource: "type-author"
+    effect: allow
+  - action: "subagent"
+    resource: "test-author"
+    effect: allow
+  - action: "subagent"
+    resource: "implementer"
+    effect: allow
+  - action: "subagent"
+    resource: "tdd-orchestrator"
+    effect: allow
+  - action: "subagent"
+    resource: "proposal-author"
+    effect: allow
+  - action: "subagent"
+    resource: "spec-author"
+    effect: allow
+  - action: "subagent"
+    resource: "spec-syncer"
+    effect: allow
+  - action: "subagent"
+    resource: "design-author"
+    effect: allow
+  - action: "subagent"
+    resource: "task-planner"
+    effect: allow
+  - action: "subagent"
+    resource: "architecture-reviewer"
+    effect: allow
+  - action: "subagent"
+    resource: "architecture-boundary-reviewer"
+    effect: allow
+  - action: "subagent"
+    resource: "performance-reviewer"
+    effect: allow
+  - action: "subagent"
+    resource: "production-readiness-reviewer"
+    effect: allow
+  - action: "subagent"
+    resource: "test-reviewer"
+    effect: allow
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "git status*"
+    effect: allow
+  - action: "shell"
+    resource: "git diff*"
+    effect: allow
+  - action: "shell"
+    resource: "npm test*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run test*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run typecheck"
+    effect: allow
+  - action: "shell"
+    resource: "npm run lint*"
+    effect: allow
+  - action: "shell"
+    resource: "npm run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "tsc --noEmit"
+    effect: allow
+  - action: "shell"
+    resource: "tsc --checkJs"
+    effect: allow
+  - action: "shell"
+    resource: "npx tsc --noEmit"
+    effect: allow
+  - action: "shell"
+    resource: "npx tsc --checkJs"
+    effect: allow
+  - action: "shell"
+    resource: "openspec status*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec instructions*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec new change*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec validate*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec archive*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec list*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec inspect*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec show*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec store list*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec schemas*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec context*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec view*"
+    effect: allow
+  - action: "shell"
+    resource: "openspec doctor*"
+    effect: allow
 ---
 
 You are the SDLC-ORCHESTRATOR.

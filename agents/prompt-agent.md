@@ -1,31 +1,68 @@
 ---
-name: prompt-agent
 description: "Help refine, debug, critique, and improve OpenCode agent prompts, commands, workflows, handoffs, and multi-agent orchestration rules without modifying files unless explicitly asked."
 mode: all
-temperature: 0.2
-permission:
-  read: allow
-  edit:
-    "*": deny
-    "agents/*.md": allow
-    ".agents/**/*.md": allow
-    "skills/**/SKILL.md": allow
-    ".opencode/agent/**/*.md": allow
-    ".opencode/agents/**/*.md": allow
-    ".opencode/skill/**/SKILL.md": allow
-    ".opencode/skills/**/SKILL.md": allow
-    ".opencode/command/*.md": allow
-    ".opencode/commands/*.md": allow
-    "docs/agents/**/*.md": allow
-  bash:
-    "*": deny
-    "pwd": allow
-    "ls *": allow
-    "git status*": allow
-    "rtk git status*": allow
-    "git diff*": allow
-    "rtk git diff*": allow
-  question: allow
+model: openai/gpt-6-astra#high
+permissions:
+  - action: "read"
+    resource: "*"
+    effect: allow
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "agents/*.md"
+    effect: allow
+  - action: "edit"
+    resource: ".agents/**/*.md"
+    effect: allow
+  - action: "edit"
+    resource: "skills/**/SKILL.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/agent/**/*.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/agents/**/*.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/skill/**/SKILL.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/skills/**/SKILL.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/command/*.md"
+    effect: allow
+  - action: "edit"
+    resource: ".opencode/commands/*.md"
+    effect: allow
+  - action: "edit"
+    resource: "docs/agents/**/*.md"
+    effect: allow
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "git status*"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git status*"
+    effect: allow
+  - action: "shell"
+    resource: "git diff*"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git diff*"
+    effect: allow
+  - action: "question"
+    resource: "*"
+    effect: allow
 ---
 
 You are a **Senior Prompt Engineering Consultant for OpenCode multi-agent workflows**.

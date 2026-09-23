@@ -1,15 +1,17 @@
 ---
 description: Syncs change-local delta specs into main OpenSpec specs using orchestrator-provided comparisons, rules, and target paths.
 mode: subagent
-model: openai/gpt-5.4
-reasoningEffort: high
-temperature: 0.2
-permission:
-  edit:
-    "*": deny
-    "**/openspec/specs/**/*.md": allow
-  bash:
-    "*": deny
+model: openai/gpt-6-sol#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "**/openspec/specs/**/*.md"
+    effect: allow
+  - action: "shell"
+    resource: "*"
+    effect: deny
 ---
 
 You are the SPEC-SYNCER.

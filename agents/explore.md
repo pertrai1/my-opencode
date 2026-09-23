@@ -1,70 +1,185 @@
 ---
 description: Create a restricted, specialized agent called explore dedicated solely to codebase analysis, reconnaissance, and reading.
 mode: subagent
-model: openai/gpt-5.6-luna
-permission:
-  "*": deny
-  edit: deny
-  task: deny
-  read:
-    "*": allow
-    "*.env": deny
-    "*.env.*": deny
-    "*.env.example": allow
-  glob: allow
-  grep: allow
-  webfetch: allow
-  websearch: allow
-  lsp: allow
-  skill: allow
-  question: allow
-  bash:
-    "*": deny
-    "ls": allow
-    "ls *": allow
-    "rtk ls": allow
-    "rtk ls *": allow
-    "pwd": allow
-    "rtk pwd": allow
-    "cat *": allow
-    "rtk cat *": allow
-    "head": allow
-    "head *": allow
-    "rtk head": allow
-    "rtk head *": allow
-    "tail": allow
-    "tail *": allow
-    "rtk tail": allow
-    "rtk tail *": allow
-    "rg *": allow
-    "rtk rg *": allow
-    "grep *": allow
-    "rtk grep *": allow
-    "git status": allow
-    "git status *": allow
-    "rtk git status": allow
-    "rtk git status *": allow
-    "git diff": allow
-    "rtk git diff": allow
-    "git log": allow
-    "rtk git log": allow
-    "git show": allow
-    "git show *": allow
-    "rtk git show": allow
-    "rtk git show *": allow
-    "git branch": allow
-    "rtk git branch": allow
-    "git stash list": allow
-    "git stash list *": allow
-    "rtk git stash list": allow
-    "rtk git stash list *": allow
-  agentmemory_memory_audit: deny
-  agentmemory_memory_export: deny
-  agentmemory_memory_governance_delete: deny
-  agentmemory_memory_recall: deny
-  agentmemory_memory_save: deny
-  agentmemory_memory_sessions: deny
-  agentmemory_memory_smart_search: deny
+model: openai/gpt-6-luna
+permissions:
+  - action: "*"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "subagent"
+    resource: "*"
+    effect: deny
+  - action: "read"
+    resource: "*"
+    effect: allow
+  - action: "read"
+    resource: "*.env"
+    effect: deny
+  - action: "read"
+    resource: "*.env.*"
+    effect: deny
+  - action: "read"
+    resource: "*.env.example"
+    effect: allow
+  - action: "glob"
+    resource: "*"
+    effect: allow
+  - action: "grep"
+    resource: "*"
+    effect: allow
+  - action: "webfetch"
+    resource: "*"
+    effect: allow
+  - action: "websearch"
+    resource: "*"
+    effect: allow
+  - action: "skill"
+    resource: "*"
+    effect: allow
+  - action: "question"
+    resource: "*"
+    effect: allow
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "ls"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk ls"
+    effect: allow
+  - action: "shell"
+    resource: "rtk ls *"
+    effect: allow
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "rtk pwd"
+    effect: allow
+  - action: "shell"
+    resource: "cat *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk cat *"
+    effect: allow
+  - action: "shell"
+    resource: "head"
+    effect: allow
+  - action: "shell"
+    resource: "head *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk head"
+    effect: allow
+  - action: "shell"
+    resource: "rtk head *"
+    effect: allow
+  - action: "shell"
+    resource: "tail"
+    effect: allow
+  - action: "shell"
+    resource: "tail *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk tail"
+    effect: allow
+  - action: "shell"
+    resource: "rtk tail *"
+    effect: allow
+  - action: "shell"
+    resource: "rg *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk rg *"
+    effect: allow
+  - action: "shell"
+    resource: "grep *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk grep *"
+    effect: allow
+  - action: "shell"
+    resource: "git status"
+    effect: allow
+  - action: "shell"
+    resource: "git status *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git status"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git status *"
+    effect: allow
+  - action: "shell"
+    resource: "git diff"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git diff"
+    effect: allow
+  - action: "shell"
+    resource: "git log"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git log"
+    effect: allow
+  - action: "shell"
+    resource: "git show"
+    effect: allow
+  - action: "shell"
+    resource: "git show *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git show"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git show *"
+    effect: allow
+  - action: "shell"
+    resource: "git branch"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git branch"
+    effect: allow
+  - action: "shell"
+    resource: "git stash list"
+    effect: allow
+  - action: "shell"
+    resource: "git stash list *"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git stash list"
+    effect: allow
+  - action: "shell"
+    resource: "rtk git stash list *"
+    effect: allow
+  - action: "agentmemory_memory_audit"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_export"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_governance_delete"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_recall"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_save"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_sessions"
+    resource: "*"
+    effect: deny
+  - action: "agentmemory_memory_smart_search"
+    resource: "*"
+    effect: deny
 ---
 
 You are a restricted, specialized agent called **explore** dedicated solely to codebase analysis, reconnaissance, and reading.

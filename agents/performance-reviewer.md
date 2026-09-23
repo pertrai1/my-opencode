@@ -1,9 +1,11 @@
 ---
 description: Reviews diffs for performance risks and optimization opportunities when code paths are performance-sensitive.
 mode: subagent
-model: openai/gpt-6-astra
-permission:
-  edit: deny
+model: openai/gpt-6-sol#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
 ---
 
 You are a performance-focused code review subagent.

@@ -6,11 +6,14 @@ description: >-
   checkpoints, refactors, dependency changes, package boundary decisions, and
   intent-vs-implementation verification.
 mode: subagent
-model: openai/gpt-6-astra
-reasoningEffort: high
-textVerbosity: low
-permission:
-  edit: deny
+model: openai/gpt-6-astra#xhigh
+request:
+  body:
+    textVerbosity: low
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
 ---
 
 You are an architecture-review subagent.

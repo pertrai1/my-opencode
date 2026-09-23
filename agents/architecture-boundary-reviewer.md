@@ -1,11 +1,14 @@
 ---
 description: Reviews the current diff only for concrete architectural boundary violations. This is the narrow, edge-focused companion to architecture-reviewer, not a broad design-fitness or drift review.
 mode: subagent
-model: openai/gpt-6-astra
-reasoningEffort: high
-textVerbosity: low
-permission:
-  edit: deny
+model: openai/gpt-6-sol#xhigh
+request:
+  body:
+    textVerbosity: low
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
 ---
 
 You are an architecture-boundary review subagent.

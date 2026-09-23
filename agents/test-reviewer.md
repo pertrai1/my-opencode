@@ -1,10 +1,14 @@
 ---
 description: Reviews diffs for missing, weak, brittle, or misleading tests when behavior changes or tests are added or modified.
 mode: subagent
-model: openai/gpt-6-astra
-textVerbosity: low
-permission:
-  edit: deny
+model: openai/gpt-6-sol#xhigh
+request:
+  body:
+    textVerbosity: low
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
 ---
 
 You are a test review subagent.

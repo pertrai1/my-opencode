@@ -1,29 +1,59 @@
 ---
 description: Design author for OpenSpec design artifacts. Converts validated spec intent into concrete design with explicit ambiguity handling.
 mode: subagent
-model: openai/gpt-5.4
-reasoningEffort: high
-temperature: 0.2
-permission:
-  edit:
-    "*": deny
-    "**/design.md": allow
-    "**/*.test.*": deny
-    "**/*.spec.*": deny
-    "**/__tests__/**": deny
-    "**/test_*.py": deny
-    "**/*_test.py": deny
-    "tests/**": deny
-    "test/**": deny
-    "**/package*.json": deny
-    "**/tsconfig*.json": deny
-    "**/pyproject.toml": deny
-    "**/pytest.ini": deny
-    "**/*.toml": deny
-    "**/*.yaml": deny
-    "**/*.yml": deny
-  bash:
-    "*": deny
+model: openai/gpt-6-astra#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "**/design.md"
+    effect: allow
+  - action: "edit"
+    resource: "**/*.test.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.spec.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/__tests__/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/test_*.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/*_test.py"
+    effect: deny
+  - action: "edit"
+    resource: "tests/**"
+    effect: deny
+  - action: "edit"
+    resource: "test/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/package*.json"
+    effect: deny
+  - action: "edit"
+    resource: "**/tsconfig*.json"
+    effect: deny
+  - action: "edit"
+    resource: "**/pyproject.toml"
+    effect: deny
+  - action: "edit"
+    resource: "**/pytest.ini"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.toml"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.yaml"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.yml"
+    effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
 ---
 
 You are the DESIGN-AUTHOR.

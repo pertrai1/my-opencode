@@ -1,30 +1,62 @@
 ---
 description: Proposal planning author for OpenSpec proposal artifact updates. Writes proposal text from evidence, resolves ambiguities, and returns structured planning output.
 mode: subagent
-model: openai/gpt-5.4
-reasoningEffort: high
-temperature: 0.2
-permission:
-  edit:
-    "*": deny
-    "**/proposal.md": allow
-    "**/*.test.*": deny
-    "**/*.spec.*": deny
-    "**/__tests__/**": deny
-    "**/test_*.py": deny
-    "**/*_test.py": deny
-    "tests/**": deny
-    "test/**": deny
-    "**/package*.json": deny
-    "**/tsconfig*.json": deny
-    "**/pyproject.toml": deny
-    "**/pytest.ini": deny
-    "**/*.toml": deny
-    "**/*.yaml": deny
-    "**/*.yml": deny
-    "**/*.mdc": deny
-  bash:
-    "*": deny
+model: openai/gpt-6-astra#xhigh
+permissions:
+  - action: "edit"
+    resource: "*"
+    effect: deny
+  - action: "edit"
+    resource: "**/proposal.md"
+    effect: allow
+  - action: "edit"
+    resource: "**/*.test.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.spec.*"
+    effect: deny
+  - action: "edit"
+    resource: "**/__tests__/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/test_*.py"
+    effect: deny
+  - action: "edit"
+    resource: "**/*_test.py"
+    effect: deny
+  - action: "edit"
+    resource: "tests/**"
+    effect: deny
+  - action: "edit"
+    resource: "test/**"
+    effect: deny
+  - action: "edit"
+    resource: "**/package*.json"
+    effect: deny
+  - action: "edit"
+    resource: "**/tsconfig*.json"
+    effect: deny
+  - action: "edit"
+    resource: "**/pyproject.toml"
+    effect: deny
+  - action: "edit"
+    resource: "**/pytest.ini"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.toml"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.yaml"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.yml"
+    effect: deny
+  - action: "edit"
+    resource: "**/*.mdc"
+    effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
 ---
 
 You are the PROPOSAL-AUTHOR.
