@@ -1,0 +1,69 @@
+[
+  {
+    "id": "architecture-docs",
+    "commit": "144edfe1496665d4ef252d51b6be19bf38b544d0",
+    "expected": [],
+    "reason": "Adds an architecture description without changing code or a user interface."
+  },
+  {
+    "id": "complexity-analyzer",
+    "commit": "c64e66b8fc0e5aff1e667f1db505d670c134d107",
+    "expected": ["performance-reviewer", "test-reviewer"],
+    "reason": "Adds data-processing code for a complexity analyzer and changes executable command behavior without analyzer tests."
+  },
+  {
+    "id": "explore-safety-policy",
+    "commit": "97c61310e190f6d2445d8b791c31fe252f70f119",
+    "expected": ["security-audit-reviewer", "production-readiness-reviewer", "test-reviewer"],
+    "reason": "Changes the plugin's command and read boundary, with new tests on a critical runtime path."
+  },
+  {
+    "id": "sonarqube-integration",
+    "commit": "e41076d41aacd46039284a5100d8045fb0320e55",
+    "expected": ["architecture-boundary-reviewer", "production-readiness-reviewer", "security-audit-reviewer", "test-reviewer"],
+    "reason": "Adds an external-service plugin and changes secret-scanning behavior, configuration wiring, and tests."
+  },
+  {
+    "id": "remove-secret-scan",
+    "commit": "3cef9fc4a7f952a8cca3126d496967f2fd683d67",
+    "expected": ["architecture-boundary-reviewer", "production-readiness-reviewer", "security-audit-reviewer", "test-reviewer"],
+    "reason": "Removes a security-control plugin, its integration configuration, and its tests."
+  },
+  {
+    "id": "graph-status-removal",
+    "commit": "fcfa992235fa2ca2af30811065d6f94a558c01df",
+    "expected": ["test-reviewer"],
+    "reason": "Removes observable plugin behavior on session creation without a corresponding test change."
+  },
+  {
+    "id": "router-introduction",
+    "commit": "873d3d7abb25a21ef5166d82b4866519b9bd5101",
+    "expected": ["architecture-boundary-reviewer", "production-readiness-reviewer", "test-reviewer"],
+    "reason": "Adds TypeSafe as an external reviewer-routing integration and changes the code-review command."
+  },
+  {
+    "id": "angular-skill-docs",
+    "commit": "9d2000475777d41fccc167528e1fda78eb2c9216",
+    "expected": [],
+    "reason": "Adds instructions about Angular UI development, not a browser-facing interface."
+  },
+  {
+    "id": "frontend-form",
+    "synthetic": {
+      "files": " M src/components/SignupForm.tsx\n M src/components/SignupForm.test.tsx",
+      "stat": " src/components/SignupForm.tsx      | 20 +++++++++++++-------\n src/components/SignupForm.test.tsx | 12 ++++++++++++\n 2 files changed, 25 insertions(+), 7 deletions(-)"
+    },
+    "expected": ["frontend-a11y-reviewer", "test-reviewer"],
+    "reason": "Hypothetical browser-facing form interaction and its tests; no security or backend changes are stipulated."
+  },
+  {
+    "id": "ambiguous-server-handler",
+    "synthetic": {
+      "files": " M src/server/handler.ts",
+      "stat": " src/server/handler.ts | 6 +++---\n 1 file changed, 3 insertions(+), 3 deletions(-)"
+    },
+    "expected": [],
+    "disputed": ["security-audit-reviewer", "test-reviewer", "performance-reviewer", "production-readiness-reviewer"],
+    "reason": "Metadata alone cannot tell whether this hypothetical handler change alters authorization, hot-path behavior, or only a comment; disputed labels are excluded from accuracy totals."
+  }
+]

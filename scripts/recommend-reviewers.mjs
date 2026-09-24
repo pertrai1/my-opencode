@@ -87,7 +87,7 @@ function gitOutput(args) {
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
-function changeSummary(status) {
+export function changeSummary(status) {
   const files = status.split("\n").filter(Boolean).map((entry) => ({
     status: entry.slice(0, 2),
     path: entry.slice(3),

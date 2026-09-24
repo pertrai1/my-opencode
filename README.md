@@ -85,6 +85,8 @@ The script prints JSON. A `typesafe` source selects reviewers with a probability
 
 The router sends working-tree file statuses (including file paths), tracked diff statistics, and locally derived file-category counts to TypeSafe. It does not send raw diff content or credentials. File paths can contain sensitive identifiers; use this router only where that metadata may leave the machine.
 
+To evaluate the existing selection policy, run `node scripts/baseline-reviewer-router.mjs` from this repository with `TYPESAFE_API_KEY` set. The [baseline report](docs/reviewer-router-baseline.md) records a labeled historical/synthetic snapshot, including per-reviewer misses, unnecessary selections, latency, usage, fallback frequency, and reproduction details. The [fixtures](tests/fixtures/reviewer-router-baseline.json) keep disputed labels visible and out of accuracy totals. Re-running the command calls TypeSafe again; review any fixture paths before using it with a different dataset.
+
 ## Memory
 
 - **`agentmemory`** (local) — explicit long-term memory for `recall`/`remember` commands. `npx -y @agentmemory/mcp` (server: `http://localhost:3111`)
