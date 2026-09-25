@@ -29,7 +29,7 @@ test("creates a stable, tracker-neutral work item with local artifacts", async (
   assert.equal(item.type, "feature");
   assert.equal(item.status, "new");
   assert.deepEqual(item.acceptanceCriteria, ["Long values are visually truncated"]);
-  assert.match(item.id, /^wi-\d{8}T\d{6}Z-add-ellipsis-behavior-to-the-search-input$/);
+  assert.match(item.id, /^wi-\d{8}T\d{6}Z-add-ellipsis-behavior-to-the-search-input-[0-9a-f]{8}$/);
   assert.equal(JSON.parse(await readFile(path.join(root, ".agents/work", item.id, "work.json"), "utf8")).id, item.id);
   assert.match(await readFile(path.join(root, ".agents/work", item.id, "request.md"), "utf8"), /Add ellipsis behavior/);
 });
@@ -42,9 +42,22 @@ test("supports resuming an existing work item", async () => {
   assert.equal(resumed.nextAction, "Triage the request and select a route.");
 });
 
+test("creates distinct IDs for repeated requests with the same timestamp", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const now = new Date("2026-09-25T12:00:00.000Z");
+  const first = await run(["create", "--root", root, "--request", "Repeat this request"], now);
+  const second = await run(["create", "--root", root, "--request", "Repeat this request"], now);
+  assert.notEqual(first.id, second.id);
+  assert.deepEqual((await run(["list", "--root", root])).map((item) => item.id).sort(), [first.id, second.id].sort());
+});
+
 test("lists local work items and returns an empty list for a new project", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
   assert.deepEqual(await run(["list", "--root", root]), []);
+
+  const created = await run(["create", "--root", root, "--request", "List this request"]);
+  const listed = await run(["list", "--root", root]);
+  assert.deepEqual(listed.map((item) => item.id), [created.id]);
 });
 
 test("rejects unsafe work item IDs when resuming", async () => {

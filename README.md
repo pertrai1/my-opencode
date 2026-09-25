@@ -15,6 +15,23 @@ Global configuration for [opencode](https://opencode.ai).
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
 
+## Work intake
+
+Use `/intake <request>` to create a tracker-neutral local work item for a request that must survive the current session. The command classifies the request, records acceptance criteria and an initial route, and writes `work.json`, `request.md`, and `progress.md` under `.agents/work/<work-id>/` in the selected target repository.
+
+For direct use from a target repository:
+
+```sh
+node ~/.config/opencode/scripts/work-item.mjs create \
+  --request "Add ellipsis behavior to the search input" \
+  --type feature \
+  --risk low \
+  --route light-task \
+  --acceptance "Long values are visually truncated"
+```
+
+Inspect or resume a record with `node ~/.config/opencode/scripts/work-item.mjs show <work-id>` or `resume <work-id>`, and list records with `node ~/.config/opencode/scripts/work-item.mjs list`.
+
 ### Agent model assignments
 
 | Model | Agents |

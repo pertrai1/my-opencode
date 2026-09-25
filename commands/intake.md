@@ -10,7 +10,7 @@ Use the tracker-neutral work-item intake workflow for this request.
 3. Create the durable local record with:
 
 ```sh
-node scripts/work-item.mjs create --request "$ARGUMENTS" --type <type> --risk <risk> --route <route>
+node ~/.config/opencode/scripts/work-item.mjs create --request "$ARGUMENTS" --type <type> --risk <risk> --route <route>
 ```
 
 4. Include repeated `--acceptance "..."` arguments when acceptance criteria are already clear.

@@ -7,7 +7,7 @@ Work items are the tracker-neutral intake record for requests that need to survi
 Create a local work item with:
 
 ```sh
-node scripts/work-item.mjs create \
+node ~/.config/opencode/scripts/work-item.mjs create \
   --request "Add ellipsis behavior to the search input" \
   --type feature \
   --risk low \
@@ -20,8 +20,8 @@ The command creates `.agents/work/<work-id>/` containing `work.json`, `request.m
 Resume or inspect a work item with:
 
 ```sh
-node scripts/work-item.mjs resume <work-id>
-node scripts/work-item.mjs list
+node ~/.config/opencode/scripts/work-item.mjs resume <work-id>
+node ~/.config/opencode/scripts/work-item.mjs list
 ```
 
 ## WorkItem shape
@@ -31,7 +31,7 @@ node scripts/work-item.mjs list
 ```json
 {
   "version": 1,
-  "id": "wi-20260925T120000Z-add-ellipsis",
+  "id": "wi-20260925T120000Z-add-ellipsis-a1b2c3d4",
   "source": { "kind": "local", "ref": null },
   "request": "...",
   "type": "feature",

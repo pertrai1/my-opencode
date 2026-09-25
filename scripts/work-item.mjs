@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const WORK_ITEM_VERSION = 1;
 const REQUEST_TYPES = new Set([
@@ -64,7 +66,7 @@ function getWorkItemPath(root, id) {
 }
 
 function validateId(id) {
-  if (!/^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+$/.test(id)) {
+  if (!/^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+-[0-9a-f]{8}$/.test(id)) {
     throw new Error(`Invalid work item ID: ${id}`);
   }
 }
@@ -90,7 +92,7 @@ export function createWorkItem(options, now = new Date()) {
 
   const timestamp = now.toISOString();
   const stamp = timestamp.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-  const id = `wi-${stamp}-${slugify(request)}`;
+  const id = `wi-${stamp}-${slugify(request)}-${randomUUID().slice(0, 8)}`;
 
   return {
     version: WORK_ITEM_VERSION,
@@ -183,7 +185,7 @@ export async function run(argv) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     process.stdout.write(`${JSON.stringify(await run(process.argv.slice(2)), null, 2)}\n`);
   } catch (error) {

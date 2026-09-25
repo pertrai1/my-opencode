@@ -12,9 +12,9 @@ Use this skill when a user request needs to survive the current session or be ro
 1. Classify the request without silently resolving material ambiguity.
 2. Capture acceptance criteria when they are known.
 3. Choose initial risk and a provisional route; the route can be revised later.
-4. Run `node scripts/work-item.mjs create ...` from the target repository.
+4. Run `node ~/.config/opencode/scripts/work-item.mjs create ...` from the target repository.
 5. Return the work ID and the paths created under `.agents/work/<work-id>/`.
-6. On a later session, run `node scripts/work-item.mjs resume <work-id>` before making decisions about the request.
+6. On a later session, run `node ~/.config/opencode/scripts/work-item.mjs resume <work-id>` before making decisions about the request.
 
 ## Tracker independence
 
