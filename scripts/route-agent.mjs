@@ -48,6 +48,16 @@ function probabilityFor(answer, route) {
   return answer?.choice === route ? 1 : 0;
 }
 
+export function hasExplicitAgentSelection(
+  prompt,
+  currentAgent,
+) {
+  return Boolean(
+    prompt?.agents?.some((agent) => typeof agent.name === "string")
+      || currentAgent === "sdlc-orchestrator",
+  );
+}
+
 export function parseModelRef(model) {
   if (typeof model !== "string" || model.length === 0) return undefined;
   const [ref, variant] = model.split("#", 2);
@@ -67,6 +77,7 @@ export function routeFallback({ currentAgent, currentModel, reason = "fallback" 
     agent: currentAgent,
     model: currentModel,
     probability: 0,
+    probabilities: {},
     confidence: 0,
     reason,
   };
@@ -74,7 +85,7 @@ export function routeFallback({ currentAgent, currentModel, reason = "fallback" 
 
 export async function routeAgent(
   { text, currentAgent, currentModel, context = {} },
-  client = new TypeSafeClient(),
+  client,
   now = () => performance.now(),
 ) {
   const started = now();
@@ -83,7 +94,7 @@ export async function routeAgent(
   }
 
   try {
-    const response = await client.systemOne({
+    const response = await (client ?? new TypeSafeClient()).systemOne({
       state: {
         request: text,
         current: { agent: currentAgent, model: currentModel },
@@ -107,6 +118,9 @@ export async function routeAgent(
       ? answer.choice
       : "current";
     const probability = probabilityFor(answer, route);
+    const probabilities = answer?.probabilities && typeof answer.probabilities === "object"
+      ? { ...answer.probabilities }
+      : {};
     const confidence = typeof answer?.confidence === "number" ? answer.confidence : 0;
     const accepted = route !== "current"
       && probability >= ROUTING_POLICY.minProbability
@@ -119,6 +133,7 @@ export async function routeAgent(
       agent: selected.agent ?? currentAgent,
       model: selected.model ?? currentModel,
       probability,
+      probabilities,
       confidence,
       accepted,
       modelUsed: response.model,

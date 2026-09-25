@@ -1,5 +1,10 @@
 import { Plugin } from "@opencode/plugin";
-import { isRoutingEnabled, parseModelRef, routeAgent } from "../scripts/route-agent.mjs";
+import {
+  hasExplicitAgentSelection,
+  isRoutingEnabled,
+  parseModelRef,
+  routeAgent,
+} from "../scripts/route-agent.mjs";
 
 function currentModelRef(model: unknown): string | undefined {
   if (!model || typeof model !== "object") return undefined;
@@ -18,6 +23,12 @@ export default Plugin.define({
 
     await ctx.session.hook("prompt", async (input) => {
       const session = await ctx.session.get({ sessionID: input.sessionID });
+      if (hasExplicitAgentSelection(input.prompt, session.agent)) {
+        console.info("[jev-routing] preserving explicit agent selection", {
+          agent: session.agent,
+        });
+        return;
+      }
       const currentModel = currentModelRef(session.model);
       const decision = await routeAgent({
         text: input.prompt.text,
@@ -34,6 +45,7 @@ export default Plugin.define({
         route: decision.route,
         source: decision.source,
         probability: decision.probability,
+        probabilities: decision.probabilities,
         confidence: decision.confidence,
         latencyMs: decision.latencyMs,
         reason: decision.reason,

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  hasExplicitAgentSelection,
   isRoutingEnabled,
   parseModelRef,
   routeAgent,
@@ -52,6 +53,42 @@ test("falls back without changing the session when TypeSafe fails", async () => 
   assert.equal(result.route, "current");
   assert.equal(result.agent, "plan");
   assert.match(result.reason, /typesafe-error:unavailable/);
+});
+
+test("falls back when the default TypeSafe client cannot be constructed", async () => {
+  const previousKey = process.env.TYPESAFE_API_KEY;
+  delete process.env.TYPESAFE_API_KEY;
+  try {
+    const result = await routeAgent({
+      text: "Review this change",
+      currentAgent: "plan",
+      currentModel: "openai/gpt-6-astra",
+    });
+
+    assert.equal(result.source, "fallback");
+    assert.equal(result.route, "current");
+    assert.match(result.reason, /typesafe-error/);
+  } finally {
+    if (previousKey === undefined) delete process.env.TYPESAFE_API_KEY;
+    else process.env.TYPESAFE_API_KEY = previousKey;
+  }
+});
+
+test("preserves the complete route probability distribution", async () => {
+  const probabilities = { current: 0.05, lean: 0.1, build: 0.8, plan: 0.05 };
+  const result = await routeAgent(
+    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6-luna#high" },
+    { systemOne: async () => response("build", probabilities) },
+    () => 100,
+  );
+
+  assert.deepEqual(result.probabilities, probabilities);
+});
+
+test("preserves explicitly selected agents", () => {
+  assert.equal(hasExplicitAgentSelection(undefined, "sdlc-orchestrator"), true);
+  assert.equal(hasExplicitAgentSelection({ agents: [{ name: "plan" }] }, "lean"), true);
+  assert.equal(hasExplicitAgentSelection({ agents: [] }, "lean"), false);
 });
 
 test("parses OpenCode model references", () => {
