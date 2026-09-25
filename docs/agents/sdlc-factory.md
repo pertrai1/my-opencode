@@ -27,7 +27,7 @@ OpenChamber is the work control surface around OpenCode. Use its worktree sessio
 
 OpenChamber extensions are separate sandboxed panels with explicit capabilities. Add one only when a durable SDLC dashboard, task board, or custom interaction is useful; do not build an extension to reproduce OpenCode agents, skills, or commands. Extensions can attach tasks, start sessions, send prompts, access project files, or call the Small Model only when their declared capabilities are approved. A local extension service runs with the user's full access and should be avoided unless the panel cannot do the job.
 
-The existing TypeSafe reviewer router remains the change-aware selection mechanism for `/code-review`. It selects specialist review agents from change metadata, falls back to manual rules, and intentionally sends metadata rather than raw diff content. Avoid a second router in this SDLC orchestrator.
+The existing TypeSafe reviewer router remains the change-aware selection mechanism for `/code-review`. The user's TypeSafe JEV work and current reviewer-routing implementation are preserved; this branch does not replace or duplicate that decision path. It selects specialist review agents from change metadata, falls back to manual rules, and intentionally sends metadata rather than raw diff content. Avoid a second router in this SDLC orchestrator.
 
 ## Control placement
 
@@ -62,4 +62,10 @@ After changing config-time files, restart OpenCode. Confirm in the actual runtim
 6. MCP servers connect under the V2 `mcp.servers` configuration and unavailable project-specific Sonar settings disable Sonar safely.
 7. OpenChamber can operate sessions/worktrees and issue/PR review without a custom extension.
 
-Source notes: OpenCode V2 configuration, agent, permission, skill, and MCP documentation; OpenChamber Extensions, Host API, Worktree Sessions, Session Goals, Project Actions, and GitHub workflow documentation. See the PR description for links.
+## Research influences
+
+- [`nexxeln/opencode-config`](https://github.com/nexxeln/opencode-config): a concise top-level routing guide, narrow specialist agents, and reusable commands. The design adopts explicit routing and evidence-oriented specialist boundaries.
+- [`gotar/opencode-config`](https://github.com/gotar/opencode-config): a broad catalog of agents and skills. It is a useful inventory, but its large always-available surface is not copied into this setup.
+- [`OpenChamber`](https://github.com/OpenChamber/openchamber): use its worktree/session management and GitHub workflow UI as the visual control surface. Custom extensions and the agent-control tool are optional when the managed runtime/capabilities support them; no custom extension is needed for these workflows.
+
+Source notes: OpenCode V2 configuration, agent, permission, skill, and MCP documentation; OpenChamber Extensions, Host API, Worktree Sessions, Session Goals, Project Actions, and GitHub workflow documentation. The PR description links the primary references.

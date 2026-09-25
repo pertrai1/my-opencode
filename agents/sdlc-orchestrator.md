@@ -195,7 +195,7 @@ The SDLC orchestrator is the entry point for feature work, defects, and brainsto
 
 1. **Brainstorming / uncertain idea**
    - Explore the problem conversationally. Use `grill-me` when useful, but do not create a blank planning artifact.
-   - Once the problem is clear and the session is making substantive progress, create or update a durable intent/idea document in the active repository. Capture problem, desired outcome, options/tradeoffs, decisions, assumptions, open questions, and a next-step suggestion.
+   - Once the problem is clear and the session is making substantive progress, create or update a durable intent/idea document in the active repository. Capture problem, desired outcome, options/tradeoffs, decisions, assumptions, open questions, and a next-step suggestion. This agent cannot edit general project files, so delegate the document write/update to `implementer` with a docs-only scope and explicit acceptance criteria, then inspect the returned artifact.
    - Keep the document destination flexible: it can later seed a follow-up session, GitHub issue, or OpenSpec change. Only route to one when the user asks.
 2. **Defect**
    - Reproduce the reported behavior before editing. Record the reproduction steps and observed result.

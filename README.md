@@ -4,13 +4,13 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. V2 does not retain a `#variant` on the root model selection. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents configure `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
-- **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
-- **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
-- **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
+- **Models** — `opencode.jsonc` defaults to `openai/gpt-6-sol`; `build` uses Sol for routine work and `plan` uses Astra for planning. The adaptive `sdlc-orchestrator` uses Astra at `#xhigh`; specialist agent assignments are listed below.
+- **Default agent** — `build`. Use `/work` or `/apply` to route feature, defect, and brainstorming work through the adaptive SDLC orchestrator.
+- **Agent style guide** — `AGENTS.md` imports `docs/agents/style-guide.md`, which summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
+- **Providers** — OpenAI model overrides plus the local Ollama-compatible Qwen model.
+- **Permissions** — V2 ordered rules protect `.env` files and block high-risk Git cleanup/reset/restore/force-push commands. Routine shell work uses OpenCode's defaults; agent-specific permissions enforce role boundaries. `plugins/safety.ts` handles repeated tool loops.
 - **LSP** — enabled for code intelligence.
-- **Compaction** — auto with pruning (12K token reserved buffer).
+- **Context** — OpenCode V2 manages compaction using its selected model's context budget.
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
@@ -21,12 +21,13 @@ Global configuration for [opencode](https://opencode.ai).
 | --- | --- |
 | `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
 | `openai/gpt-6-astra#high` | `prompt-agent` |
-| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
+| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
+| `openai/gpt-6-astra#xhigh` | `sdlc-orchestrator` |
 | `openai/gpt-6-sol#high` | `test-author` |
 | `openai/gpt-6-luna#medium` | `implementer` |
 | `openai/gpt-6-luna` (no explicit variant) | `explore` |
 
-Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately for `sdlc-orchestrator` or `tdd-orchestrator` when its `#xhigh` tier matters. The same applies when switching among the inline `lean`, `build`, and `plan` agents.
+Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately when its configured reasoning tier matters.
 
 Command-level model selections are separate: `/code-review` configures `openai/gpt-6-astra` (model-level `high` reasoning), `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6-astra#xhigh`.
 
@@ -126,12 +127,10 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
-- `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
+- `opencode.jsonc` keeps the default `build` agent and maps `plan` to Astra; the orchestrator selects procedural skills and role agents only when the route needs them.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
-- Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
-- `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
-- `agents/sdlc-orchestrator.md` — primary OpenSpec workflow owner for change selection, lifecycle routing, delegated planning, verification, sync decisions, human approval, and archive gating.
+- `commands/work.md` and `commands/apply.md` — adaptive entry points (`/work`, `/apply`) for features, defects, and brainstorming; full type-driven TDD is selected only when justified.
+- `agents/sdlc-orchestrator.md` — adaptive SDLC router; chooses a light task route or full OpenSpec path, reproduces defects first, and stages independent verification according to risk.
 - `agents/proposal-author.md`, `agents/spec-author.md`, `agents/design-author.md`, `agents/task-planner.md` — planning authors with artifact-scoped write access.
 - `agents/spec-syncer.md` — merges change-local delta specs into `openspec/specs/**` after orchestrator gating.
 - `.opencode/commands/opsx-*.md` — thin command wrappers that preserve user-facing intent while delegating lifecycle logic to `sdlc-orchestrator`.
@@ -147,7 +146,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow openspec pipeline. It is now the delegated behavioral implementation subsystem under `sdlc-orchestrator`, not the only workflow entrypoint. Separation defeats confirmation bias: the agent that writes tests never sees the implementation plan, and the agent that writes code can't touch the tests or the type contract.
 
-Run it with `/apply <change or task description>`.
+Use `@tdd-orchestrator` when you explicitly want the strict type → RED → GREEN pipeline. `/work` and `/apply` choose this path only when its separation is useful for the task.
 
 | Phase | Agent | Model | Can edit | Mechanically blocked from |
 | --- | --- | --- | --- | --- |
@@ -170,7 +169,7 @@ How enforcement works:
 - **Self-correction loop** — up to 3 retries per phase with failure evidence, then hard stop and escalate to the human.
 - **Disagreement protocol** — an agent that disputes a test or type escalates to the orchestrator, which routes the fix to the owning agent.
 
-Task classification: behavioral code gets the full pipeline; type/schema-only tasks go to `type-author` alone (the compiler verifies); config/docs/trivial changes go straight to `implementer` in direct-task mode with explicit acceptance criteria and verification commands.
+Task classification is adaptive: the full pipeline is selected only when risk, shared boundaries, testability, and the value of independent phase separation justify it. Type/schema-only changes can use `type-author` alone with compiler verification; config/docs/trivial changes go straight to `implementer` with explicit acceptance criteria and focused checks. Details above describe the strict mode when selected.
 
 Language support: the orchestrator detects the type checker at intake: TypeScript (`tsc --noEmit`), Python (`mypy`/`pyright`), JS with `checkJs` (`tsc --checkJs`), and passes the verifier command in handoffs. Contracts are declarations only in dedicated files (no stubs), so the implementer never edits them. Public contracts prefer explicit domain/input/output/error types over loose signatures. **Projects with no viable type checker (plain JS) skip Phase 0** and switch to explicit `no-contract mode`, recorded in `progress.md` with the public API source of truth used for RED/GREEN.
 
