@@ -30,13 +30,15 @@ node ~/.config/opencode/scripts/work-item.mjs create \
   --acceptance "Long values are visually truncated"
 ```
 
+For an intent that spans several independently deliverable pieces, run `/inception <request or work-id>`. It follows the AI-DLC Inception phase. `inception-author` drafts a plan and clarifying questions for your approval. It then writes user stories, NFRs, risks, and loosely coupled units under `.agents/work/<work-id>/inception/`. After you approve the units, each one becomes its own OpenSpec change. See [docs/agents/work-items.md](docs/agents/work-items.md#ai-dlc-inception).
+
 Inspect or resume a record with `node ~/.config/opencode/scripts/work-item.mjs show <work-id>` or `resume <work-id>`, and list records with `node ~/.config/opencode/scripts/work-item.mjs list`.
 
 ### Agent model assignments
 
 | Model | Agents |
 | --- | --- |
-| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
+| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `inception-author`, `proposal-author`, `task-planner` |
 | `openai/gpt-6-astra#high` | `prompt-agent` |
 | `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
 | `openai/gpt-6-sol#high` | `test-author` |
@@ -161,6 +163,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 - `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
 - `agents/sdlc-orchestrator.md` — primary OpenSpec workflow owner for change selection, lifecycle routing, delegated planning, verification, sync decisions, human approval, and archive gating.
+- `agents/inception-author.md` — AI-DLC inception author. Turns a work-item intent into stories, NFRs, risks, and units through a plan-then-execute protocol. Run it with `/inception`.
 - `agents/proposal-author.md`, `agents/spec-author.md`, `agents/design-author.md`, `agents/task-planner.md` — planning authors with artifact-scoped write access.
 - `agents/spec-syncer.md` — merges change-local delta specs into `openspec/specs/**` after orchestrator gating.
 - `.opencode/commands/opsx-*.md` — thin command wrappers that preserve user-facing intent while delegating lifecycle logic to `sdlc-orchestrator`.
