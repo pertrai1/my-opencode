@@ -40,7 +40,7 @@ Model output becomes real UI, and the semantics have to survive the conversion:
 
 - **Headings become real headings** at the right level for the page — not `<p><strong>`. A response with six bold pseudo-headings is unnavigable.
 - **Lists become `<ul>`/`<ol>`**; tables become `<table>` with headers (see [Tables](guide-tables.md)).
-- **Code blocks** get a language label in text, a real `<pre><code>`, and a copy button with a unique accessible name. Horizontal scroll containers follow the conditional focus rule (`A11Y.md` §6 — *Focus Traps Nobody Asked For*).
+- **Code blocks** get a language label in text, a real `<pre><code>`, and a copy button with a unique accessible name. Horizontal scroll containers follow the conditional focus rule (`A11Y.md` §6 — *Do Not Add Unneeded Focus Stops*).
 - **Images and diagrams the model generates carry the same obligation as any other image** — see [Images](guide-images.md) and *Image Evidence* (`A11Y.md` §2). An assistant that emits `alt=""` on a chart it just drew is fabricating a decorative classification.
 - **Math, charts and embedded artifacts** are not exempt for being generated: whatever appears in the DOM is the product's responsibility, not the model's.
 

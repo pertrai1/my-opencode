@@ -8,7 +8,7 @@
 
 1. **Prefer an explicit "Load more" button.** After activation, focus moves to the **first newly loaded item** — never resets to the top, never stays stranded on a button that jumped.
 2. **If you do auto-load:** announce each batch from a polite status region, outcome not event — *"20 more results, 60 of 200"* — and never per-item. The sentinel that triggers loading is not focusable and not in the accessibility tree.
-3. **Appending never moves the user.** New items enter *after* the current reading position; re-sorting or re-rendering the existing list mid-read is a context change nobody asked for (SC 3.2.2 in spirit, a lost screen-reader user in practice).
+3. **Appending must not change the reading position.** Add new items *after* the current position. Do not re-sort or re-render existing items while a user is reading; that changes context (SC 3.2.2) and can disorient screen reader users.
 4. **Position is recoverable:** Back returns to the same scroll position with the same items (history state); item names or `aria-setsize`/`aria-posinset` convey *"n of m"* where the total is known, so "somewhere in an endless list" becomes an addressable place.
 5. **The footer stays reachable.** If content grows automatically, either stop auto-loading after a few batches (switching to the button), or provide a skip link past the feed — a footer that flees on approach is content that exists and cannot be used (Principle Zero).
 6. **`role="feed"`** is the right container for a true feed (article stream), letting screen readers move between articles while loading continues; each article carries `aria-posinset`/`aria-setsize`.

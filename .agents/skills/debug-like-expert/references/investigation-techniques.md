@@ -285,7 +285,7 @@ git bisect good
 
 ```
 
-**Why it's powerful**: Turns "it broke sometime in the last 100 commits" into "it broke in commit abc123" in ~7 tests (log₂ 100 ≈ 7).
+**Why use git bisect**: It can identify the bad commit among 100 commits in about 7 tests (log₂ 100 ≈ 7).
 
 <example>
 100 commits between working and broken

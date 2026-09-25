@@ -145,7 +145,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ### Type-Driven TDD Pipeline
 
-Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow openspec pipeline. It is now the delegated behavioral implementation subsystem under `sdlc-orchestrator`, not the only workflow entrypoint. Separation defeats confirmation bias: the agent that writes tests never sees the implementation plan, and the agent that writes code can't touch the tests or the type contract.
+Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow OpenSpec pipeline. `sdlc-orchestrator` delegates behavioral implementation to this flow; it is not the only workflow entrypoint. The test author does not see the implementation plan, and the implementer cannot edit tests or the type contract. This separation reduces confirmation bias.
 
 Run it with `/apply <change or task description>`.
 

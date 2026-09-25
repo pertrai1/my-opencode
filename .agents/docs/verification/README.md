@@ -14,7 +14,7 @@ This document defines the canonical evaluation rubric and operating expectations
 
 ## 2. Source of Truth & Precedence
 
-Verification must utilize a standard core rubric combined with source-specific checks. The selected source of truth is resolved via the following precedence:
+Verification must use a standard core rubric and source-specific checks. Select the source of truth in this order:
 
 1. **Explicit Argument:** Any source explicitly passed to the `/verify` invocation (e.g., `/verify issue-42` or `/verify spec.md`).
 2. **Active OpenSpec:** An active OpenSpec change or specification document detected in the workspace.
@@ -106,7 +106,7 @@ To prevent unsupported conclusions:
 ## 6. GitHub Issue & PR Integration
 
 - **Issue Comments:** When a linked GitHub Issue exists, the complete verification report should be posted as a comment on the issue by default.
-- **Full Report:** The posted comment must contain the full verification report, not just a high-level summary.
+- **Full Report:** Include the complete verification report in the posted comment.
 - **Opt-Out:** The user can opt out of posting comments by using the `--no-comment` flag.
 
 ---
@@ -115,7 +115,7 @@ To prevent unsupported conclusions:
 
 Engineering skills must integrate with this shared verification standard using **progressive disclosure**—pointing to this README instead of duplicating the rubric. 
 
-Furthermore, skills must show **Proof of Work** in their success criteria:
+Skills must include **Proof of Work** in their success criteria:
 
 ### debug-like-expert
 - When completing an investigation, the agent must output proof of work showing:

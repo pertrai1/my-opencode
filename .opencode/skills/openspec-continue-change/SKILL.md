@@ -77,7 +77,7 @@ Continue working on a change by creating the next artifact.
      - Otherwise use `template` as the structure - fill in its sections
      - Apply `context` and `rules` as constraints when writing - but do NOT copy them into the file
      - Write to the `resolvedOutputPath` specified in instructions. If it is a glob pattern, choose the concrete file path using the schema instruction and the change's context
-   - Show what was created and what's now unlocked
+   - Show what was created and which artifacts are now available
    - STOP after creating ONE artifact
 
    ---
@@ -97,7 +97,7 @@ After each invocation, show:
 - Which artifact was created
 - Schema workflow being used
 - Current progress (N/M complete)
-- What artifacts are now unlocked
+- Which artifacts are now available
 - Prompt: "Want to continue? Just ask me to continue or tell me what to do next."
 
 **Artifact Creation Guidelines**

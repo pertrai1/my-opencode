@@ -163,7 +163,7 @@ If you can't answer "yes" to all of these, keep investigating.
 [What SHOULD be changed and WHY - specific files, lines, code]
 
 ### Verification Plan & Proof of Work
-[How to confirm the fix works after implementation. Propose a verification plan following the shared guidelines in `.agents/docs/verification/README.md`. Show proof of work for the investigation including exact hypotheses tested, commands or scripts run, exit statuses, and diagnostic-tool outputs. Additionally, include a structured mapping that clearly connects each investigation finding to its recommended fix.]
+[How to confirm the fix works after implementation. Propose a verification plan following `.agents/docs/verification/README.md`. Show the hypotheses tested, commands or scripts run, exit statuses, and diagnostic-tool outputs. Map each finding to its recommended fix.]
 
 ### Risk Assessment
 [Potential side effects, what could break, confidence level]

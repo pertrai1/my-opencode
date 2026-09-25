@@ -4,9 +4,9 @@
 
 ## 0. The rule everything else follows
 
-**Auto-advance is the accessibility problem; everything else is a labelled group of slides.** A carousel that never moves on its own is a manageable pattern. One that rotates automatically fights the user on three fronts at once: it moves content mid-read (low vision, cognitive), it moves content mid-listen (screen reader), and it moves the thing focus was standing on (keyboard).
+Auto-advance creates accessibility problems; a carousel that does not rotate automatically is a labelled group of slides. Automatic rotation can change content while users read, listen with a screen reader, or move keyboard focus.
 
-1. **The pause control is a requirement, not chrome** — SC 2.2.2, Level A, for any automatic movement over 5 seconds: a visible, focusable pause/stop, **first in the carousel's tab order**, so it can be reached before the rotation has changed anything. Under `prefers-reduced-motion`, auto-advance simply does not start (see [Time-Based Media & Motion](guide-media.md)).
+1. **Pause control (SC 2.2.2, Level A):** For automatic movement over 5 seconds, provide a visible, focusable pause/stop control **first in the carousel's tab order** so users can reach it before the rotation changes. Under `prefers-reduced-motion`, do not start auto-advance (see [Time-Based Media & Motion](guide-media.md)).
 2. **Rotation stops on interaction:** hover, focus entering the carousel, or an open tooltip each suspend auto-advance — and **the slide under the user's focus never moves away from them**.
 3. **Structure:** container `role="region"` + `aria-roledescription="carousel"` + an accessible name; each slide `role="group"` + `aria-roledescription="slide"` + a name that locates it — *"3 of 8"* or its title. Position must not be conveyed by dot color alone (SC 1.4.1).
 4. **Controls are buttons:** Previous/Next as real `<button>`s with names; picker dots as buttons named for their slide (*"Slide 3: Spring collection"*), current one marked with `aria-current`, never only by fill.

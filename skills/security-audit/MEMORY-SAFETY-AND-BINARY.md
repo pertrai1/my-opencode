@@ -2,7 +2,7 @@
 
 #### When to use this file
 
-Reach for this file when the target processes untrusted bytes in a memory-unsafe or privileged context: C/C++/Objective-C, Rust `unsafe`, FFI, kernel modules and drivers, parsers and decoders, network daemons, firmware, binary loaders, language runtimes, and JITs. Use `PROTOCOLS-RPC-AND-MESSAGING.md` for protocol authorization and state-machine logic, and this file for process integrity, memory safety, ABI boundaries, and loader behavior.
+Use this file when the target processes untrusted bytes in a memory-unsafe or privileged context: C/C++/Objective-C, Rust `unsafe`, FFI, kernel modules and drivers, parsers and decoders, network daemons, firmware, binary loaders, language runtimes, and JITs. Use `PROTOCOLS-RPC-AND-MESSAGING.md` for protocol authorization and state-machine logic. This file covers process integrity, memory safety, ABI boundaries, and loader behavior.
 
 Pick relevant classes from Phase 1 and split large targets by parser, allocator/lifetime, FFI, concurrency, loader, runtime, or privileged interface.
 
@@ -83,7 +83,7 @@ A syscall, ioctl, driver, or kernel parser derives a trusted fact from user memo
 **Privileged object lifecycle and dispatch consistency**
 Externally reachable objects have unbalanced retain/release, teardown without observer drain, unchecked selector/table indices, or duplicated compatibility paths that omit a guard. Diff each dispatch and free path side by side.
 
-**Under-authorized powerful interfaces**
+**Under-authorized privileged interfaces**
 A device node, admin socket, helper, or management API validates shape but not the caller's authority over the resource. Establish actual interface ownership and reachability; permissions or sandbox policy outside the repository make this `needs_validation`.
 
 ## Universal moves (apply across the above)

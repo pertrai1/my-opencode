@@ -19,8 +19,8 @@ This standard is built for people. It turns out the same layer is what agents op
 
 ## 3. The two traps (these are rules)
 
-- **ARIA as bot bait** — adding ARIA to look "agent-friendly" is [*ARIA Soup*](../A11Y.md) (core §6) at scale: agents read the same tree assistive technology does, and the field data shows pages with more ARIA carrying **more** detected errors, not fewer. Nothing about agents changes the First Rule of ARIA.
-- **Machine-only content doors** — a parallel "agent view" or flattened machine copy of the content is the new anti-pattern in core §6 (*Machine-Only Content Doors*): parallel versions drift, and the flattened copy strips the structure assistive technology needs. One canonical, accessible interface.
+- **Redundant ARIA** — adding ARIA to look "agent-friendly" violates [*Avoid Redundant ARIA*](../A11Y.md) (core §6): agents read the same tree as assistive technology, and field data shows pages with more ARIA carrying **more** detected errors. The First Rule of ARIA still applies.
+- **Parallel machine-facing content** — a separate "agent view" or flattened copy is an anti-pattern in core §6 (*Separate Machine-Facing Content*): versions can drift, and flattened content removes structure assistive technology needs. Use one canonical, accessible interface.
 
 ## 4. Collateral damage to watch
 

@@ -58,7 +58,7 @@ const panelId = useId();                    // generates ANOTHER value
 return <div id={panelId}>…</div>;
 ```
 
-`aria-controls` points at an `id` that does not exist. Each `useId()` call is independent — nothing makes two components arrive at the same value. And the defect **passes** axe and Lighthouse: they validate the attribute's syntax, they do not resolve a reference across components. This failure mode is the **inverse of ARIA Soup**: there, ARIA is added where native semantics sufficed; here the ARIA is syntactically correct and empty at the destination — the screen reader follows the pointer and finds nothing.
+`aria-controls` points at an `id` that does not exist. Each `useId()` call is independent, so two components do not generate the same value. The defect **passes** axe and Lighthouse: they validate the attribute's syntax but do not resolve references across components. Unlike redundant ARIA, this failure uses a valid attribute that points to no element; the screen reader follows the reference and finds nothing.
 
 ### ✅ Correct
 
