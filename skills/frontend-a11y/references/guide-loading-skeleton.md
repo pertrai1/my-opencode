@@ -15,7 +15,6 @@
 
 ## JS-gated content — where the §6 anti-pattern lives
 
-*Content Held Hostage by JavaScript* (`A11Y.md` §6) is a loading state that never resolves. The entry animation written as `opacity: 0` in CSS and revealed by script renders the page **empty** when the script fails, is blocked (corporate proxy, extension, CSP), or has not run yet — content in the DOM, invisible to everyone, and invisible to every checker, because in the checker's browser the script ran.
 
 - **The default rendered state is the readable one.** Two correct shapes: gate the animation on a class an **inline pre-paint script** removes (`<html class="no-js">` → script strips it before first paint; CSS animates only when the class is gone), or start visible and animate *from* visible.
 - **Scroll-reveal is the same trap:** below-the-fold content exists for readers, print and search *before* any `IntersectionObserver` fires — the observer adds the animation, it never adds the content.
