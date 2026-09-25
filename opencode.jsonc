@@ -1,7 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openai/gpt-6-astra",
-  "small_model": "openai/gpt-6-sol",
+  "model": "openai/gpt-6-sol",
+  "default_agent": "build",
+  "agents": {
+    "build": {
+      "model": "openai/gpt-6-sol"
+    },
+    "plan": {
+      "model": "openai/gpt-6-astra"
+    }
+  },
   "providers": {
     "openai": {
       "settings": {
@@ -16,237 +24,67 @@
           }
         }
       }
-    }
-  },
-  "default_agent": "lean",
-  "agents": {
-    "lean": {
-      "description": "Lean default agent with a smaller first-call context. Uses local code tools by default and keeps heavier tools opt-in via the build and plan agents.",
-      "model": "openai/gpt-6-luna#high",
-      "mode": "primary",
-      "permissions": [
-        {
-          "action": "webfetch",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "websearch",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "skill",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
-          "action": "question",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "subagent",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "todowrite",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "mdn_search",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "mdn_get_doc",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "mdn_get_compat",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "llm_core_get_active_instructions",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "llm_core_lint_file",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_audit",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_export",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_governance_delete",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_recall",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_save",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_sessions",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "agentmemory_memory_smart_search",
-          "resource": "*",
-          "effect": "deny"
-        }
-      ]
     },
-    "build": {
-      "model": "openai/gpt-6-sol"
-    },
-    "plan": {
-      "model": "openai/gpt-6-astra"
-    }
-  },
-  "lsp": true,
-  "instructions": [
-    "~/.claude/CLAUDE.md",
-    "AGENTS.md",
-    "~/.config/opencode/docs/agents/style-guide.md"
-  ],
-  "compaction": {
-    "auto": true,
-    "prune": true,
-    "reserved": 12000
-  },
-  "references": {
-    "workflow": {
-      "path": "./docs/agents",
-      "description": "Issue tracker, triage labels, agent workflow docs, and style guidance"
-    },
-    "reviewers": {
-      "path": "./agents",
-      "description": "Custom review and implementation agents plus reviewer prompts"
-    }
-  },
-  "autoupdate": "notify",
-  "enabled_providers": [
-    "openai",
-    "ollama",
-    "anthropic",
-    "github-copilot"
-  ],
-  "permission": {
-    "doom_loop": "ask",
-    "read": {
-      "*": "allow",
-      "*.env": "deny",
-      "*.env.*": "deny",
-      "*.env.example": "allow"
-    },
-    "glob": "allow",
-    "grep": "allow",
-    "webfetch": "allow",
-    "websearch": "allow",
-    "lsp": "allow",
-    "skill": "allow",
-    "question": "allow",
-    "edit": "allow",
-    "task": "allow",
-    "bash": {
-      "*": "allow",
-      "rm *": "deny",
-      "rmdir *": "deny",
-      "unlink *": "deny",
-      "git clean *": "deny",
-      "rtk git clean *": "deny",
-      "git reset --hard *": "deny",
-      "rtk git reset --hard *": "deny",
-      "git restore *": "deny",
-      "rtk git restore *": "deny",
-      "git checkout -- *": "deny",
-      "rtk git checkout -- *": "deny",
-      "git push --force *": "deny",
-      "rtk git push --force *": "deny",
-      "git push --force-with-lease *": "deny",
-      "rtk git push --force-with-lease *": "deny",
-      "git push * --force": "deny",
-      "rtk git push * --force": "deny",
-      "git push * --force-with-lease": "deny",
-      "rtk git push * --force-with-lease": "deny",
-      "git push origin --delete *": "deny",
-      "rtk git push origin --delete *": "deny",
-      "git push * :*": "deny",
-      "rtk git push * :*": "deny",
-      "git tag -d *": "deny",
-      "rtk git tag -d *": "deny",
-      "git rebase *": "deny",
-      "rtk git rebase *": "deny"
-    }
-  },
-  "provider": {
     "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama (local)",
-      "options": {
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
         "baseURL": "http://localhost:11434/v1"
       },
       "models": {
         "qwen3-coder-30b-64k:latest": {
-          "name": "Qwen-3-Coder-30B-64K"
+          "name": "Qwen-3-Coder-30B-64K",
+          "modelID": "qwen3-coder-30b-64k:latest"
         }
       }
     }
   },
+  "lsp": true,
+  "references": {
+    "workflow": {
+      "path": "./docs/agents",
+      "description": "Issue tracking, triage labels, agent workflow docs, and style guidance"
+    },
+    "reviewers": {
+      "path": "./agents",
+      "description": "Specialist reviewers and implementation roles"
+    }
+  },
+  "update": "notify",
+  "permissions": [
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+    { "action": "edit", "resource": "*.env", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.*", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.example", "effect": "deny" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+    { "action": "shell", "resource": "git push --force*", "effect": "deny" },
+    { "action": "shell", "resource": "git clean *", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git restore *", "effect": "deny" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "deny" }
+  ],
   "mcp": {
-    "mdn": {
-      "type": "remote",
-      "url": "https://mcp.mdn.mozilla.net/",
-      "enabled": true
-    },
-    "llm-core": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "eslint-plugin-llm-core-mcp"
-      ],
-      "enabled": true
-    },
-    "sonarqube": {
-      "type": "local",
-      "command": [
-        "docker",
-        "run",
-        "-i",
-        "--rm",
-        "--init",
-        "--pull=always",
-        "-e",
-        "SONARQUBE_TOKEN",
-        "-e",
-        "SONARQUBE_URL",
-        "-e",
-        "SONARQUBE_PROJECT_KEY",
-        "sonarsource/sonarqube-mcp"
-      ],
-      "enabled": true
+    "servers": {
+      "mdn": {
+        "type": "remote",
+        "url": "https://mcp.mdn.mozilla.net/"
+      },
+      "llm-core": {
+        "type": "local",
+        "command": ["npx", "-y", "eslint-plugin-llm-core-mcp"]
+      },
+      "sonarqube": {
+        "type": "local",
+        "command": [
+          "docker", "run", "-i", "--rm", "--init", "--pull=always",
+          "-e", "SONARQUBE_TOKEN",
+          "-e", "SONARQUBE_URL",
+          "-e", "SONARQUBE_PROJECT_KEY",
+          "sonarsource/sonarqube-mcp"
+        ]
+      }
     }
   },
   "tool_output": {

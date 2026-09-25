@@ -193,3 +193,8 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
 6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)
+
+
+## Adaptive SDLC factory
+
+`/work` is the adaptive entry point for brainstorming, defects, and feature work. It always makes feature tasks checkable, reproduces defects before edits, and scales OpenSpec, contracts, TDD, and separate verification to the change's risk. See [the workflow design](docs/agents/sdlc-factory.md). `/opsx-*` remains available for explicit OpenSpec lifecycle work. OpenChamber supplies session/worktree oversight; the TypeSafe reviewer router remains responsible for change-aware specialist review.

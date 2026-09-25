@@ -1,6 +1,7 @@
 # AGENTS.md
 
 @RTK.md
+@docs/agents/style-guide.md
 
 ## Agent skills
 

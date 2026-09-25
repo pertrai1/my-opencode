@@ -1,14 +1,8 @@
 ---
-description: Implement a change via the strict type-driven TDD pipeline (types → RED → GREEN) with separated agents
-agent: tdd-orchestrator
+description: Implement a feature, defect, or bounded change using adaptive SDLC routing.
+agent: sdlc-orchestrator
 ---
 
-Implement the following via the strict type-driven TDD pipeline: $ARGUMENTS
+Implement this request using the adaptive SDLC route in `sdlc-routing`. Reproduce defects before edits. For features, create a concise task list and choose either a light task path or full OpenSpec path based on scope and risk. Use type contracts and the separated TDD pipeline only when they add a real boundary or verification benefit.
 
-Follow your full protocol:
-
-1. Intake (openspec artifacts if present, otherwise derive and confirm a task list)
-2. Classify each task (full pipeline / type-author only / direct)
-3. For behavioral tasks: Phase 0 types → Phase 1 RED → Phase 2 GREEN, with independent verification and checksum checks between phases
-4. Update progress.md and intent.md as you go
-5. Report a final summary: slices completed, evidence per phase, open issues
+Request: $ARGUMENTS
