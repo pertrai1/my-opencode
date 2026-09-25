@@ -396,11 +396,13 @@ Pause and escalate in place before any forward progression when any condition is
 Inception is an optional stage before `intake` for an intent that is too large for one OpenSpec change. It runs through `/inception` and is recorded on the work item, not in OpenSpec.
 
 - Use inception when an intent spans more than one independently deliverable unit. For a single-change request, skip it and use the normal lifecycle.
-- Delegate artifact work to `inception-author`: `plan` mode first, then `execute` mode after the human approves the plan.
-- Run `work-item.mjs approve-inception` only after explicit human approval of the units in this session. Never infer approval.
+- Delegate artifact work to `inception-author`: `plan` mode first, then `execute` mode after the human approves the plan. Name the single active work ID in every handoff.
+- **Scope check.** `inception-author`'s edit permission covers every work item's inception folder, because OpenCode cannot scope a glob to one delegation. Before and after each delegation, run `git status --porcelain --untracked-files=all -- .agents/work`. If any new or changed path is outside `.agents/work/<active-work-id>/inception/`, stop and escalate to the human. If git cannot report these paths, record in `progress.md` that the scope check was not possible.
+- **Unit registration.** `inception-author` has no shell access. Register the units from its `Proposed Units` result yourself, in dependency order: use `work-item.mjs add-unit` for new units, `update-unit` for changed ones, and `remove-unit` for removed ones. Remove dependents before the units they depend on.
+- Run `work-item.mjs approve-inception` only after explicit human approval of the units in this session. Never infer approval. If the command reports validation errors, route them back to `inception-author` and do not approve.
 - A unit enters the lifecycle at `intake` as its own OpenSpec change. Seed the proposal handoff with the unit's stories, NFRs, risks, and measurement criteria from `.agents/work/<work-id>/inception/`.
-- After creating the change, run `work-item.mjs link-unit <work-id> <unit-id> --change <change-name>`.
-- Do not start a unit whose `dependsOn` units are not yet linked, unless the human approves parallel work.
+- **Link only verified changes.** After creating the change, confirm that it exists with `openspec show <change-name>` (with the sticky `--store <id>` when one is selected). Only then run `work-item.mjs link-unit <work-id> <unit-id> --change <change-name>`. `work-item.mjs` does not call OpenSpec, so this check is yours.
+- `link-unit` rejects a unit whose `dependsOn` units are not linked yet. Pass `--parallel --note "<who approved and why>"` only when the human approves building the unit in parallel.
 - If planning or verification for a unit shows that the unit boundaries are wrong, pause and return to the human. Do not redraw units inside a change.
 
 ## Status re-check rule

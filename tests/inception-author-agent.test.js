@@ -47,14 +47,15 @@ test('inception-author edits only inception artifacts', () => {
   assert.equal(edit('/repo/src/index.ts'), 'deny');
 });
 
-test('inception-author can register units but cannot approve or link them', () => {
+test('inception-author has no shell access', () => {
   const rules = loadRules();
   const shell = (command) => effect(rules, 'shell', command, commandMatches);
   const script = 'node ~/.config/opencode/scripts/work-item.mjs';
 
-  assert.equal(shell(`${script} add-unit wi-x --name Checkout`), 'allow');
-  assert.equal(shell(`${script} show wi-x`), 'allow');
+  assert.equal(shell(`${script} show wi-x`), 'deny');
+  assert.equal(shell(`${script} add-unit wi-x --name Checkout`), 'deny');
+  assert.equal(shell(`${script} add-unit wi-x --name Checkout && rm -rf .agents`), 'deny');
   assert.equal(shell(`${script} approve-inception wi-x`), 'deny');
   assert.equal(shell(`${script} link-unit wi-x u-checkout --change add-checkout`), 'deny');
-  assert.equal(shell('rm -rf .agents'), 'deny');
+  assert.ok(rules.every((rule) => rule.action !== 'shell' || rule.effect === 'deny'), 'Expected no shell allow rules');
 });
