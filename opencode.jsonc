@@ -19,6 +19,7 @@
     }
   },
   "default_agent": "lean",
+  // Optional Jev routing is disabled by default; enable with OPENCODE_JEV_ROUTING=1.
   "agents": {
     "lean": {
       "description": "Lean default agent with a smaller first-call context. Uses local code tools by default and keeps heavier tools opt-in via the build and plan agents.",

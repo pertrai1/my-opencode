@@ -60,6 +60,18 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 `/code-review` uses the [TypeSafe](https://typesafe.ai/) System One API to recommend the read-only specialist reviewers that match the current change. The implementation is `scripts/recommend-reviewers.mjs` and uses the `@typesafe-ai/sdk` package.
 
+### TypeSafe agent/model routing
+
+The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.
+
+Routing is disabled by default. Enable it explicitly for an OpenCode process with:
+
+```sh
+export OPENCODE_JEV_ROUTING=1
+```
+
+If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision logs its route, source, probability, confidence, latency, and fallback reason for later evaluation. The implementation is `scripts/route-agent.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+
 To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
 
 ```sh
