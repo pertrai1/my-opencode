@@ -18,6 +18,9 @@ permissions:
   - action: "edit"
     resource: "**/openspec/changes/**/tasks.md"
     effect: allow
+  - action: "edit"
+    resource: "**/.agents/work/**"
+    effect: allow
   - action: "subagent"
     resource: "*"
     effect: deny
@@ -98,6 +101,9 @@ permissions:
     effect: allow
   - action: "shell"
     resource: "npm run typecheck*"
+    effect: allow
+  - action: "shell"
+    resource: "node ~/.config/opencode/scripts/work-item.mjs *"
     effect: allow
   - action: "shell"
     resource: "tsc --noEmit"
