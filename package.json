@@ -19,11 +19,14 @@
     "eslint-plugin-llm-core": "^0.35.1",
     "globals": "^17.11.0",
     "husky": "^9.1.7",
+    "markdownlint-cli2": "^0.18.1",
     "typescript": "^6.0.3"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
     "test": "node --test",
     "ubs": "bash scripts/ubs.sh",
     "prepare": "husky"
