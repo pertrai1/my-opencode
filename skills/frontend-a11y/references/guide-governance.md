@@ -3,7 +3,9 @@
 > Scope: Static verification, VPAT strategy, ADA/EAA compliance, EN 301 549, and external audit readiness.
 
 ## 1. Static Verification (The Engineering Minimum)
+
 Primary verification does not consist of dictating rigid rules in a *specific pipeline*, but holding the development environment (Be it the Dev or the AI running in real-time) accountable for fast static validation tests.
+
 - **Code Standard:** The code *must* necessarily pass through linters or accessibility-focused evaluators (like `eslint-plugin-jsx-a11y` or the `axe` engine) without displaying critical/serious violations before code consolidation.
 - **This standard's own tools:** the repository ships two optional, dependency-free scripts in [`tools/`](https://github.com/fecarrico/A11Y.md/tree/main/tools): `verify-a11y.py` runs against **your project** — checking that the artifacts exist, that `REPORT.md` is newer than the last interface change, and that the source is free of the Section 6 anti-patterns; `lint-standard.py` runs against **copies or forks of this standard**, checking language parity, loading triggers and links. Running them is never a requirement of the standard — `A11Y.md` is portable markdown — but a gate that fails a build is stronger than a rule someone has to remember.
 - **Decoupling:** When native HTML semantics do not meet the feature requirements, use an unstyled component library such as Headless UI rather than implementing accessibility behavior from scratch.
@@ -14,10 +16,12 @@ A clean axe run means "no violation among the rules that were enabled". Two defa
 
 - **Enable the experimental rules that carry a Success Criterion.** `label-content-name-mismatch` detects an accessible name that does not contain the visible text — an **SC 2.5.3 Level AA failure** that breaks voice control — and it ships **disabled by default**, in axe-core and in the browser extension alike. Turn it on: `axe.run(context, { rules: { 'label-content-name-mismatch': { enabled: true } } })`, or check *Experimental rules* in the extension's settings.
 - **Resolve the linter × engine conflict instead of silencing it.** `scrollable-region-focusable` (axe) requires a focus stop on a container the user can scroll but not tab into; `no-noninteractive-tabindex` (`eslint-plugin-jsx-a11y`) flags that exact `tabIndex`. Following both literally is impossible, and the path of least resistance — disabling the ESLint rule — removes a real guard. Configure it instead:
+
   ```jsonc
   // .eslintrc — allow the focus stop axe requires, keep the rule everywhere else
   "jsx-a11y/no-noninteractive-tabindex": ["error", { "roles": ["region"], "tags": [], "allowExpressionValues": true }]
   ```
+
   The axe rule is **conditional**: add a focus stop only to regions whose content overflows. Applying it to every scroll container adds unnecessary tab stops (see *Do Not Add Unneeded Focus Stops*, `A11Y.md` §6).
 
 > **A CI gate is a form of independent verification.** *Independent Verification* (`A11Y.md` §2) asks that the evidence not be authored solely by the agent that wrote the code. A pipeline check satisfies that for the mechanical layer by construction — it runs outside the session, against the artifact, with no memory of the decisions that produced it. It does not, however, satisfy the human checkpoints, and it does not raise the report's declared independence level for anything a machine cannot test.
@@ -33,17 +37,22 @@ A clean axe run means "no violation among the rules that were enabled". Two defa
 The declaration is trust-based and still auditable: `REPORT.md` names *who* verified, and `verify-a11y.py` enforces the ceiling mechanically (a self-reported ✅ PASS fails the gate). None of it replaces the human checkpoints — a second agent can resolve a reference between files; it cannot hear a screen reader.
 
 ## 2. Descriptive Evidence (The "Why")
+
 When creating custom complex widgets, the developer (or AI) must include a comment block explaining the accessibility strategy:
+
 - What is the focus order?
 - How are states communicated?
 - What is the fallback for non-JS environments?
 
 ## 3. Visual Language Constraints
+
 - **Color:** Never communicate state (Valid/Invalid/Warning) using only color. An accompanying icon or text description is mandatory.
 - **Contrast:** Brand colors that fail 4.5:1 ratio must be adjusted for UI elements or paired with a high-contrast alternative.
 
 ## 4. Audits and Legal Compliance (ADA/EAA Readiness)
+
 To prepare subsystems for external certification and audit:
+
 1. **Inventory:** Consolidate a list or storybook of the key visual components of the flow and their behaviors with assistive technologies.
 2. **Keyboard Path:** Prevent Dead-ends through clear and planned mapping of the visual layout order (`Tab`).
 3. **Standard Audit:** The checklist in [**`templates/REPORT.md`**](../templates/REPORT.md) **MUST** be operated as "Definition of Done" **before any delivery to an end user** — a published build, a deploy, a shared artifact, a tag — not only at a "final delivery" that continuously delivered projects never reach (see *Release Evidence*, `A11Y.md` §2).
@@ -64,12 +73,16 @@ Where a formal audit, third-party evaluation or public declaration is on the hor
 The project's accumulated `REPORT.md` files are the **provenance evidence** for that audit: they show what was verified, when, by whom, and what stayed open. A repository with a history of reports arrives at formal evaluation with ballast; one without starts from zero.
 
 ## 5. Reporting & Liability (VPAT Strategy)
+
 Projects targeting the US market must be Section 508 compliant:
+
 - **VPAT Creation:** Maintain a technical document that records which WCAG criteria are fully or partially supported.
 - **Traceability:** Each major feature must have a comment in the code citing which WCAG criterion is being respected.
 
 ## 6. European Compliance (EN 301 549)
+
 For EAA compliance:
+
 - **Interoperability:** Ensure the software does not prevent the use of third-party assistive technologies.
 - **Accessibility Declaration:** Maintain a public accessibility page describing the features and the achieved compliance level.
 
@@ -86,5 +99,6 @@ For products serving a Brazilian audience:
 - **Practical effect:** with a Brazilian destination, `REPORT.md` declares the NBR level targeted (regular/plena) alongside the compliance profile, and Annex A is treated as a named checklist. For sign-language users, see [Sign Language & Libras](guide-sign-language-br.md).
 
 ## 7. Compliance Versioning
+
 Current focused standard: **WCAG 2.2 AA** | **EN 301 549** | **ABNT NBR 17225** (Brazil, where applicable).
 Deviations from legal requirements due to severe UI/UX, native platform, or base architecture limitations, **MUST** be justified mandatorily using the matrix file on the page: [**`templates/EXCEPTIONS.md`**](../templates/EXCEPTIONS.md). All these points must have compensatory actions.

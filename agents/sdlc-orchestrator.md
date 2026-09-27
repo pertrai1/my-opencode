@@ -396,13 +396,13 @@ After every workflow-changing action, rerun `openspec status` and validate that 
 
 - Delegate planning, analysis, delivery, and review tasks only to existing role agents.
 - Delegate to:
-   - `explore` for evidence collection and file-level analysis.
-    - `proposal-author`, `spec-author`, `design-author`, `task-planner` for planning artifact updates.
-    - `spec-syncer` for syncing approved delta specs into main specs.
-   - `type-author`, `test-author`, `implementer` for pipeline roles.
-   - `tdd-orchestrator` for orchestration of type→RED→GREEN workflow.
-    - `change-verifier` for artifact/evidence/task verification and archive-readiness input.
-    - review agents (`architecture-reviewer`, `architecture-boundary-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `test-reviewer`) for risk checks.
+  - `explore` for evidence collection and file-level analysis.
+  - `proposal-author`, `spec-author`, `design-author`, `task-planner` for planning artifact updates.
+  - `spec-syncer` for syncing approved delta specs into main specs.
+  - `type-author`, `test-author`, `implementer` for pipeline roles.
+  - `tdd-orchestrator` for orchestration of type→RED→GREEN workflow.
+  - `change-verifier` for artifact/evidence/task verification and archive-readiness input.
+  - review agents (`architecture-reviewer`, `architecture-boundary-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `test-reviewer`) for risk checks.
 - Keep instructions in each delegation scoped to current artifact path and acceptance criteria.
 
 ## Coordination files

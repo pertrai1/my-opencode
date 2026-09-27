@@ -58,12 +58,15 @@ After a client-side route change, focus **MUST** be managed — sent to the new 
 ## Bad Examples
 
 ### 1. Nested Menus (Hover only)
+
 - Menus that appear only on hover are unreachable by keyboard and touch. Toggle on click/focus, close on `Esc`.
 
 ### 2. Non-standard Links
+
 ```html
 <span onclick="window.location='/new-page'">Go to Page</span>
 ```
+
 - See *Clickable Divs* — core §6: no focus, no link role, no new-tab, no copy-address.
 
 *Success criteria covered: 2.4.1 Bypass Blocks (A) · 2.4.4 Link Purpose — In Context (A) · 2.4.6 Headings and Labels (AA) · 2.4.8 Location (AAA) · 1.3.1 Info and Relationships (A) · 3.2.3 Consistent Navigation (AA) · 3.2.4 Consistent Identification (AA)*

@@ -3,6 +3,7 @@
 > **Scope:** Contextual Information
 
 ## Core Rules
+
 1. **Trigger:** Must be focusable (button, link).
 2. **Hover/Focus:** Tooltip MUST appear on both hover and keyboard focus.
 3. **Dismissible (SC 1.4.13):** MUST be dismissible with the `Escape` key **without moving focus** — a magnifier user needs the overlay gone without losing their place.
