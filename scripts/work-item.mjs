@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -66,9 +66,13 @@ function getWorkItemPath(root, id) {
 }
 
 function validateId(id) {
-  if (!/^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+-[0-9a-f]{8}$/.test(id)) {
+  if (!isValidId(id)) {
     throw new Error(`Invalid work item ID: ${id}`);
   }
+}
+
+function isValidId(id) {
+  return /^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+-[0-9a-f]{8}$/.test(id);
 }
 
 function formatRequest(value) {
@@ -115,22 +119,30 @@ export function createWorkItem(options, now = new Date()) {
 
 async function writeWorkItem(root, item) {
   const directory = getWorkDirectory(root, item.id);
-  await mkdir(directory, { recursive: false });
-  await writeFile(
-    getWorkItemPath(root, item.id),
-    `${JSON.stringify(item, null, 2)}\n`,
-    "utf8",
-  );
-  await writeFile(
-    path.join(directory, "request.md"),
-    `# ${item.id}\n\n${item.request}\n`,
-    "utf8",
-  );
-  await writeFile(
-    path.join(directory, "progress.md"),
-    `# Progress: ${item.id}\n\n- Status: ${item.status}\n- Next action: ${item.nextAction}\n`,
-    "utf8",
-  );
+  const temporaryDirectory = path.join(root, ".agents", `.${item.id}.tmp-${randomUUID()}`);
+
+  await mkdir(temporaryDirectory, { recursive: false });
+  try {
+    await writeFile(
+      path.join(temporaryDirectory, "work.json"),
+      `${JSON.stringify(item, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(temporaryDirectory, "request.md"),
+      `# ${item.id}\n\n${item.request}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(temporaryDirectory, "progress.md"),
+      `# Progress: ${item.id}\n\n- Status: ${item.status}\n- Next action: ${item.nextAction}\n`,
+      "utf8",
+    );
+    await rename(temporaryDirectory, directory);
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 async function createCommand(options) {
@@ -160,7 +172,9 @@ async function listCommand(options) {
   }
 
   const items = [];
-  for (const entry of entries.filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of entries
+    .filter((entry) => entry.isDirectory() && isValidId(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name))) {
     try {
       items.push(JSON.parse(await readFile(path.join(directory, entry.name, "work.json"), "utf8")));
     } catch (error) {
