@@ -4,16 +4,16 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. V2 does not retain a `#variant` on the root model selection. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents configure `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents use `gpt-6-luna#high`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
-- **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
+- **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
+- **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with pruning (12K token reserved buffer).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
-- **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
+- **TUI** — `tui.json` (automatic theme, mouse input, attention notifications, and sound enabled).
 
 ## Work intake
 
@@ -106,7 +106,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Memory
 
-- **`agentmemory`** (local) — explicit long-term memory for `recall`/`remember` commands. `npx -y @agentmemory/mcp` (server: `http://localhost:3111`)
+- **`agentmemory`** (optional local MCP server) — explicit long-term memory for `recall`/`remember` commands. Start it with `npx -y @agentmemory/mcp` (server: `http://localhost:3111`).
 - `commands/recall.md` — search past session memory.
 - `commands/remember.md` — explicitly save a memory.
 - [agentmemory](https://github.com/agentmemoryai/agentmemory) — long-term memory MCP server for agent sessions.
