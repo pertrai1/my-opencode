@@ -42,6 +42,19 @@ test("keeps the current route when Jev is uncertain", async () => {
   assert.equal(result.reason, "uncertain-or-current");
 });
 
+test("ignores unknown route names instead of accepting inherited object properties", async () => {
+  const result = await routeAgent(
+    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6-luna#high" },
+    { systemOne: async () => response("toString", {}, 1) },
+    () => 100,
+  );
+
+  assert.equal(result.route, "current");
+  assert.equal(result.agent, "lean");
+  assert.equal(result.model, "openai/gpt-6-luna#high");
+  assert.equal(result.reason, "uncertain-or-current");
+});
+
 test("falls back without changing the session when TypeSafe fails", async () => {
   const result = await routeAgent(
     { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
