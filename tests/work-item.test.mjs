@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -58,6 +58,15 @@ test("lists local work items and returns an empty list for a new project", async
   const created = await run(["create", "--root", root, "--request", "List this request"]);
   const listed = await run(["list", "--root", root]);
   assert.deepEqual(listed.map((item) => item.id), [created.id]);
+});
+
+test("ignores incomplete staging directories while listing work items", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const stagingDirectory = path.join(root, ".agents", "work", ".wi-in-progress.tmp");
+  await mkdir(stagingDirectory, { recursive: true });
+  await writeFile(path.join(stagingDirectory, "work.json"), "{\"version\":", "utf8");
+
+  assert.deepEqual(await run(["list", "--root", root]), []);
 });
 
 test("rejects unsafe work item IDs when resuming", async () => {
