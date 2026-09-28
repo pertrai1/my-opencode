@@ -114,7 +114,8 @@ export async function routeAgent(
     }, ROUTING_OPTIONS);
 
     const answer = response.answers?.route;
-    const route = typeof answer?.choice === "string" && ROUTES[answer.choice]
+    const route = typeof answer?.choice === "string"
+      && Object.hasOwn(ROUTES, answer.choice)
       ? answer.choice
       : "current";
     const probability = probabilityFor(answer, route);
