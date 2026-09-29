@@ -28,6 +28,9 @@ permissions:
     resource: "*"
     effect: deny
   - action: "shell"
+    resource: "npx -y modern-web-guidance@latest *"
+    effect: allow
+  - action: "shell"
     resource: "pwd"
     effect: allow
   - action: "shell"
