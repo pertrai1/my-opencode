@@ -5,6 +5,10 @@ import {
   parseModelRef,
   routeAgent,
 } from "../scripts/route-agent.mjs";
+import {
+  createRoutingProvenance,
+  emitRoutingProvenance,
+} from "../scripts/routing-provenance.mjs";
 
 function currentModelRef(model: unknown): string | undefined {
   if (!model || typeof model !== "object") return undefined;
@@ -27,6 +31,21 @@ export default Plugin.define({
         console.info("[jev-routing] preserving explicit agent selection", {
           agent: session.agent,
         });
+        await emitRoutingProvenance(createRoutingProvenance({
+          sessionId: input.sessionID,
+          timestamp: new Date().toISOString(),
+          currentAgent: session.agent,
+          currentModel: currentModelRef(session.model),
+          decision: {
+            source: "explicit",
+            route: "current",
+            agent: session.agent,
+            model: currentModelRef(session.model),
+            accepted: false,
+            reason: "explicit-selection-bypass",
+          },
+          explicitSelectionBypass: true,
+        }), console.info, { enabled: true });
         return;
       }
       const currentModel = currentModelRef(session.model);
@@ -50,6 +69,17 @@ export default Plugin.define({
         latencyMs: decision.latencyMs,
         reason: decision.reason,
       });
+
+      await emitRoutingProvenance(createRoutingProvenance({
+        sessionId: input.sessionID,
+        timestamp: new Date().toISOString(),
+        currentAgent: session.agent,
+        currentModel,
+        decision: {
+          ...decision,
+          source: decision.source === "typesafe" ? "jev" : decision.source,
+        },
+      }), console.info, { enabled: true });
 
       if (decision.route === "current") return;
       if (decision.agent && decision.agent !== session.agent) {
