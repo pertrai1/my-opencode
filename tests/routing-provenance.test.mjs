@@ -260,3 +260,22 @@ test("isolates sink failures from the route decision", async () => {
   assert.equal(record.selectedAgent, "build");
   assert.equal(record.selectedModel, "openai/gpt-6-sol");
 });
+
+test("does not wait for a never-settling sink", async () => {
+  const record = provenance({
+    source: "jev",
+    route: "build",
+    agent: "build",
+    model: "openai/gpt-6-sol",
+    accepted: true,
+    reason: "threshold-met",
+  });
+
+  const outcome = await Promise.race([
+    emitRoutingProvenance(record, () => new Promise(() => {}), { enabled: true })
+      .then(() => "returned"),
+    new Promise((resolve) => setTimeout(() => resolve("timed-out"), 100)),
+  ]);
+
+  assert.equal(outcome, "returned");
+});

@@ -49,14 +49,18 @@ export function createRoutingProvenance({
   );
 }
 
-export async function emitRoutingProvenance(record, sink, { enabled = false } = {}) {
+export function emitRoutingProvenance(record, sink, { enabled = false } = {}) {
   if (!enabled || typeof sink !== "function") return;
-  try {
-    await sink(Object.fromEntries(
-      Object.entries(record).filter(([key]) => ROUTING_PROVENANCE_KEYS.includes(key)),
-    ));
-  } catch {
-    // Provenance is observability only and must never affect routing.
-    return;
-  }
+  const payload = Object.fromEntries(
+    Object.entries(record).filter(([key]) => ROUTING_PROVENANCE_KEYS.includes(key)),
+  );
+
+  // Dispatch asynchronously so a slow or never-settling sink cannot block routing.
+  void Promise.resolve()
+    .then(() => sink(payload))
+    .catch(() => {
+      // Provenance is observability only and must never affect routing.
+    });
+
+  return Promise.resolve();
 }
