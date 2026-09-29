@@ -87,7 +87,9 @@ Routing is disabled by default. Enable it explicitly for an OpenCode process wit
 export OPENCODE_JEV_ROUTING=1
 ```
 
-If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision logs its route, source, probability, confidence, latency, and fallback reason for later evaluation. The implementation is `scripts/route-agent.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+
+The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
 
 To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
 
