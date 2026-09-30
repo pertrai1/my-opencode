@@ -2,7 +2,7 @@
 
 Load this only when `detect` reported one or more `video` files. A corpus with no video never reads this.
 
-### Step 2.5 - Transcribe video / audio files (only if video files detected)
+## Step 2.5 - Transcribe video / audio files (only if video files detected)
 
 Skip this step entirely if `detect` returned zero `video` files.
 
