@@ -87,7 +87,9 @@ Routing is disabled by default. Enable it explicitly for an OpenCode process wit
 export OPENCODE_JEV_ROUTING=1
 ```
 
-If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision logs its route, source, probability, confidence, latency, and fallback reason for later evaluation. The implementation is `scripts/route-agent.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+
+The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
 
 To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
 
@@ -110,6 +112,68 @@ You can inspect the routing result directly from a repository with changes:
 node ~/.config/opencode/scripts/recommend-reviewers.mjs
 ```
 
+### Routing provenance contract
+
+When Jev routing is enabled, the optional local provenance sink receives a
+privacy-preserving `RoutingProvenanceV1` record. It contains routing metadata,
+never prompt text, attached file contents, credentials, or model responses.
+
+```ts
+export type RoutingProvenanceV1 = {
+  version: 1;
+  event: "routing.decision";
+  sessionId: string;              // opaque, non-user-derived ID
+  timestamp: string;              // ISO-8601 UTC
+  source: "jev" | "fallback" | "explicit";
+  currentAgent?: string;
+  currentModel?: string;
+  selectedRoute: string;
+  selectedAgent?: string;
+  selectedModel?: string;
+  confidence?: number;            // 0..1
+  probability?: number;            // 0..1
+  latencyMs?: number;
+  accepted: boolean;
+  reason: string;
+  fallback: boolean;
+  explicitSelectionBypass: boolean;
+  requestDigest?: string;         // bounded, one-way digest only
+};
+```
+
+Example record:
+
+```json
+{
+  "version": 1,
+  "event": "routing.decision",
+  "sessionId": "sess_opaque_01HXYZ",
+  "timestamp": "2026-09-29T16:00:00.000Z",
+  "source": "jev",
+  "currentAgent": "lean",
+  "currentModel": "openai/gpt-6-luna#high",
+  "selectedRoute": "build",
+  "selectedAgent": "build",
+  "selectedModel": "openai/gpt-6-sol",
+  "confidence": 0.9,
+  "probability": 0.8,
+  "latencyMs": 0,
+  "accepted": true,
+  "reason": "threshold-met",
+  "fallback": false,
+  "explicitSelectionBypass": false
+}
+```
+
+Required fields are the version, event, opaque session ID, UTC timestamp,
+source, selected route, acceptance, reason, fallback flag, and explicit-selection
+bypass flag. Agent/model identifiers, confidence, probability, latency, and a
+bounded one-way request digest are optional. Consumers must ignore unknown future
+fields; the version changes only for breaking shape changes. Sink failures are
+swallowed, and sink dispatch is not awaited, so provenance cannot change route
+selection or block the routing path. The local sink is opt-in and can be
+inspected or disabled with the routing configuration.
+
 The script prints JSON. A `typesafe` source selects reviewers with a probability of at least `0.75` and also includes `uncertain` recommendations at or above `0.35`; because the reviewers are read-only, uncertain cases receive review rather than being skipped. A `fallback` result means TypeSafe was unavailable (for example, no API key); `/code-review` then uses its existing manual selection rules. A `none` result means no working-tree changes were found.
 
 The router sends working-tree file statuses (including file paths), tracked diff statistics, and locally derived file-category counts to TypeSafe. It does not send raw diff content or credentials. File paths can contain sensitive identifiers; use this router only where that metadata may leave the machine.
@@ -130,7 +194,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 ## Verification
 
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
-- `.github/workflows/ci.yml` — continuously runs `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
+- `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
 - **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
