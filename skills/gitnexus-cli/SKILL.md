@@ -20,7 +20,7 @@ Commands below prefer the direct `gitnexus <command>` CLI. Some installations ma
 ### analyze — Build or refresh the index
 
 ```bash
-gitnexus analyze --skip-agents-md
+gitnexus analyze --skip-agents-md --skip-skills
 ```
 
 Run from the project root after explicit user approval. Before running it, ensure the repo root `.gitignore` contains `/.gitnexus/`, and verify the installed CLI supports the flags you plan to use. The default for this repo is `gitnexus analyze --skip-agents-md` so indexing does not modify `AGENTS.md` or `CLAUDE.md`.

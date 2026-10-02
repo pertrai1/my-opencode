@@ -6,7 +6,7 @@ const globals = require("globals");
 
 module.exports = [
   {
-    ignores: ["node_modules/**", "dist/**", "skills/security-audit/**"],
+    ignores: ["node_modules/**", "dist/**", ".gitnexus/**", "skills/security-audit/**"],
   },
   ...llmCore.configs.recommended,
   {
