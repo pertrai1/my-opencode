@@ -147,12 +147,7 @@
     }
   },
   "autoupdate": "notify",
-  "enabled_providers": [
-    "openai",
-    "ollama",
-    "anthropic",
-    "github-copilot"
-  ],
+  "enabled_providers": ["openai", "ollama", "anthropic", "github-copilot"],
   "permission": {
     "doom_loop": "ask",
     "read": {
@@ -221,14 +216,45 @@
       "url": "https://mcp.mdn.mozilla.net/",
       "enabled": true
     },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "gitnexus": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "gitnexus@latest",
+        "mcp"
+      ],
+      "enabled": false
+    },
     "llm-core": {
       "type": "local",
       "command": [
         "npx",
         "-y",
-        "eslint-plugin-llm-core-mcp"
+        "eslint-plugin-llm-core-mcp@latest"
       ],
+      "environment": {
+        "LLM_CORE_MCP_ENABLE_FALLBACK": "1"
+      },
       "enabled": true
+    },
+    "fallow": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "--package=fallow",
+        "fallow-mcp"
+      ]
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
     },
     "sonarqube": {
       "type": "local",
