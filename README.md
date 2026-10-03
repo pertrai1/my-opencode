@@ -81,21 +81,31 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.
 
-Routing is disabled by default. Enable it explicitly for an OpenCode process with:
+Routing is disabled by default. Enable it explicitly for an OpenCode process with a
+TypeSafe credential (then restart OpenCode):
 
 ```sh
 export OPENCODE_JEV_ROUTING=1
+export TYPESAFE_API_KEY="..."
 ```
+
+The plugin prints a startup diagnostic containing the enabled state, the
+`jev-route-policy-v1` revision, TypeSafe availability, and dry-run state. It
+never prints the credential. Missing credentials keep routing disabled. Set
+`OPENCODE_JEV_ROUTING_DRY_RUN=1` with routing enabled to emit decisions without
+switching the primary or child session's agent or model.
+
+The policy is a closed route table in `scripts/route-agent.mjs`. Each route
+binds a task class to an approved OpenCode agent, model, permission profile,
+side-effect level, and current-session fallback. To add a route, update that
+table and its focused tests, then verify the agent/model exists in
+`opencode.jsonc`; approving a new model requires an explicit table entry and a
+configuration review. Jev output is accepted only when its route is present in
+that table.
 
 If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
 
 The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
-
-To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
-
-```sh
-export TYPESAFE_API_KEY="..."
-```
 
 Run `/code-review` normally. It invokes the router before inspecting the diff and launches the reviewers named in `selectedReviewers`. The router evaluates six independent questions in one request:
 
