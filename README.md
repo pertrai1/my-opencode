@@ -180,13 +180,6 @@ The router sends working-tree file statuses (including file paths), tracked diff
 
 To evaluate the existing selection policy, run `node scripts/baseline-reviewer-router.mjs` from this repository with `TYPESAFE_API_KEY` set. The [baseline report](docs/reviewer-router-baseline.md) records a labeled historical/synthetic snapshot, including per-reviewer misses, unnecessary selections, latency, usage, fallback frequency, and reproduction details. The [fixtures](tests/fixtures/reviewer-router-baseline.json) keep disputed labels visible and out of accuracy totals. Re-running the command calls TypeSafe again; review any fixture paths before using it with a different dataset.
 
-## Memory
-
-- **`agentmemory`** (optional local MCP server) — explicit long-term memory for `recall`/`remember` commands. Start it with `npx -y @agentmemory/mcp` (server: `http://localhost:3111`).
-- `commands/recall.md` — search past session memory.
-- `commands/remember.md` — explicitly save a memory.
-- [agentmemory](https://github.com/agentmemoryai/agentmemory) — long-term memory MCP server for agent sessions.
-
 ## Reference
 
 - **`mdn`** (remote) — MDN Web Docs reference and browser compatibility data. `https://mcp.mdn.mozilla.net/`
@@ -219,8 +212,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
-- `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 - `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
@@ -285,4 +278,3 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 3. `code-review-graph install --platform opencode` to install the graph plugin
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
-6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)

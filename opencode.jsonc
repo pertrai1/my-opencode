@@ -44,12 +44,12 @@
         {
           "action": "question",
           "resource": "*",
-          "effect": "deny"
+          "effect": "allow"
         },
         {
           "action": "subagent",
           "resource": "*",
-          "effect": "deny"
+          "effect": "allow"
         },
         {
           "action": "todowrite",
@@ -211,69 +211,57 @@
     }
   },
   "mcp": {
-    "mdn": {
-      "type": "remote",
-      "url": "https://mcp.mdn.mozilla.net/",
-      "enabled": true
-    },
-    "context7": {
-      "type": "remote",
-      "url": "https://mcp.context7.com/mcp",
-      "enabled": true
-    },
-    "gitnexus": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "gitnexus@latest",
-        "mcp"
-      ],
-      "enabled": false
-    },
-    "llm-core": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "eslint-plugin-llm-core-mcp@latest"
-      ],
-      "environment": {
-        "LLM_CORE_MCP_ENABLE_FALLBACK": "1"
+    "servers": {
+      "mdn": {
+        "type": "remote",
+        "url": "https://mcp.mdn.mozilla.net/",
+        "disabled": false
       },
-      "enabled": true
-    },
-    "fallow": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "--package=fallow",
-        "fallow-mcp"
-      ]
-    },
-    "chrome-devtools": {
-      "type": "local",
-      "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
-    },
-    "sonarqube": {
-      "type": "local",
-      "command": [
-        "docker",
-        "run",
-        "-i",
-        "--rm",
-        "--init",
-        "--pull=always",
-        "-e",
-        "SONARQUBE_TOKEN",
-        "-e",
-        "SONARQUBE_URL",
-        "-e",
-        "SONARQUBE_PROJECT_KEY",
-        "sonarsource/sonarqube-mcp"
-      ],
-      "enabled": true
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp",
+        "disabled": false
+      },
+      "gitnexus": {
+        "type": "local",
+        "command": ["npx", "-y", "gitnexus@latest", "mcp"],
+        "disabled": true
+      },
+      "llm-core": {
+        "type": "local",
+        "command": ["npx", "-y", "eslint-plugin-llm-core-mcp@latest"],
+        "environment": {
+          "LLM_CORE_MCP_ENABLE_FALLBACK": "1"
+        },
+        "disabled": false
+      },
+      "fallow": {
+        "type": "local",
+        "command": ["npx", "-y", "--package=fallow", "fallow-mcp"]
+      },
+      "chrome-devtools": {
+        "type": "local",
+        "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
+      },
+      "sonarqube": {
+        "type": "local",
+        "command": [
+          "docker",
+          "run",
+          "-i",
+          "--rm",
+          "--init",
+          "--pull=always",
+          "-e",
+          "SONARQUBE_TOKEN",
+          "-e",
+          "SONARQUBE_URL",
+          "-e",
+          "SONARQUBE_PROJECT_KEY",
+          "sonarsource/sonarqube-mcp"
+        ],
+        "disabled": false
+      }
     }
   },
   "tool_output": {
