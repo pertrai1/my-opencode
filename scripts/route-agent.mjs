@@ -5,24 +5,38 @@ export const ROUTING_OPTIONS = {
   retry: { maxRetries: 0 },
 };
 
+export const POLICY_REVISION = "jev-route-policy-v1";
+
 export const ROUTES = {
   current: {
     description: "Keep the session's current agent and model because the request is routine, already well-scoped, or uncertain.",
+    taskClass: "preserve-current",
+    permissionProfile: "current-session",
+    sideEffectLevel: "unchanged",
     agent: undefined,
     model: undefined,
   },
   lean: {
     description: "Use the reduced-context lean agent for a routine, local, low-risk request.",
+    taskClass: "routine-edit",
+    permissionProfile: "developer-local",
+    sideEffectLevel: "local",
     agent: "lean",
     model: "openai/gpt-6-luna#high",
   },
   build: {
     description: "Use the build agent for a concrete implementation or debugging request with moderate complexity.",
+    taskClass: "implementation-debugging",
+    permissionProfile: "developer-local",
+    sideEffectLevel: "local",
     agent: "build",
     model: "openai/gpt-6-sol",
   },
   plan: {
     description: "Use the plan agent for architecture, review, planning, or ambiguous/high-risk work.",
+    taskClass: "architecture-review-ambiguity",
+    permissionProfile: "review-only",
+    sideEffectLevel: "limited",
     agent: "plan",
     model: "openai/gpt-6-astra",
   },
@@ -32,6 +46,9 @@ export const ROUTING_POLICY = {
   minProbability: 0.6,
   minConfidence: 0.55,
 };
+
+const APPROVED_AGENTS = new Set(Object.values(ROUTES).map((route) => route.agent).filter(Boolean));
+const APPROVED_MODELS = new Set(Object.values(ROUTES).map((route) => route.model).filter(Boolean));
 
 export function routingQuestion() {
   return choice(
@@ -54,8 +71,27 @@ export function hasExplicitAgentSelection(
 ) {
   return Boolean(
     prompt?.agents?.some((agent) => typeof agent.name === "string")
+      || typeof prompt?.model === "string"
       || currentAgent === "sdlc-orchestrator",
   );
+}
+
+export function isApprovedRoute(route) {
+  const definition = ROUTES[route];
+  return Boolean(definition)
+    && (definition.agent === undefined || APPROVED_AGENTS.has(definition.agent))
+    && (definition.model === undefined || APPROVED_MODELS.has(definition.model));
+}
+
+export function getRoutingDiagnostic(environment = process.env) {
+  const typesafeAvailable = typeof environment.TYPESAFE_API_KEY === "string"
+    && environment.TYPESAFE_API_KEY.length > 0;
+  return {
+    enabled: environment.OPENCODE_JEV_ROUTING === "1" && typesafeAvailable,
+    policyRevision: POLICY_REVISION,
+    typesafeAvailable,
+    dryRun: environment.OPENCODE_JEV_ROUTING_DRY_RUN === "1",
+  };
 }
 
 export function parseModelRef(model) {
@@ -123,7 +159,7 @@ export async function routeAgent(
       ? { ...answer.probabilities }
       : {};
     const confidence = typeof answer?.confidence === "number" ? answer.confidence : 0;
-    const accepted = route !== "current"
+    const accepted = isApprovedRoute(route) && route !== "current"
       && probability >= ROUTING_POLICY.minProbability
       && confidence >= ROUTING_POLICY.minConfidence;
     const selected = accepted ? ROUTES[route] : ROUTES.current;
@@ -155,5 +191,5 @@ export async function routeAgent(
 }
 
 export function isRoutingEnabled(environment = process.env) {
-  return environment.OPENCODE_JEV_ROUTING === "1";
+  return getRoutingDiagnostic(environment).enabled;
 }

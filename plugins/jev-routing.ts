@@ -1,6 +1,7 @@
 import { Plugin } from "@opencode/plugin";
 import {
   hasExplicitAgentSelection,
+  getRoutingDiagnostic,
   isRoutingEnabled,
   parseModelRef,
   routeAgent,
@@ -20,8 +21,8 @@ function currentModelRef(model: unknown): string | undefined {
 export default Plugin.define({
   id: "jev-routing",
   async setup(ctx) {
+    console.info("[jev-routing] diagnostic", getRoutingDiagnostic());
     if (!isRoutingEnabled()) {
-      console.info("[jev-routing] disabled; set OPENCODE_JEV_ROUTING=1 to enable");
       return;
     }
 
@@ -81,7 +82,7 @@ export default Plugin.define({
         },
       }), console.info, { enabled: true });
 
-      if (decision.route === "current") return;
+      if (decision.route === "current" || process.env.OPENCODE_JEV_ROUTING_DRY_RUN === "1") return;
       if (decision.agent && decision.agent !== session.agent) {
         await ctx.session.switchAgent({ sessionID: input.sessionID, agent: decision.agent });
       }
