@@ -3,7 +3,8 @@ import { join } from "node:path";
 
 const shaPattern = /^[0-9a-f]{40}$/i;
 const releaseCommentPattern = /\bv\d+\.\d+\.\d+\b/;
-const actionLinePattern = /^\s*(?:-\s+)?uses:\s*([^\s#]+)(?:\s+#\s*(.*))?\s*$/;
+const usesFieldPattern = /^\s*(?:-\s+)?uses:\s*(?:"([^"]*)"|'([^']*)'|([^\s#]+))(?:\s+#\s*(.*))?\s*$/;
+const blockScalarPattern = /^\s*(?:-\s+)?[^:#]+:\s*[|>][+-]?\d*\s*(?:#.*)?$/;
 
 async function workflowFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -23,14 +24,31 @@ async function workflowFiles(directory) {
 
 export function violationsForFile(file, contents) {
   const violations = [];
+  let blockScalarIndent = null;
   for (const [index, line] of contents.split("\n").entries()) {
-    const match = line.match(actionLinePattern);
-    if (!match || match[1].startsWith("./") || match[1].startsWith("docker://")) {
+    const indentation = line.match(/^\s*/)[0].length;
+    if (blockScalarIndent !== null) {
+      if (line.trim() === "" || indentation > blockScalarIndent) {
+        continue;
+      }
+      blockScalarIndent = null;
+    }
+    if (blockScalarPattern.test(line)) {
+      blockScalarIndent = indentation;
       continue;
     }
 
-    const [action, reference] = match[1].split("@");
-    if (!action.includes("/") || !shaPattern.test(reference ?? "") || !releaseCommentPattern.test(match[2] ?? "")) {
+    const match = line.match(usesFieldPattern);
+    if (!match) {
+      continue;
+    }
+    const referenceText = match[1] ?? match[2] ?? match[3];
+    if (referenceText.startsWith("./") || referenceText.startsWith("docker://")) {
+      continue;
+    }
+
+    const [action, reference] = referenceText.split("@");
+    if (!action.includes("/") || !shaPattern.test(reference ?? "") || !releaseCommentPattern.test(match[4] ?? "")) {
       violations.push({ file, line: index + 1, text: line.trim() });
     }
   }
@@ -45,4 +63,3 @@ export async function verifyWorkflowActions({ workflowsDirectory = ".github/work
   }
   return { violations };
 }
-

@@ -57,6 +57,22 @@ test("ignores local actions, Docker actions, and ordinary non-uses lines", async
   assert.equal(result.status, 0, result.stderr);
 });
 
+test("accepts quoted action references", async () => {
+  const result = await runVerifier({
+    "ci.yml": `steps:\n  - uses: "owner/action@${sha}" # v1.2.3\n  - uses: 'owner/action@${sha}' # v1.2.3\n`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("ignores uses text inside block scalar run values", async () => {
+  const result = await runVerifier({
+    "ci.yml": `steps:\n  - run: |\n      uses: owner/action@not-a-pin\n  - uses: owner/action@main\n`,
+  });
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /uses: owner\/action@main/);
+  assert.doesNotMatch(result.stderr, /not-a-pin/);
+});
+
 test("fails with a concise diagnostic when the workflow directory is missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "workflow-action-verifier-"));
   try {
