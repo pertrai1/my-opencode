@@ -28,6 +28,7 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
     "test": "node --test",
+    "verify:workflow-actions": "node scripts/verify-workflow-actions.mjs",
     "ubs": "bash scripts/ubs.sh",
     "prepare": "husky"
   }

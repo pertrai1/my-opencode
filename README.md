@@ -81,21 +81,31 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.
 
-Routing is disabled by default. Enable it explicitly for an OpenCode process with:
+Routing is disabled by default. Enable it explicitly for an OpenCode process with a
+TypeSafe credential (then restart OpenCode):
 
 ```sh
 export OPENCODE_JEV_ROUTING=1
+export TYPESAFE_API_KEY="..."
 ```
+
+The plugin prints a startup diagnostic containing the enabled state, the
+`jev-route-policy-v1` revision, TypeSafe availability, and dry-run state. It
+never prints the credential. Missing credentials keep routing disabled. Set
+`OPENCODE_JEV_ROUTING_DRY_RUN=1` with routing enabled to emit decisions without
+switching the primary or child session's agent or model.
+
+The policy is a closed route table in `scripts/route-agent.mjs`. Each route
+binds a task class to an approved OpenCode agent, model, permission profile,
+side-effect level, and current-session fallback. To add a route, update that
+table and its focused tests, then verify the agent/model exists in
+`opencode.jsonc`; approving a new model requires an explicit table entry and a
+configuration review. Jev output is accepted only when its route is present in
+that table.
 
 If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
 
 The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
-
-To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
-
-```sh
-export TYPESAFE_API_KEY="..."
-```
 
 Run `/code-review` normally. It invokes the router before inspecting the diff and launches the reviewers named in `selectedReviewers`. The router evaluates six independent questions in one request:
 
@@ -180,13 +190,6 @@ The router sends working-tree file statuses (including file paths), tracked diff
 
 To evaluate the existing selection policy, run `node scripts/baseline-reviewer-router.mjs` from this repository with `TYPESAFE_API_KEY` set. The [baseline report](docs/reviewer-router-baseline.md) records a labeled historical/synthetic snapshot, including per-reviewer misses, unnecessary selections, latency, usage, fallback frequency, and reproduction details. The [fixtures](tests/fixtures/reviewer-router-baseline.json) keep disputed labels visible and out of accuracy totals. Re-running the command calls TypeSafe again; review any fixture paths before using it with a different dataset.
 
-## Memory
-
-- **`agentmemory`** (optional local MCP server) — explicit long-term memory for `recall`/`remember` commands. Start it with `npx -y @agentmemory/mcp` (server: `http://localhost:3111`).
-- `commands/recall.md` — search past session memory.
-- `commands/remember.md` — explicitly save a memory.
-- [agentmemory](https://github.com/agentmemoryai/agentmemory) — long-term memory MCP server for agent sessions.
-
 ## Reference
 
 - **`mdn`** (remote) — MDN Web Docs reference and browser compatibility data. `https://mcp.mdn.mozilla.net/`
@@ -219,8 +222,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
-- `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 - `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
@@ -285,4 +288,3 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 3. `code-review-graph install --platform opencode` to install the graph plugin
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
-6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  POLICY_REVISION,
+  ROUTES,
+  getRoutingDiagnostic,
   hasExplicitAgentSelection,
   isRoutingEnabled,
   parseModelRef,
@@ -102,6 +105,42 @@ test("preserves explicitly selected agents", () => {
   assert.equal(hasExplicitAgentSelection(undefined, "sdlc-orchestrator"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [{ name: "plan" }] }, "lean"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [] }, "lean"), false);
+  assert.equal(hasExplicitAgentSelection({ model: "openai/gpt-6-astra" }, "lean"), true);
+});
+
+test("exposes a closed, versioned route policy", () => {
+  assert.equal(POLICY_REVISION, "jev-route-policy-v1");
+  assert.deepEqual(Object.keys(ROUTES).sort(), ["build", "current", "lean", "plan"]);
+  for (const route of Object.values(ROUTES)) {
+    assert.equal(typeof route.taskClass, "string");
+    assert.equal(typeof route.permissionProfile, "string");
+    assert.equal(typeof route.sideEffectLevel, "string");
+    assert.ok(route.model === undefined || /^openai\/[\w-]+(?:#[\w-]+)?$/.test(route.model));
+  }
+});
+
+test("keeps routing disabled without a TypeSafe credential and reports safe diagnostics", () => {
+  const diagnostic = getRoutingDiagnostic({ OPENCODE_JEV_ROUTING: "1" });
+  assert.deepEqual(diagnostic, {
+    enabled: false,
+    policyRevision: POLICY_REVISION,
+    typesafeAvailable: false,
+    dryRun: false,
+  });
+  assert.equal(isRoutingEnabled({ OPENCODE_JEV_ROUTING: "1", TYPESAFE_API_KEY: "secret" }), true);
+});
+
+test("supports decision-only dry-run mode", () => {
+  assert.deepEqual(getRoutingDiagnostic({
+    OPENCODE_JEV_ROUTING: "1",
+    TYPESAFE_API_KEY: "secret",
+    OPENCODE_JEV_ROUTING_DRY_RUN: "1",
+  }), {
+    enabled: true,
+    policyRevision: POLICY_REVISION,
+    typesafeAvailable: true,
+    dryRun: true,
+  });
 });
 
 test("parses OpenCode model references", () => {
@@ -120,5 +159,6 @@ test("parses OpenCode model references", () => {
 test("requires explicit opt-in", () => {
   assert.equal(isRoutingEnabled({}), false);
   assert.equal(isRoutingEnabled({ OPENCODE_JEV_ROUTING: "0" }), false);
-  assert.equal(isRoutingEnabled({ OPENCODE_JEV_ROUTING: "1" }), true);
+  assert.equal(isRoutingEnabled({ OPENCODE_JEV_ROUTING: "1" }), false);
+  assert.equal(isRoutingEnabled({ OPENCODE_JEV_ROUTING: "1", TYPESAFE_API_KEY: "secret" }), true);
 });
