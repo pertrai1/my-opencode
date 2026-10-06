@@ -2,6 +2,10 @@
 
 Global configuration for [opencode](https://opencode.ai).
 
+## Runtime requirements
+
+This repository supports Node.js 22 and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
+
 ## What's configured
 
 - **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents use `gpt-6-luna#high`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
