@@ -27,6 +27,9 @@ jobs:
       - name: Verify workflow action pins
         run: npm run verify:workflow-actions
 
+      - name: Verify Node and npm versions
+        run: npm run verify:toolchain
+
       - name: Install dependencies
         run: npm ci
 
