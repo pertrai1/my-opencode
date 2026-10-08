@@ -7,16 +7,16 @@
       "settings": {
         "headerTimeout": 600000,
         "timeout": 600000,
-        "chunkTimeout": 600000
+        "chunkTimeout": 600000,
       },
       "models": {
         "gpt-6-astra": {
           "settings": {
-            "reasoningEffort": "high"
-          }
-        }
-      }
-    }
+            "reasoningEffort": "high",
+          },
+        },
+      },
+    },
   },
   "default_agent": "lean",
   // Optional Jev routing is disabled by default; enable with OPENCODE_JEV_ROUTING=1.
@@ -29,122 +29,122 @@
         {
           "action": "webfetch",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "websearch",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "skill",
           "resource": "*",
-          "effect": "allow"
+          "effect": "allow",
         },
         {
           "action": "question",
           "resource": "*",
-          "effect": "allow"
+          "effect": "allow",
         },
         {
           "action": "subagent",
           "resource": "*",
-          "effect": "allow"
+          "effect": "allow",
         },
         {
           "action": "todowrite",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "mdn_search",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "mdn_get_doc",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "mdn_get_compat",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "llm_core_get_active_instructions",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "llm_core_lint_file",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_audit",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_export",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_governance_delete",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_recall",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_save",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_sessions",
           "resource": "*",
-          "effect": "deny"
+          "effect": "deny",
         },
         {
           "action": "agentmemory_memory_smart_search",
           "resource": "*",
-          "effect": "deny"
-        }
-      ]
+          "effect": "deny",
+        },
+      ],
     },
     "build": {
-      "model": "openai/gpt-6-sol"
+      "model": "openai/gpt-6-sol",
     },
     "plan": {
-      "model": "openai/gpt-6-astra"
-    }
+      "model": "openai/gpt-6-astra",
+    },
   },
   "lsp": true,
   "instructions": [
     "~/.claude/CLAUDE.md",
     "AGENTS.md",
-    "~/.config/opencode/docs/agents/style-guide.md"
+    "~/.config/opencode/docs/agents/style-guide.md",
   ],
   "compaction": {
     "auto": true,
     "prune": true,
-    "reserved": 12000
+    "reserved": 12000,
   },
   "references": {
     "workflow": {
       "path": "./docs/agents",
-      "description": "Issue tracker, triage labels, agent workflow docs, and style guidance"
+      "description": "Issue tracker, triage labels, agent workflow docs, and style guidance",
     },
     "reviewers": {
       "path": "./agents",
-      "description": "Custom review and implementation agents plus reviewer prompts"
-    }
+      "description": "Custom review and implementation agents plus reviewer prompts",
+    },
   },
   "autoupdate": "notify",
   "enabled_providers": ["openai", "ollama", "anthropic", "github-copilot"],
@@ -154,7 +154,7 @@
       "*": "allow",
       "*.env": "deny",
       "*.env.*": "deny",
-      "*.env.example": "allow"
+      "*.env.example": "allow",
     },
     "glob": "allow",
     "grep": "allow",
@@ -193,55 +193,56 @@
       "git tag -d *": "deny",
       "rtk git tag -d *": "deny",
       "git rebase *": "deny",
-      "rtk git rebase *": "deny"
-    }
+      "rtk git rebase *": "deny",
+    },
   },
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama (local)",
       "options": {
-        "baseURL": "http://localhost:11434/v1"
+        "baseURL": "http://localhost:11434/v1",
       },
       "models": {
         "qwen3-coder-30b-64k:latest": {
-          "name": "Qwen-3-Coder-30B-64K"
-        }
-      }
-    }
+          "name": "Qwen-3-Coder-30B-64K",
+        },
+      },
+    },
   },
   "mcp": {
     "servers": {
       "mdn": {
         "type": "remote",
         "url": "https://mcp.mdn.mozilla.net/",
-        "disabled": false
+        "disabled": false,
       },
       "context7": {
         "type": "remote",
         "url": "https://mcp.context7.com/mcp",
-        "disabled": false
+        "disabled": false,
       },
       "gitnexus": {
         "type": "local",
         "command": ["npx", "-y", "gitnexus@latest", "mcp"],
-        "disabled": true
+        "disabled": true,
       },
       "llm-core": {
         "type": "local",
         "command": ["npx", "-y", "eslint-plugin-llm-core-mcp@latest"],
         "environment": {
-          "LLM_CORE_MCP_ENABLE_FALLBACK": "1"
+          "LLM_CORE_MCP_ENABLE_FALLBACK": "1",
         },
-        "disabled": false
+        "disabled": false,
       },
       "fallow": {
         "type": "local",
-        "command": ["npx", "-y", "--package=fallow", "fallow-mcp"]
+        "command": ["npx", "-y", "--package=fallow", "fallow-mcp"],
+        "disabled": true,
       },
       "chrome-devtools": {
         "type": "local",
-        "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
+        "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
       },
       "sonarqube": {
         "type": "local",
@@ -258,15 +259,22 @@
           "SONARQUBE_URL",
           "-e",
           "SONARQUBE_PROJECT_KEY",
-          "sonarsource/sonarqube-mcp"
+          "sonarsource/sonarqube-mcp",
         ],
-        "disabled": false
-      }
-    }
+        "disabled": false,
+      },
+      "codescene": {
+        "type": "local",
+        "command": ["npx", "-y", "@codescene/codehealth-mcp"],
+        "environment": {
+          "CS_ACCESS_TOKEN": "{env:CS_ACCESS_TOKEN}",
+        },
+      },
+    },
   },
   "tool_output": {
     "max_lines": 2000,
-    "max_bytes": 51200
+    "max_bytes": 51200,
   },
-  "formatter": true
+  "formatter": true,
 }
