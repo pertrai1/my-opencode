@@ -97,7 +97,31 @@ The plugin prints a startup diagnostic containing the enabled state, the
 `jev-route-policy-v1` revision, TypeSafe availability, and dry-run state. It
 never prints the credential. Missing credentials keep routing disabled. Set
 `OPENCODE_JEV_ROUTING_DRY_RUN=1` with routing enabled to emit decisions without
-switching the primary or child session's agent or model.
+switching the primary or child session's agent or model. Dry-run still contacts
+TypeSafe with the same minimized routing payload; it is not an offline mode.
+
+Before calling TypeSafe, the hook reduces each nonempty prompt to a bounded
+routing summary. The provider receives only:
+
+- `requestKind: "nonempty"` and a `requestLengthBucket`: `short` (1–256 UTF-16
+  code units), `medium` (257–2048), or `long` (2049+), using the untrimmed length.
+- Optional current agent/model identifiers, only when present in the closed
+  route table below. Custom identifiers stay local.
+- `attachedFiles`, `attachedAgents`, and `attachedSkills` counts, rounded down
+  and clamped to 0–100. Missing, non-numeric, and non-finite counts become zero;
+  malformed non-object or array context becomes an empty context.
+- The static route-selection policy and closed route question.
+
+Raw prompt text, source code, paths, file contents, credentials, environment
+values, model responses, arbitrary context, and prompt hashes are never included
+in the outbound routing payload. Empty or non-string prompts make no provider
+call. If summary construction fails, routing stays on the current agent/model
+without contacting the provider. Tests use synthetic input and a fake provider.
+
+This intentionally coarse summary cannot distinguish semantic intent or risk
+from prompt wording. Jev must choose `current` when shape metadata is insufficient;
+explicit agent/model selections still bypass routing. The timeout remains three
+seconds with no retries, and acceptance thresholds are unchanged.
 
 The policy is a closed route table in `scripts/route-agent.mjs`. Each route
 binds a task class to an approved OpenCode agent, model, permission profile,
