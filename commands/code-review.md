@@ -8,18 +8,31 @@ Review the current change set in the working tree.
 
 This is a review-only task. Do not edit files, apply patches, or change the repository state.
 
-First, run `node ~/.config/opencode/scripts/recommend-reviewers.mjs`. It sends working-tree file status and diff statistics, plus locally derived file-category counts, to TypeSafe; it never sends raw diff content. It then returns JSON reviewer recommendations. When `source` is `typesafe`, launch every listed `selectedReviewers`; an `uncertain` recommendation is intentionally included because these reviews are read-only. When `source` is `fallback` or `none`, use the existing manual selection rules below. Do not send credentials or other sensitive material to the routing service.
+The router sends working-tree file statuses (including paths), diff statistics,
+and locally derived file-category counts to TypeSafe, not raw diffs or credentials.
+Paths can contain sensitive identifiers. If that metadata may leave the machine,
+run `node ~/.config/opencode/scripts/recommend-reviewers.mjs`. Otherwise, skip the
+router and use manual selection.
 
-Then inspect the working-tree diff and categorize the touched files so you understand which parts of the system changed.
+Build one reviewer set:
 
-Useful categories include:
+- For `source: typesafe`, include every `selectedReviewers` entry, including uncertain recommendations.
+- If routing was skipped, or for `source: fallback` or `source: none`, start with an empty set and use the manual rules below.
+- Inspect the working-tree diff and add reviewers required by the manual rules or the user's explicit request. Do not remove a router-selected reviewer because your own classification differs.
+- Launch each selected reviewer once, in parallel where possible.
 
-- frontend: `.ts`, `.js`, `.tsx`, `.jsx` client-side styles, UI components, browser-facing state or rendering code
-- backend: APIs, services, domain logic, persistence, queues/jobs, migrations, server-side TypeScript/JavaScript/Python/Go/Java code
-- devops/config: Docker, CI, deployment config, infrastructure, environment wiring, workflow files
-- shared/core: package boundaries, shared utilities, public APIs, cross-cutting libraries
+## Manual reviewer selection
 
-Use the category map to decide which specialist reviewers are relevant. If a specialist is not relevant, skip it. If multiple specialists are relevant, launch them in parallel after classification.
+| Reviewer | Select for |
+| --- | --- |
+| `architecture-boundary-reviewer` | Imports, exports, package or layer boundaries, file moves, shared utilities, public APIs, deep imports, or test code leaking into production. |
+| `performance-reviewer` | Rendering loops, data processing, database queries, network-heavy paths, caching, bundle/build changes, scalable paths, or an explicit performance review request. |
+| `test-reviewer` | Behavior changes that need coverage review, or added, removed, or modified tests. |
+| `production-readiness-reviewer` | Persistence, migrations, external services, auth, privacy, async jobs, deployment/configuration, critical paths, cross-service compatibility, or an explicit production-safety review request. |
+| `security-audit-reviewer` | Authentication, authorization, untrusted input, secrets, sensitive data, cryptography, external requests, dependencies, security configuration, or an explicit security review request. Use the `security-audit` skill in guidance mode, not a full audit. |
+| `frontend-a11y-reviewer` | Browser-facing components, forms, navigation, rendering, visual presentation, interactions, or an explicit accessibility review request. |
+
+## Review and synthesis
 
 If JSCPD is available in the current repository and the diff adds or substantially modifies production code across multiple files or modules, run its AI reporter and use the results as investigation leads for possible duplication, missed reuse, or poor ownership boundaries. Do not treat every clone report as an automatic finding.
 
@@ -33,30 +46,6 @@ Then answer this question while comparing the change to the surrounding code:
 
 Does this change match the conventions, complexity level, and intent of the surrounding code?
 
-Then decide whether the diff is performance-sensitive, or whether the user explicitly asked for performance review. Examples include rendering loops, data processing, database/query logic, network-heavy flows, caching, bundle/build configuration, hot paths, or clearly scalable code paths.
-
-If yes, launch the `performance-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. If not, skip the subagent.
-
-Then decide whether the diff changes architectural edges. Examples include imports, exports, package boundaries, file moves, shared utilities, layer crossings, public APIs, deep imports, or test code leaking into production code.
-
-If yes, launch the `architecture-boundary-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. If not, skip the subagent.
-
-Then decide whether the diff changes behavior without enough tests, or directly adds, removes, or modifies tests.
-
-If yes, launch the `test-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. If not, skip the subagent.
-
-Then decide whether the diff touches production-sensitive surfaces, or whether the user explicitly asked for a production-safety review. Examples include persistence, migrations, external services, auth, privacy, queues/jobs, deploy/config changes, critical paths, or cross-service compatibility.
-
-If yes, launch the `production-readiness-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. If not, skip the subagent.
-
-Then decide whether the diff affects a security boundary, or whether the user explicitly asked for a security review. Examples include authentication, authorization, untrusted input, secrets, sensitive data, cryptography, external requests, dependencies, and security configuration.
-
-If yes, launch the `security-audit-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review. It must use the `security-audit` skill in guidance mode, not start a full audit.
-
-Then decide whether the diff changes a browser-facing interface, or whether the user explicitly asked for an accessibility review. Examples include components, forms, navigation, client-side rendering, visual presentation, and interaction behavior.
-
-If yes, launch the `frontend-a11y-reviewer` subagent, scoped to the relevant changed files, and incorporate its findings into your review.
-
 Then use the `difit-review` skill to perform a diff review of the current working tree diff, attach any findings as Difit comments, and launch Difit.
 
 In your final synthesis:
@@ -66,17 +55,8 @@ In your final synthesis:
 - deduplicate overlapping findings from multiple reviewers
 - produce a clear overall verdict on whether the change looks ready, needs changes, or needs discussion
 
-Focus on:
-
-- behavioral regressions
-- convention mismatches
-- unnecessary complexity
-- places where the implementation appears to diverge from nearby code intent
-- architecture boundary risks when the subagent is used
-- performance risks and optimization opportunities when the subagent is used
-- test quality and coverage risks when the subagent is used
-- production-safety and rollout risks when the subagent is used
-- security-boundary risks when the subagent is used
-- WCAG 2.2 AA accessibility risks and required human validation when the subagent is used
+Focus on evidence-backed regressions, convention mismatches, unnecessary
+complexity, divergence from the surrounding code's intent, and the selected
+specialists' findings. Keep required human validation visible.
 
 If there are no findings, say so explicitly and still launch Difit for the diff.

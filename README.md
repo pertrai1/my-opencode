@@ -17,7 +17,7 @@ This repository supports Node.js 22 and npm 10. The supported versions are decla
 - **Compaction** — auto with pruning (12K token reserved buffer).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
-- **TUI** — `tui.json` (automatic theme, mouse input, attention notifications, and sound enabled).
+- **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
 
 ## Work intake
 
@@ -56,9 +56,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 - `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
 - `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools.
-- [Code Review Graph](https://code-review-graph.com) — local-first knowledge graph tooling used by `crg-plugin.ts`.
-- **Optional repo tool: GitNexus** — repository knowledge graph and impact-analysis tooling for larger or unfamiliar codebases. Most useful when agents need to trace callers, dependency impact, architecture relationships, or PR risk across many files. Best added when a repository is large enough that ordinary grep-and-read workflows stop being efficient.
+- [GitNexus](https://github.com/paretoxyz/gitnexus) — optional repository indexing and impact analysis. Its MCP server is configured but disabled by default.
 
 ## Review
 
@@ -204,12 +202,10 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
-- **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
-- **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
-- **OpenSpec Verification Summary** — change-local `verification.md` files now record intent, completed work, evidence checked, functional check, test coverage check, integration check, documentation impact, scope control, unverified areas, actions not taken, divergences, and recommendation.
+- [Verification guidance](.agents/docs/verification/README.md) defines the `/verify` rubric, evidence requirements, and report naming. OpenSpec reports follow the change-verifier contract instead.
 - **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
 - **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
-- **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
+- **Fallow** — its MCP server is configured but disabled by default. Enable it only in repositories where its dead-code analysis is needed.
 
 ## Security
 
