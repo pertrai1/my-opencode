@@ -1,14 +1,16 @@
 # Shared Agent Verification Guidance & Evaluation Rubric
 
-This document defines the canonical evaluation rubric and operating expectations for verifying agent-completed work. All agent verification workflows, specifically the `/verify` command and relevant engineering skills, must adhere to this standard.
+This document defines the `/verify` report format and shared evidence requirements.
+OpenSpec change-local reports use the separate contract in
+[`agents/change-verifier.md`](../../../agents/change-verifier.md).
 
 ---
 
 ## 1. Invocation Model & Expectations
 
-- **User-Invoked Only:** Verification is a user-invoked workflow (e.g., via `/verify`).
-- **No Automatic Gate:** Verification is never an automatic, mandatory workflow gate in the agent loop. The user decides when to request it.
-- **Progressive Disclosure:** Skills and commands must reference this shared guidance (e.g., pointing to `.agents/docs/verification/README.md`) instead of duplicating the full rubric, maintaining a single source of truth.
+- `/verify` runs when the user requests it; it is not an automatic agent-loop gate.
+- This does not waive routine tests, lint, type checks, or the OpenSpec verification and human-approval gates before archive.
+- Commands and skills should link here for shared evidence requirements rather than copying the rubric. OpenSpec keeps its change-local report format and lifecycle rules.
 
 ---
 
@@ -29,7 +31,7 @@ Verification must use a standard core rubric and source-specific checks. Select 
 
 ## 3. Standard Core Rubric
 
-Every verification report must follow this exact 7-section structure:
+Every `/verify` report must follow this 7-section structure:
 
 ### Section 1: Source and Scope Identification
 - Declare the resolved source of truth (including URL, issue number, or file path).
