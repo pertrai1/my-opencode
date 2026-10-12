@@ -14,7 +14,7 @@ This repository supports Node.js 22 and npm 10. The supported versions are decla
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
-- **Compaction** — auto with pruning (12K token reserved buffer).
+- **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
