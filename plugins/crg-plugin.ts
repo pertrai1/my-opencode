@@ -18,7 +18,9 @@ export default Plugin.define({
     await ctx.tool.hook("execute.before", async (event) => {
       if (!/^git\s+commit/i.test(getCommandText(event.input))) return
       try {
-        const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"])
+        const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
+          cwd: ctx.location.directory,
+        })
         const text = stdout.trim()
         if (text) console.log("[code-review-graph] pre-commit analysis", { output: text })
       } catch {
@@ -30,7 +32,9 @@ export default Plugin.define({
     await ctx.tool.hook("execute.after", async (event) => {
       if (event.status !== "completed" || !["edit", "write", "patch"].includes(event.tool)) return
       try {
-        await execFileAsync("code-review-graph", ["update", "--skip-flows"])
+        await execFileAsync("code-review-graph", ["update", "--skip-flows"], {
+          cwd: ctx.location.directory,
+        })
       } catch {
         // The graph CLI is optional and must not block edits.
         return
