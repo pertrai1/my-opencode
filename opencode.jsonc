@@ -133,8 +133,7 @@
   ],
   "compaction": {
     "auto": true,
-    "prune": true,
-    "reserved": 12000,
+    "buffer": 12000,
   },
   "references": {
     "workflow": {
