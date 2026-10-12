@@ -50,6 +50,31 @@ export const ROUTING_POLICY = {
 const APPROVED_AGENTS = new Set(Object.values(ROUTES).map((route) => route.agent).filter(Boolean));
 const APPROVED_MODELS = new Set(Object.values(ROUTES).map((route) => route.model).filter(Boolean));
 
+function attachmentCount(value) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.floor(value)))
+    : 0;
+}
+
+// Only locally derived shape and closed identifiers may cross the provider boundary.
+export function sanitizeRoutingInput({ text, currentAgent, currentModel, context }) {
+  if (typeof text !== "string" || text.trim().length === 0) return undefined;
+  const metadata = context && typeof context === "object" && !Array.isArray(context)
+    ? context
+    : {};
+  return {
+    requestKind: "nonempty",
+    requestLengthBucket: text.length <= 256 ? "short" : text.length <= 2048 ? "medium" : "long",
+    ...(APPROVED_AGENTS.has(currentAgent) ? { currentAgent } : {}),
+    ...(APPROVED_MODELS.has(currentModel) ? { currentModel } : {}),
+    context: {
+      attachedFiles: attachmentCount(metadata.attachedFiles),
+      attachedAgents: attachmentCount(metadata.attachedAgents),
+      attachedSkills: attachmentCount(metadata.attachedSkills),
+    },
+  };
+}
+
 export function routingQuestion() {
   return choice(
     "Which configured OpenCode route is the safest and most effective first handler for this user request? Choose current when the evidence is insufficient or the current route is already appropriate.",
@@ -129,12 +154,20 @@ export async function routeAgent(
     return { ...routeFallback({ currentAgent, currentModel, reason: "empty-request" }), latencyMs: 0 };
   }
 
+  let request;
+  try {
+    request = sanitizeRoutingInput({ text, currentAgent, currentModel, context });
+  } catch {
+    return {
+      ...routeFallback({ currentAgent, currentModel, reason: "typesafe-error:invalid-routing-input" }),
+      latencyMs: Math.round(now() - started),
+    };
+  }
+
   try {
     const response = await (client ?? new TypeSafeClient()).systemOne({
       state: {
-        request: text,
-        current: { agent: currentAgent, model: currentModel },
-        context,
+        request,
         policy: {
           purpose: "Select the least powerful configured route that can safely handle the request.",
           constraints: [
