@@ -35,7 +35,7 @@ export function fixtureChange(fixture, runGit = git) {
   return { files, stat, summary: changeSummary(files) };
 }
 
-function validateFixtures(fixtures) {
+export function validateFixtures(fixtures) {
   const ids = new Set();
   for (const fixture of fixtures) {
     if (!fixture.id || ids.has(fixture.id) || Boolean(fixture.commit) === Boolean(fixture.synthetic)) {
