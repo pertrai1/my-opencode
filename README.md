@@ -79,6 +79,11 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 `/code-review` uses the [TypeSafe](https://typesafe.ai/) System One API to recommend the read-only specialist reviewers that match the current change. The implementation is `scripts/recommend-reviewers.mjs` and uses the `@typesafe-ai/sdk` package.
 
+The reviewer-only selector now supports `off`, `jev` (the default), and an
+offline-first `subq` adapter. See [provider setup and contracts](docs/reviewer-decision-providers.md)
+and the [deterministic mocked comparison](docs/reviewer-provider-comparison.md).
+No live SubQ transport or credential setup is included.
+
 ### TypeSafe agent/model routing
 
 The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.

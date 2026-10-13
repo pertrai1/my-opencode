@@ -1,86 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { noul, TypeSafeClient } from "@typesafe-ai/sdk";
+import { selectReviewers } from "./reviewer-decision-provider.mjs";
 
-const SELECT_THRESHOLD = 0.75;
-const UNCERTAIN_THRESHOLD = 0.35;
-const ROUTING_OPTIONS = {
-  timeout: 3000,
-  retry: { maxRetries: 0 },
-};
-
-const REVIEWERS = {
-  "architecture-boundary-reviewer": {
-    question: "Does this change alter an architectural boundary, public API, import/export relationship, package boundary, or layer crossing?",
-    true: "The change modifies an architectural edge that merits architecture-boundary review.",
-    false: "The change stays within an existing implementation boundary without changing public or dependency edges.",
-  },
-  "performance-reviewer": {
-    question: "Does this change affect a performance-sensitive path, such as rendering, data processing, network activity, caching, a database query, or build configuration?",
-    true: "The change can affect latency, throughput, resource use, scalability, or build performance.",
-    false: "The change has no plausible material performance impact.",
-  },
-  "production-readiness-reviewer": {
-    question: "Does this change affect a production-sensitive surface, such as persistence, an external service, authentication, privacy, asynchronous work, deployment, or cross-service compatibility?",
-    true: "The change has production-safety or rollout risks that need production-readiness review.",
-    false: "The change is isolated from production-sensitive surfaces.",
-  },
-  "test-reviewer": {
-    question: "Does this behavioral change need independent review of its test coverage, assertions, or test brittleness?",
-    true: "The change modifies behavior or tests in a way that merits test-review.",
-    false: "The change is non-behavioral and does not need a test-quality review.",
-  },
-  "security-audit-reviewer": {
-    question: "Does this change affect a security boundary, such as authentication, authorization, untrusted input, secrets, sensitive data, cryptography, external requests, or security configuration?",
-    true: "The change merits a focused, source-first security review.",
-    false: "The change does not affect a security-sensitive boundary or control.",
-  },
-  "frontend-a11y-reviewer": {
-    question: "Does this change alter a browser-facing interface, interaction, form, navigation, client-side rendering, or visual presentation that needs accessibility review?",
-    true: "The change merits a WCAG 2.2 AA accessibility review.",
-    false: "The change does not alter a browser-facing user interface or interaction.",
-  },
-};
-
-function questions() {
-  return Object.fromEntries(
-    Object.entries(REVIEWERS).map(([name, reviewer]) => [
-      name,
-      noul(reviewer.question, { true: reviewer.true, false: reviewer.false }),
-    ]),
-  );
-}
-
-function reviewDecision(probability) {
-  if (probability >= SELECT_THRESHOLD) return "selected";
-  if (probability >= UNCERTAIN_THRESHOLD) return "uncertain";
-  return "not-selected";
-}
-
-export async function recommendReviewers(change, client = new TypeSafeClient()) {
-  const response = await client.systemOne({
-    state: {
-      change,
-      policy: {
-        purpose: "Choose read-only specialist reviews for the current code change.",
-        uncertainty: "Recommend a review when the evidence is ambiguous because reviews are read-only.",
-      },
-    },
-    questions: questions(),
-  }, ROUTING_OPTIONS);
-
-  const recommendations = Object.keys(REVIEWERS).map((reviewer) => {
-    const probability = response.answers[reviewer].noul;
-    return { reviewer, probability, decision: reviewDecision(probability) };
-  });
-
-  return {
-    source: "typesafe",
-    recommendations,
-    selectedReviewers: recommendations
-      .filter(({ decision }) => decision !== "not-selected")
-      .map(({ reviewer }) => reviewer),
-  };
+// Keep the existing library interface and default Jev behavior for baseline users.
+export async function recommendReviewers(change, client) {
+  return selectReviewers(change, { jevClient: client });
 }
 
 function gitOutput(args) {
@@ -128,13 +52,13 @@ async function main() {
       return;
     }
 
-    process.stdout.write(`${JSON.stringify(await recommendReviewers(change))}\n`);
-  } catch (error) {
+    process.stdout.write(`${JSON.stringify(await selectReviewers(change, { provider: process.env.REVIEWER_DECISION_PROVIDER ?? "jev" }))}\n`);
+  } catch {
     process.stdout.write(`${JSON.stringify({
       source: "fallback",
       recommendations: [],
       selectedReviewers: [],
-      error: error instanceof Error ? error.message : "TypeSafe reviewer routing failed",
+      diagnostic: { code: "metadata-error", message: "Unable to collect reviewer routing metadata; use manual selection." },
     })}\n`);
   }
 }

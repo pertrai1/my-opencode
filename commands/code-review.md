@@ -9,14 +9,18 @@ Review the current change set in the working tree.
 This is a review-only task. Do not edit files, apply patches, or change the repository state.
 
 The router sends working-tree file statuses (including paths), diff statistics,
-and locally derived file-category counts to TypeSafe, not raw diffs or credentials.
+and locally derived file-category counts to the selected reviewer provider, not raw diffs or credentials.
 Paths can contain sensitive identifiers. If that metadata may leave the machine,
 run `node ~/.config/opencode/scripts/recommend-reviewers.mjs`. Otherwise, skip the
-router and use manual selection.
+router and use manual selection. `REVIEWER_DECISION_PROVIDER` selects `off`, `jev`
+(the unchanged default), or `subq`. `off` makes no provider call. SubQ currently
+requires an injected, approved transport and otherwise returns fallback; see
+[reviewer provider setup](../docs/reviewer-decision-providers.md). No provider
+silently fails over to another. This selector does not affect agent/model routing.
 
 Build one reviewer set:
 
-- For `source: typesafe`, include every `selectedReviewers` entry, including uncertain recommendations.
+- For `source: typesafe` or `source: subq`, include every `selectedReviewers` entry, including uncertain recommendations.
 - If routing was skipped, or for `source: fallback` or `source: none`, start with an empty set and use the manual rules below.
 - Inspect the working-tree diff and add reviewers required by the manual rules or the user's explicit request. Do not remove a router-selected reviewer because your own classification differs.
 - Launch each selected reviewer once, in parallel where possible.
