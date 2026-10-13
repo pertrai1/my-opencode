@@ -47,7 +47,9 @@ Git symlink support enabled when cloning. Do not use a Git checkout that replace
 This installs the two skills named in `AGENTS.md` plus `frontend-a11y`'s explicit
 `modern-web-guidance` dependency. The dependency entrypoint and Apache-2.0 license
 are vendored from [GoogleChrome/modern-web-guidance at b31dc0a](https://github.com/GoogleChrome/modern-web-guidance/tree/b31dc0a43ff5d19bcf386a3476a216f3b39a6f55).
-Review upstream changes deliberately before updating that source. Its search and
+Local launcher guidance consistently uses the existing `npx` allowance, even
+when `pnpm` is installed; agent permissions are unchanged. Review upstream
+changes deliberately before updating that source. Its search and
 retrieve commands use `npx -y modern-web-guidance@latest`, matching existing agent
 allowlists; this runtime package is fetched at use time and is not pinned by this
 installer. npm and network access are required for web guidance. A missing or

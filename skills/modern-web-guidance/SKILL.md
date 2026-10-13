@@ -21,8 +21,9 @@ description: |
 
 Vendored from [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance/tree/b31dc0a43ff5d19bcf386a3476a216f3b39a6f55)
 at commit `b31dc0a43ff5d19bcf386a3476a216f3b39a6f55` under the included
-[Apache-2.0 license](LICENSE). Local changes: Markdown formatting and this
-provenance notice only; upstream instructions and runtime commands are unchanged.
+[Apache-2.0 license](LICENSE). Local changes: Markdown formatting, this
+provenance notice, and launcher guidance restricted to the existing
+`npx -y modern-web-guidance@latest *` agent allowance. Permissions are unchanged.
 
 A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
 
@@ -106,14 +107,14 @@ When you consult `modern-web-guidance` for a task, end the response where you de
   - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
 - **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
 
-## Using npx / pnpx
+## Using npx
 
-- Prefer `pnpx` over `npx` if `pnpm` is available (note: `pnpx` does not use the `-y` flag).
-- When requesting tool permissions, allowlist `npx -y modern-web-guidance@latest *` specifically (or `pnpx modern-web-guidance@latest *`), never bare `npx *` or `pnpx *`.
-- IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
+- Use `npx -y modern-web-guidance@latest` for every lookup, including when `pnpm` is installed.
+- Keep the existing narrow `npx -y modern-web-guidance@latest *` allowance. Do not broaden agent permissions or switch launchers to run this skill.
+- Windows is outside this repository's supported skill-installation workflow.
 - Fetching and running `modern-web-guidance` requires outbound network access. If running in a sandboxed, permission-gated, or approval-based environment (e.g., Codex, Claude Code), **proactively request approval/allowlisting for the command with network access BEFORE executing it the first time**, avoiding sandbox network timeouts.
 - In sandboxed environments where `~/.npm` is read-only or restricted, set `NPM_CONFIG_CACHE=/tmp/npm-cache`.
-- If the command hangs due to being offline, try running again in offline mode: `npx --offline …`.
+- If offline or blocked, report the guidance lookup unavailable; do not switch to invocation flags outside the existing allowance.
 - The `--skill-version` flag is used to determine if this SKILL.md is out of date. If it is, a warning message is logged to stderr.
 
 ## Guidelines

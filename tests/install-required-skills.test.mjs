@@ -66,3 +66,17 @@ test("missing home argument fails without installing anything", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /requires a directory/);
 });
+
+test("web guidance uses the existing constrained-agent shell allowance", () => {
+  const skill = readFileSync(path.join(repository, "skills/modern-web-guidance/SKILL.md"), "utf8");
+  const commands = [...skill.replaceAll(/^> ?/gm, "").matchAll(/```sh\n([^`]+)```/g)]
+    .map(match => match[1].trim());
+  assert.equal(commands.length, 3);
+  for (const command of commands) assert.match(command, /^npx -y modern-web-guidance@latest (search|list|retrieve)\b/);
+  assert.doesNotMatch(skill, /\bpnpx\b|\bnpx\.cmd\b|npx --offline/);
+  for (const agent of ["implementer", "tdd-orchestrator", "sdlc-orchestrator"]) {
+    const content = readFileSync(path.join(repository, "agents", `${agent}.md`), "utf8");
+    const frontmatter = content.split("---")[1];
+    assert.match(frontmatter, /action: "shell"\s+resource: "npx -y modern-web-guidance@latest \*"\s+effect: allow/);
+  }
+});
