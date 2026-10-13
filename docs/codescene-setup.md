@@ -19,16 +19,28 @@ env -u CS_ACCESS_TOKEN npm install --prefix "$codescene_tools" \
   --ignore-scripts --no-audit --no-fund \
   @opencode/cli@2.0.27 @opencode/cli-linux-x64@2.0.27
 
-env -u CS_ACCESS_TOKEN curl --fail --location \
-  https://github.com/codescene-oss/codescene-mcp-server/releases/download/MCP-1.5.10/cs-mcp-linux-amd64.zip \
-  --output "$codescene_tools/codescene-1.5.10/release.zip"
-unzip -j "$codescene_tools/codescene-1.5.10/release.zip" \
-  cs-mcp-linux-amd64 cs-mcp-linux-amd64.sha256 \
-  -d "$codescene_tools/codescene-1.5.10"
-(cd "$codescene_tools/codescene-1.5.10" && sha256sum --check cs-mcp-linux-amd64.sha256)
+(
+  set -e
+  cd "$codescene_tools/codescene-1.5.10"
+  env -u CS_ACCESS_TOKEN curl --fail --location \
+    https://github.com/codescene-oss/codescene-mcp-server/releases/download/MCP-1.5.10/cs-mcp-linux-amd64.zip \
+    --output release.zip
+  printf '%s  %s\n' \
+    6465106eb114d95e7547be6d6b8e18acc783fe3f408618bd346113b0b97602e0 \
+    release.zip | sha256sum --check -
+  unzip -j release.zip cs-mcp-linux-amd64 cs-mcp-linux-amd64.sha256 -d .
+  sha256sum --check cs-mcp-linux-amd64.sha256
+)
 ```
 
-**Stop if the checksum check fails.** Otherwise, expose the verified binaries:
+The archive SHA-256 is pinned from GitHub's separately published
+[release asset metadata](https://api.github.com/repos/codescene-oss/codescene-mcp-server/releases/assets/624942876)
+for MCP 1.5.10, checked on 2026-10-13. A download or archive-check failure stops
+this subshell before extraction. The checksum inside the ZIP checks internal
+consistency only. The pinned archive digest establishes a match to the bytes
+published by GitHub; it is not an independent source/build provenance attestation.
+
+**Stop if any installation command fails.** Otherwise, expose the installed binaries:
 
 ```bash
 chmod u+x "$codescene_tools/codescene-1.5.10/cs-mcp-linux-amd64"
@@ -117,12 +129,14 @@ hosted task's native tools.
 
 ## Verify and persist
 
-Check token availability without displaying it:
+Check whether the token variable name is present without retrieving its value:
 
 ```bash
-python3 -c 'import os; print(bool(os.environ.get("CS_ACCESS_TOKEN")))'
+python3 -c 'import os; print("CS_ACCESS_TOKEN" in iter(os.environ))'
 ```
 
+Iterating the names avoids the mapping membership implementation retrieving a
+value internally. A `True` result establishes presence only; the value might be empty or invalid.
 Use `verify_installation` with the repository root, then `code_health_score` on a
 small local source fixture. A connection check alone does not validate licensed
 analysis. The [codescene-mcp skill](../skills/codescene-mcp/SKILL.md) supplies the
