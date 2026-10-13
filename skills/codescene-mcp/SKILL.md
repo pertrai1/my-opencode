@@ -6,7 +6,7 @@ description: Use for Code Health reviews, regression handling, and pre-finish sa
 # CodeScene MCP
 
 Follow the user's scope and repository `AGENTS.md` first. Use the existing
-`codescene` registration and [setup guide](../../docs/codescene-setup.md).
+`codescene` registration and [setup guide](references/setup.md).
 This skill does not authorize commits, pushes, broader refactoring, or changes to
 credentials or permissions.
 

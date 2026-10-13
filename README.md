@@ -307,6 +307,10 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 
 ## Replicating this setup
 
+Install the two AGENTS-required skills on each computer with the
+[shared skill installer](docs/required-skills.md). Keeping `.agents` in this
+configuration checkout alone does not install skills into other projects.
+
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
 2. `rtk init -g --opencode` to install the RTK plugin
 3. `code-review-graph install --platform opencode` to install the graph plugin
