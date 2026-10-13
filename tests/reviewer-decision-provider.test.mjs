@@ -114,3 +114,21 @@ test("offline CLI works with an empty environment and rejects live arguments", (
 test("historical replay is rejected before any offline comparison", async () => {
   await assert.rejects(compareProviders([{ id: "history", commit: "abc", expected: [] }]), /synthetic fixtures only/);
 });
+
+for (const provider of ["jev", "subq"]) {
+  test(`${provider} sends only documented change metadata`, async () => {
+    const input = { ...change, diff: "synthetic diff", prompt: "synthetic prompt", image: "synthetic image", credential: "synthetic credential" };
+    let received;
+    const capture = request => { received = request; return response(); };
+    const result = await selectReviewers(input, {
+      provider,
+      jevClient: { systemOne: async request => capture(request) },
+      subqTransport: async request => ({ status: 200, body: capture(request.body) }),
+    });
+    assert.equal(result.status, "ok");
+    assert.deepEqual(received.state.change, change);
+    assert.equal(input.diff, "synthetic diff");
+    assert.deepEqual(received.state.policy, reviewerRequest(change).state.policy);
+    assert.deepEqual(received.questions, reviewerRequest(change).questions);
+  });
+}

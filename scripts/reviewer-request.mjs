@@ -49,7 +49,9 @@ export const REVIEWER_NAMES = Object.keys(REVIEWERS);
 export function reviewerRequest(change) {
   return {
     state: {
-      change,
+      change: Object.fromEntries(
+        ["files", "stat", "summary"].filter(key => Object.hasOwn(change ?? {}, key)).map(key => [key, change[key]]),
+      ),
       policy: {
         purpose: "Choose read-only specialist reviews for the current code change.",
         uncertainty: "Recommend a review when the evidence is ambiguous because reviews are read-only.",
