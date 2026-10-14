@@ -16,7 +16,6 @@ async function setup(t, code) {
   await plugin.setup({
     location: { directory: os.tmpdir() },
     tool: { hook: async (name, handler) => { hooks[name] = handler; } },
-    permission: { hook: async (_name, handler) => { hooks.permission = handler; } },
   });
   return hooks;
 }
@@ -28,25 +27,12 @@ test('RTK explicit deny blocks execution instead of running the original command
   await assert.rejects(hooks['execute.before'](call()), /RTK denied/);
 });
 
-test('RTK ask preserves the original permission target and asks only for its own call', async (t) => {
+test('RTK ask preserves the original command and leaves approval to native permissions', async (t) => {
   const hooks = await setup(t, 3);
   const event = call();
   await hooks['execute.before'](event);
   assert.equal(event.input.command, 'git status');
-  const evaluation = () => ({ sessionID: event.sessionID, action: 'shell', source: { type: 'tool', messageID: event.messageID, id: event.id }, effect: 'allow' });
-  const matching = evaluation();
-  await hooks.permission(matching);
-  assert.equal(matching.effect, 'ask');
-  const unrelated = { ...evaluation(), sessionID: 'another-session' };
-  await hooks.permission(unrelated);
-  assert.equal(unrelated.effect, 'allow');
-  const denied = { ...evaluation(), effect: 'deny' };
-  await hooks.permission(denied);
-  assert.equal(denied.effect, 'deny');
-  await hooks['execute.after']({ ...event, status: 'completed' });
-  const finished = evaluation();
-  await hooks.permission(finished);
-  assert.equal(finished.effect, 'allow');
+  assert.equal(hooks.permission, undefined);
 });
 
 for (const [code, expected] of [[0, 'rtk git status'], [1, 'git status'], [9, 'git status']]) {
@@ -64,15 +50,4 @@ test('RTK evaluates project rules in the session repository', async (t) => {
   const event = call();
   await hooks['execute.before'](event);
   assert.equal(event.input.command, os.tmpdir());
-});
-
-test('RTK fails closed if interrupted calls exhaust pending approval tracking', async (t) => {
-  const hooks = await setup(t, 3);
-  for (let index = 0; index < 1024; index += 1) {
-    await hooks['execute.before']({ ...call(), id: String(index) });
-  }
-  await assert.rejects(hooks['execute.before']({ ...call(), id: 'overflow' }), /pending approvals/);
-  const first = { sessionID: 'session', action: 'shell', source: { type: 'tool', messageID: 'message', id: '0' }, effect: 'allow' };
-  await hooks.permission(first);
-  assert.equal(first.effect, 'ask');
 });
