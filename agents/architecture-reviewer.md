@@ -14,6 +14,12 @@ permissions:
   - action: "edit"
     resource: "*"
     effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "subagent"
+    resource: "*"
+    effect: deny
 ---
 
 You are an architecture-review subagent.
