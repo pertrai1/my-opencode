@@ -14,10 +14,10 @@ This repository supports Node.js 22 and npm 10. The supported versions are decla
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
 - **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
 - **LSP** — enabled for code intelligence.
-- **Compaction** — auto with pruning (12K token reserved buffer).
+- **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
-- **TUI** — `tui.json` (automatic theme, mouse input, attention notifications, and sound enabled).
+- **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
 
 ## Work intake
 
@@ -56,9 +56,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 - `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
 - `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools.
-- [Code Review Graph](https://code-review-graph.com) — local-first knowledge graph tooling used by `crg-plugin.ts`.
-- **Optional repo tool: GitNexus** — repository knowledge graph and impact-analysis tooling for larger or unfamiliar codebases. Most useful when agents need to trace callers, dependency impact, architecture relationships, or PR risk across many files. Best added when a repository is large enough that ordinary grep-and-read workflows stop being efficient.
+- [GitNexus](https://github.com/paretoxyz/gitnexus) — optional repository indexing and impact analysis. Its MCP server is configured but disabled by default.
 
 ## Review
 
@@ -81,6 +79,11 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 `/code-review` uses the [TypeSafe](https://typesafe.ai/) System One API to recommend the read-only specialist reviewers that match the current change. The implementation is `scripts/recommend-reviewers.mjs` and uses the `@typesafe-ai/sdk` package.
 
+The reviewer-only selector now supports `off`, `jev` (the default), and an
+offline-first `subq` adapter. See [provider setup and contracts](docs/reviewer-decision-providers.md)
+and the [deterministic mocked comparison](docs/reviewer-provider-comparison.md).
+No live SubQ transport or credential setup is included.
+
 ### TypeSafe agent/model routing
 
 The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.
@@ -97,7 +100,31 @@ The plugin prints a startup diagnostic containing the enabled state, the
 `jev-route-policy-v1` revision, TypeSafe availability, and dry-run state. It
 never prints the credential. Missing credentials keep routing disabled. Set
 `OPENCODE_JEV_ROUTING_DRY_RUN=1` with routing enabled to emit decisions without
-switching the primary or child session's agent or model.
+switching the primary or child session's agent or model. Dry-run still contacts
+TypeSafe with the same minimized routing payload; it is not an offline mode.
+
+Before calling TypeSafe, the hook reduces each nonempty prompt to a bounded
+routing summary. The provider receives only:
+
+- `requestKind: "nonempty"` and a `requestLengthBucket`: `short` (1–256 UTF-16
+  code units), `medium` (257–2048), or `long` (2049+), using the untrimmed length.
+- Optional current agent/model identifiers, only when present in the closed
+  route table below. Custom identifiers stay local.
+- `attachedFiles`, `attachedAgents`, and `attachedSkills` counts, rounded down
+  and clamped to 0–100. Missing, non-numeric, and non-finite counts become zero;
+  malformed non-object or array context becomes an empty context.
+- The static route-selection policy and closed route question.
+
+Raw prompt text, source code, paths, file contents, credentials, environment
+values, model responses, arbitrary context, and prompt hashes are never included
+in the outbound routing payload. Empty or non-string prompts make no provider
+call. If summary construction fails, routing stays on the current agent/model
+without contacting the provider. Tests use synthetic input and a fake provider.
+
+This intentionally coarse summary cannot distinguish semantic intent or risk
+from prompt wording. Jev must choose `current` when shape metadata is insufficient;
+explicit agent/model selections still bypass routing. The timeout remains three
+seconds with no retries, and acceptance thresholds are unchanged.
 
 The policy is a closed route table in `scripts/route-agent.mjs`. Each route
 binds a task class to an approved OpenCode agent, model, permission profile,
@@ -204,12 +231,10 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
-- **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
-- **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
-- **OpenSpec Verification Summary** — change-local `verification.md` files now record intent, completed work, evidence checked, functional check, test coverage check, integration check, documentation impact, scope control, unverified areas, actions not taken, divergences, and recommendation.
+- [Verification guidance](.agents/docs/verification/README.md) defines the `/verify` rubric, evidence requirements, and report naming. OpenSpec reports follow the change-verifier contract instead.
 - **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
 - **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
-- **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
+- **Fallow** — its MCP server is configured but disabled by default. Enable it only in repositories where its dead-code analysis is needed.
 
 ## Security
 
@@ -286,6 +311,10 @@ The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
 
 ## Replicating this setup
+
+Install the two AGENTS-required skills on each computer with the
+[shared skill installer](docs/required-skills.md). Keeping `.agents` in this
+configuration checkout alone does not install skills into other projects.
 
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
 2. `rtk init -g --opencode` to install the RTK plugin
