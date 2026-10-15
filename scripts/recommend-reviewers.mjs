@@ -8,7 +8,8 @@ export async function recommendReviewers(change, client) {
 }
 
 function gitOutput(args) {
-  return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  // Porcelain status columns and path whitespace are data; remove only Git's final LF.
+  return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\n$/, "");
 }
 
 export function changeSummary(status) {
