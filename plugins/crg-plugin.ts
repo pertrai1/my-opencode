@@ -3,6 +3,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
+const graphTimeoutMs = 10_000
 
 function getCommandText(args: unknown): string {
   if (!args || typeof args !== "object") return ""
@@ -20,6 +21,8 @@ export default Plugin.define({
       try {
         const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
           cwd: ctx.location.directory,
+          timeout: graphTimeoutMs,
+          killSignal: "SIGKILL", // Bound the wait even if the optional CLI ignores SIGTERM.
         })
         const text = stdout.trim()
         if (text) console.log("[code-review-graph] pre-commit analysis", { output: text })
@@ -34,6 +37,8 @@ export default Plugin.define({
       try {
         await execFileAsync("code-review-graph", ["update", "--skip-flows"], {
           cwd: ctx.location.directory,
+          timeout: graphTimeoutMs,
+          killSignal: "SIGKILL",
         })
       } catch {
         // The graph CLI is optional and must not block edits.
