@@ -8,6 +8,26 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import * as routing from "../scripts/route-agent.mjs";
 import * as provenance from "../scripts/routing-provenance.mjs";
 
+function loadRoutingPlugin(logs) {
+  const filename = new URL("../plugins/jev-routing.ts", import.meta.url);
+  const compiled = ts.transpileModule(readFileSync(filename, "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  });
+  const exports = {};
+  vm.runInNewContext(compiled.outputText, {
+    exports,
+    require: (id) => {
+      if (id === "@opencode/plugin") return pluginApi;
+      if (id === "../scripts/route-agent.mjs") return routing;
+      if (id === "../scripts/routing-provenance.mjs") return provenance;
+      throw new Error(`Unexpected import: ${id}`);
+    },
+    console: { info: (...args) => logs.push(args) },
+    process,
+  }, { filename: filename.pathname });
+  return exports.default;
+}
+
 test("prompt hook keeps provider error text out of diagnostics and provenance", async (t) => {
   const markers = ["synthetic-hook-credential", "/private/synthetic-project/prompt.txt", "synthetic-provider-response"];
   const provider = t.mock.method(TypeSafeClient.prototype, "systemOne", async () => {
@@ -24,27 +44,11 @@ test("prompt hook keeps provider error text out of diagnostics and provenance", 
   }
 
   // Exercise the real prompt hook and router, replacing only the provider boundary.
-  const filename = new URL("../plugins/jev-routing.ts", import.meta.url);
-  const compiled = ts.transpileModule(readFileSync(filename, "utf8"), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
-  });
-  const exports = {};
   const logs = [];
-  vm.runInNewContext(compiled.outputText, {
-    exports,
-    require: (id) => {
-      if (id === "@opencode/plugin") return pluginApi;
-      if (id === "../scripts/route-agent.mjs") return routing;
-      if (id === "../scripts/routing-provenance.mjs") return provenance;
-      throw new Error(`Unexpected import: ${id}`);
-    },
-    console: { info: (...args) => logs.push(args) },
-    process,
-  }, { filename: filename.pathname });
-
+  const plugin = loadRoutingPlugin(logs);
   let promptHook;
   const switches = [];
-  await exports.default.setup({
+  await plugin.setup({
     session: {
       hook: async (name, handler) => { assert.equal(name, "prompt"); promptHook = handler; },
       get: async () => ({ agent: "lean", model: { providerID: "openai", id: "gpt-6-luna", variant: "high" } }),
