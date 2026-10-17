@@ -59,17 +59,62 @@ test("ignores unknown route names instead of accepting inherited object properti
   assert.equal(result.reason, "uncertain-or-current");
 });
 
-test("falls back without changing the session when TypeSafe fails", async () => {
+test("falls back without retaining provider error messages or changing the session", async () => {
+  const markers = ["synthetic-provider-credential", "/private/synthetic-project/request.txt", "synthetic-response-content"];
+  const times = [100, 112.6];
   const result = await routeAgent(
     { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
-    { systemOne: async () => { throw new Error("unavailable"); } },
-    () => 100,
+    { systemOne: async () => { throw new Error(markers.join("\n")); } },
+    () => times.shift(),
   );
 
   assert.equal(result.source, "fallback");
   assert.equal(result.route, "current");
   assert.equal(result.agent, "plan");
-  assert.match(result.reason, /typesafe-error:unavailable/);
+  assert.equal(result.model, "openai/gpt-6-astra");
+  assert.equal(result.latencyMs, 13);
+  assert.equal(result.reason, "typesafe-error");
+  for (const marker of markers) assert.equal(JSON.stringify(result).includes(marker), false);
+});
+
+test("falls back safely for non-Error provider rejections", async () => {
+  for (const failure of ["synthetic-rejection-text", { message: "synthetic-rejection-message" }, null, undefined]) {
+    const result = await routeAgent(
+      { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
+      { systemOne: async () => { throw failure; } },
+      () => 100,
+    );
+
+    assert.equal(result.source, "fallback");
+    assert.equal(result.route, "current");
+    assert.equal(result.agent, "plan");
+    assert.equal(result.model, "openai/gpt-6-astra");
+    assert.equal(result.reason, "typesafe-error");
+    assert.equal(result.latencyMs, 0);
+    assert.equal(JSON.stringify(result).includes("synthetic-rejection"), false);
+  }
+});
+
+test("falls back without reading a provider error's message getter", async () => {
+  let reads = 0;
+  const failure = new Error();
+  Object.defineProperty(failure, "message", { get() {
+    reads += 1;
+    throw new Error("synthetic-message-getter-failure");
+  } });
+  const result = await routeAgent(
+    { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
+    { systemOne: async () => { throw failure; } },
+    () => 100,
+  );
+
+  assert.equal(reads, 0);
+  assert.equal(result.source, "fallback");
+  assert.equal(result.route, "current");
+  assert.equal(result.agent, "plan");
+  assert.equal(result.model, "openai/gpt-6-astra");
+  assert.equal(result.reason, "typesafe-error");
+  assert.equal(result.latencyMs, 0);
 });
 
 test("falls back when the default TypeSafe client cannot be constructed", async () => {
@@ -84,7 +129,7 @@ test("falls back when the default TypeSafe client cannot be constructed", async 
 
     assert.equal(result.source, "fallback");
     assert.equal(result.route, "current");
-    assert.match(result.reason, /typesafe-error/);
+    assert.equal(result.reason, "typesafe-error");
   } finally {
     if (previousKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = previousKey;
