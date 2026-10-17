@@ -211,12 +211,12 @@ export async function routeAgent(
       latencyMs: Math.round(now() - started),
       reason: accepted ? "threshold-met" : "uncertain-or-current",
     };
-  } catch (error) {
+  } catch {
     return {
       ...routeFallback({
         currentAgent,
         currentModel,
-        reason: error instanceof Error ? `typesafe-error:${error.message}` : "typesafe-error",
+        reason: "typesafe-error",
       }),
       latencyMs: Math.round(now() - started),
     };
