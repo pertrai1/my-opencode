@@ -4,6 +4,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
+const rewriteTimeoutMs = 10_000
 
 function getCommandArgs(args: unknown): Record<string, unknown> | null {
   if (!args || typeof args !== "object") return null
@@ -31,7 +32,11 @@ export default Plugin.define({
       if (!args || typeof args.command !== "string" || !args.command) return
 
       try {
-        const { stdout } = await execFileAsync("rtk", ["rewrite", args.command], { cwd: ctx.location.directory })
+        const { stdout } = await execFileAsync("rtk", ["rewrite", args.command], {
+          cwd: ctx.location.directory,
+          timeout: rewriteTimeoutMs,
+          killSignal: "SIGKILL", // Release the hook even if RTK ignores SIGTERM.
+        })
         const rewritten = stdout.trim()
         if (rewritten && rewritten !== args.command) args.command = rewritten
       } catch (error) {
