@@ -22,8 +22,9 @@ strings to `rtk rewrite` in the session repository before execution. It uses a n
 when RTK allows it (exit 0). An explicit RTK deny (exit 2) blocks execution.
 An RTK ask (exit 3) keeps the original command and follows OpenCode's native
 shell permissions; RTK does not independently require approval. Existing deny
-rules remain effective. Other rewrite failures also leave the original command
-to OpenCode permissions.
+rules remain effective. Rewrites have a 10-second timeout; a stalled RTK process
+is terminated, and the original command follows OpenCode permissions. Other
+rewrite failures also leave the original command to OpenCode permissions.
 If the binary is missing, the plugin logs a warning and disables itself.
 
 Restart OpenCode after installing RTK or changing the plugin. This integration
