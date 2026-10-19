@@ -199,8 +199,8 @@ async function finish(
 
 	await ctx.tool.hook("execute.after", (event) =>
 		swallowFailures(() => {
-			if (event.tool !== BASH_TOOL || event.status !== "completed") return;
-			return finish(event.id, event.result);
+			if (event.tool !== BASH_TOOL) return;
+			return finish(event.id, event.status === "completed" ? event.result : {});
 		}),
 	);
   },
