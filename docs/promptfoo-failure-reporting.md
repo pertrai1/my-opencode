@@ -98,6 +98,17 @@ No live Jev/SubQ experiment or new credential configuration is part of this eval
 Keep model/judge runs optional while learning; adding them to CI needs a separate
 decision about credentials, cost, and reliability.
 
+## Offline wiring regression checks
+
+`npm test` also loads both optional configs through the pinned Promptfoo CLI,
+with socket/fetch connections blocked and only paid provider IDs replaced by a
+local request recorder. The tests compare the full evidence fixture with the
+rendered candidate and judge prompts. Promptfoo resolves `vars.evidence`'s
+`file://../../context.js` reference during prompt rendering; a shared vars file
+is not required. The recorder returns an explicit candidate placeholder and a
+canned judge rejection. These checks establish wiring only: they provide no real
+model response or semantic grading result, and the paid stages above remain unrun.
+
 ## References
 
 - [Promptfoo dynamic prompts](https://www.promptfoo.dev/docs/configuration/prompts/#dynamic-prompts-functions)
