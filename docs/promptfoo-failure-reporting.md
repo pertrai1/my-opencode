@@ -21,9 +21,10 @@ full OpenCode agent, its configured model/permissions, or report-writing workflo
 
 ## 1. Run the offline teaching examples
 
-Use the repository's Node 22/npm 10 toolchain. Promptfoo is pinned to `0.124.1`
+Use the repository's Node 22.22.0+ (within 22.x)/npm 10 toolchain. Promptfoo is pinned to `0.124.1`
 in `package.json` and locked with its dependencies in `package-lock.json`.
-This release requires Node **22.22.0 or newer**; use a current Node 22 patch.
+The engine declaration and `npm run verify:toolchain` enforce this release's
+Node **22.22.0** minimum; CI selects a current Node 22 patch before installation.
 
 ```sh
 npm ci
