@@ -227,6 +227,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Verification
 
+- [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.

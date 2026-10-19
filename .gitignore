@@ -8,3 +8,5 @@ service.json
 .agents/reports/*
 .agents/docs/security-audits/*
 !.agents/docs/verification/README.md
+
+/.promptfoo/
