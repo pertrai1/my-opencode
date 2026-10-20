@@ -1,0 +1,16 @@
+# OPTIONAL PAID JUDGE: regrades hand-authored examples, no candidate generation.
+description: "Failure reporting: semantic judge calibration (not run offline)"
+prompts:
+  - "{{candidate}}"
+providers:
+  - echo
+tests: file://calibration.yaml
+defaultTest:
+  vars:
+    evidence: file://../../context.js
+  assert:
+    - type: llm-rubric
+      provider: openai:chat:gpt-4o
+      threshold: 1
+      rubricPrompt: file://judge-prompt.txt
+      value: file://rubric.txt

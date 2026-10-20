@@ -1,13 +1,12 @@
-// Learn more about using dynamic variables: https://promptfoo.dev/docs/configuration/guide/#import-vars-from-separate-files
-module.exports = function (varName, prompt, otherVars) {
-  if (varName === "context") {
-    return {
-      output: `... Documents for ${otherVars.inquiry} for prompt: ${prompt} ...`,
-    };
-  }
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 
-  // Default variable value
+// Promptfoo dynamic variable: local synthetic evidence, with no network access.
+module.exports = function () {
   return {
-    output: "Document A, Document B, Document C, ...",
+    output: readFileSync(
+      join(__dirname, "evals/failure-reporting/evidence.txt"),
+      "utf8",
+    ),
   };
 };

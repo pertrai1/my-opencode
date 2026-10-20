@@ -4,7 +4,7 @@ Global configuration for [opencode](https://opencode.ai).
 
 ## Runtime requirements
 
-This repository supports Node.js 22 and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
+This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
 
 ## What's configured
 
@@ -227,6 +227,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Verification
 
+- [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.

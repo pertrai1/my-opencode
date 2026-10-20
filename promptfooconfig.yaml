@@ -1,80 +1,21 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-
-# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide
-
-description: "My eval"
+description: "Failure reporting: offline, hand-authored calibration (no model or judge)"
 
 prompts:
-  - |
-    Fulfill this user helpdesk ticket using the support context below.
-    If the ticket is about a return, explain how to get a return label.
-
-    Support context:
-    {{context}}
-
-    Ticket: {{inquiry}}
-
+  - "{{candidate}}"
 providers:
-  - {
-      "id": "openai:chat:gpt-4o",
-      "config":
-        {
-          "reasoning_effort": "none",
-          "tools":
-            [
-              {
-                "type": "function",
-                "function":
-                  {
-                    "name": "get_current_weather",
-                    "description": "Get the current weather in a given location",
-                    "parameters":
-                      {
-                        "type": "object",
-                        "properties":
-                          {
-                            "location":
-                              {
-                                "type": "string",
-                                "description": "The city and state, e.g. San Francisco, CA",
-                              },
-                          },
-                        "required": ["location"],
-                      },
-                  },
-              },
-            ],
-        },
-    }
+  - echo
+tests: file://evals/failure-reporting/calibration.yaml
 
-tests:
-  - vars:
-      inquiry: "I have a problem with my order"
-      context: file://context.js
-
-  - vars:
-      inquiry: "I want to return my widget"
-      # See how to use dynamic context to e.g. use a vector store https://promptfoo.dev/docs/guides/evaluate-rag/#using-dynamic-context
-      context: file://context.js
-    assert:
-      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs
-
-      # Make sure output contains the phrase "return label"
-      - type: icontains
-        value: "return label"
-
-      # Prefer shorter outputs
-      - type: javascript
-        value: 1 / (output.length + 1)
-
-  - vars:
-      inquiry: "I need help with my account"
-      context: |
-        You can also hardcode context directly in the configuration.
-        Username: Foobar
-        Account ID: 123456
-    assert:
-      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded
-      - type: llm-rubric
-        value: ensure that the output is friendly and empathetic
-        provider: openai:chat:gpt-4o
+# Literal smoke checks only. These do not measure semantic accuracy.
+defaultTest:
+  assert:
+    - type: contains-all
+      value:
+        - "Verdict: blocking"
+        - "npm test"
+        - "test-run-1"
+        - "tests/retry-delay.test.mjs:18"
+        - "Next action:"
+    - type: not-icontains
+      value: "all tests passed"
