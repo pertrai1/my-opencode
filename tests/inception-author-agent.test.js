@@ -59,3 +59,23 @@ test('inception-author has no shell access', () => {
   assert.equal(shell(`${script} link-unit wi-x u-checkout --change add-checkout`), 'deny');
   assert.ok(rules.every((rule) => rule.action !== 'shell' || rule.effect === 'deny'), 'Expected no shell allow rules');
 });
+
+
+test('inception command binds every work-item invocation to the resolved target', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'commands', 'inception.md'), 'utf8');
+  const invocations = [...source.matchAll(/work-item\.mjs ([^`\n]+)/g)];
+  assert.ok(invocations.length >= 8, 'Expected resume, setup, registration, updates, approval, and linking');
+  for (const [, invocation] of invocations) {
+    assert.match(invocation, /--root "<resolved-target-root>"/);
+  }
+});
+
+test('inception handoff preserves verification criteria and selected OpenSpec store', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'commands', 'inception.md'), 'utf8');
+  const handoff = source.split('8. ')[1];
+  assert.match(handoff, /stories, NFRs, risks, and measurement criteria/);
+  assert.match(handoff, /openspec show <change-name>/);
+  assert.match(handoff, /--store <id>/);
+  assert.match(handoff, /default store/);
+  assert.match(handoff, /resolved target root/);
+});

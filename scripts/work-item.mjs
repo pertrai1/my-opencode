@@ -450,10 +450,10 @@ async function validateInception(root, item) {
     const unit = item.units.find((candidate) => candidate.id === section.id);
     validateUnitList(section, "Stories", unit.stories, true, errors);
     validateUnitList(section, "Depends on", unit.dependsOn, false, errors);
-    if (!/^\s*[-*]?\s*Measurement criteria:\s*\S/im.test(section.body)) {
+    if (!/^[ \t]*[-*]?[ \t]*Measurement criteria:[ \t]*\S/im.test(section.body)) {
       errors.push(`${section.id} is missing measurement criteria in units.md`);
     }
-    if (!/^\s*[-*]?\s*Suggested bolts:\s*\S/im.test(section.body)) {
+    if (!/^[ \t]*[-*]?[ \t]*Suggested bolts:[ \t]*\S/im.test(section.body)) {
       errors.push(`${section.id} is missing suggested bolts in units.md`);
     }
   }

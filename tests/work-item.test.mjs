@@ -1,4 +1,5 @@
 import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -499,4 +500,37 @@ test("inception snapshots fail closed on symbolic links", async () => {
   const item = await readyIntent(root);
   await symlink(root, inceptionPath(root, item.id, "outside"));
   await assert.rejects(run(["snapshot-inception", "--root", root, item.id]), /symbolic link/);
+});
+
+
+test("approval rejects blank required unit fields instead of borrowing the next line", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const item = await readyIntent(root);
+  const file = inceptionPath(root, item.id, "units.md");
+  const original = await readFile(file, "utf8");
+  for (const label of ["Measurement criteria", "Suggested bolts"]) {
+    for (const newline of ["\n", "\r\n"]) {
+      const blank = original.replace(new RegExp(`${label}:.*`), `${label}: \t`);
+      await writeFile(file, `${blank}\n- Notes: This later line is not the required value\n`.replace(/\n/g, newline));
+      await assert.rejects(run(["approve-inception", "--root", root, item.id]), /missing (measurement criteria|suggested bolts)/);
+      assert.equal((await run(["show", "--root", root, item.id])).inception.approved, false);
+    }
+  }
+  await writeFile(file, original);
+  assert.equal((await run(["approve-inception", "--root", root, item.id])).inception.approved, true);
+});
+
+test("explicit root keeps inception operations in the target rather than the shell working directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-target-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "work-item-harness-"));
+  const item = await createIntent(root);
+  const script = path.resolve(import.meta.dirname, "../scripts/work-item.mjs");
+  const invoke = (args) => spawnSync(process.execPath, [script, ...args], { cwd, encoding: "utf8" });
+  const implicit = invoke(["resume", item.id]);
+  assert.notEqual(implicit.status, 0, "omitting --root looks in the wrong worktree");
+  const initialized = invoke(["init-inception", "--root", root, item.id]);
+  assert.equal(initialized.status, 0, initialized.stderr);
+  assert.equal(JSON.parse(initialized.stdout).id, item.id);
+  assert.equal((await run(["resume", "--root", root, item.id])).status, "inception");
+  await assert.rejects(access(path.join(cwd, ".agents/work")), { code: "ENOENT" });
 });
