@@ -12,7 +12,7 @@ Run AI-DLC Inception for this intent: $ARGUMENTS
    node ~/.config/opencode/scripts/work-item.mjs init-inception <work-id>
    ```
 
-3. Delegate to `inception-author` in `plan` mode. Present `plan.md` and its open questions to the human. Do not continue until the human approves the plan and answers the questions.
+3. Run the before/after snapshot scope check from `sdlc-orchestrator` around every `inception-author` delegation, including this first call. Delegate to `inception-author` in `plan` mode. Present `plan.md` and its open questions to the human. Do not continue until the human approves the plan and answers the questions.
 4. Delegate to `inception-author` in `execute` mode with the approved plan and the answers. Run the scope check from `sdlc-orchestrator` before and after every `inception-author` delegation.
 5. Register the units from the `Proposed Units` result, in dependency order:
 

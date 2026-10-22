@@ -1,10 +1,15 @@
 import { Plugin } from "@opencode/plugin";
 import {
   hasExplicitAgentSelection,
+  getRoutingDiagnostic,
   isRoutingEnabled,
   parseModelRef,
   routeAgent,
 } from "../scripts/route-agent.mjs";
+import {
+  createRoutingProvenance,
+  emitRoutingProvenance,
+} from "../scripts/routing-provenance.mjs";
 
 function currentModelRef(model: unknown): string | undefined {
   if (!model || typeof model !== "object") return undefined;
@@ -16,8 +21,8 @@ function currentModelRef(model: unknown): string | undefined {
 export default Plugin.define({
   id: "jev-routing",
   async setup(ctx) {
+    console.info("[jev-routing] diagnostic", getRoutingDiagnostic());
     if (!isRoutingEnabled()) {
-      console.info("[jev-routing] disabled; set OPENCODE_JEV_ROUTING=1 to enable");
       return;
     }
 
@@ -27,6 +32,21 @@ export default Plugin.define({
         console.info("[jev-routing] preserving explicit agent selection", {
           agent: session.agent,
         });
+        await emitRoutingProvenance(createRoutingProvenance({
+          sessionId: input.sessionID,
+          timestamp: new Date().toISOString(),
+          currentAgent: session.agent,
+          currentModel: currentModelRef(session.model),
+          decision: {
+            source: "explicit",
+            route: "current",
+            agent: session.agent,
+            model: currentModelRef(session.model),
+            accepted: false,
+            reason: "explicit-selection-bypass",
+          },
+          explicitSelectionBypass: true,
+        }), console.info, { enabled: true });
         return;
       }
       const currentModel = currentModelRef(session.model);
@@ -51,7 +71,18 @@ export default Plugin.define({
         reason: decision.reason,
       });
 
-      if (decision.route === "current") return;
+      await emitRoutingProvenance(createRoutingProvenance({
+        sessionId: input.sessionID,
+        timestamp: new Date().toISOString(),
+        currentAgent: session.agent,
+        currentModel,
+        decision: {
+          ...decision,
+          source: decision.source === "typesafe" ? "jev" : decision.source,
+        },
+      }), console.info, { enabled: true });
+
+      if (decision.route === "current" || process.env.OPENCODE_JEV_ROUTING_DRY_RUN === "1") return;
       if (decision.agent && decision.agent !== session.agent) {
         await ctx.session.switchAgent({ sessionID: input.sessionID, agent: decision.agent });
       }

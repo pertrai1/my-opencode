@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -58,6 +58,15 @@ test("lists local work items and returns an empty list for a new project", async
   const created = await run(["create", "--root", root, "--request", "List this request"]);
   const listed = await run(["list", "--root", root]);
   assert.deepEqual(listed.map((item) => item.id), [created.id]);
+});
+
+test("ignores incomplete staging directories while listing work items", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const stagingDirectory = path.join(root, ".agents", "work", ".wi-in-progress.tmp");
+  await mkdir(stagingDirectory, { recursive: true });
+  await writeFile(path.join(stagingDirectory, "work.json"), "{\"version\":", "utf8");
+
+  assert.deepEqual(await run(["list", "--root", root]), []);
 });
 
 test("rejects unsafe work item IDs when resuming", async () => {
@@ -162,10 +171,11 @@ function inceptionPath(root, id, name) {
   return path.join(root, ".agents/work", id, "inception", name);
 }
 
-function unitSection(id, name, stories, { measurement = true, bolts = true } = {}) {
+function unitSection(id, name, stories, { measurement = true, bolts = true, dependsOn = [] } = {}) {
   return [
     `## ${id}: ${name}`,
     `- Stories: ${stories.join(", ")}`,
+    ...(dependsOn.length ? [`- Depends on: ${dependsOn.join(", ")}`] : []),
     measurement ? "- Measurement criteria: conversion rate from recommendations" : null,
     bolts ? "- Suggested bolts: 1. data model, 2. API" : null,
     "",
@@ -427,4 +437,66 @@ test("every state change rewrites progress.md from the work item", async () => {
   assert.match(progress, /- Next action: Start an OpenSpec change for u-checkout, then run link-unit\./);
   assert.match(progress, /\| u-cart \| linked \| add-cart \|/);
   assert.match(progress, /\| u-checkout \| approved \| - \|/);
+});
+
+test("approval rejects artifact stories and dependencies that differ from registered units", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const item = await readyIntent(root);
+  const file = inceptionPath(root, item.id, "units.md");
+  const original = await readFile(file, "utf8");
+  for (const section of [
+    original.replace("Stories: US-1", "Stories: US-999"),
+    original.replace("- Stories: US-1", ""),
+    `${original}\n- Depends on: u-missing\n`,
+    `${original}\n- Stories: US-1\n`,
+  ]) {
+    await writeFile(file, section);
+    await assert.rejects(run(["approve-inception", "--root", root, item.id]), /units.md.*(Stories|Depends on)/);
+    assert.equal((await run(["show", "--root", root, item.id])).inception.approved, false);
+  }
+});
+
+test("approval requires artifact dependencies and compares normalized sets", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const item = await readyIntent(root, [
+    { name: "Cart", stories: ["US-1", "US-2"] },
+    { name: "Checkout", stories: ["US-3"], dependsOn: ["u-cart"] },
+  ]);
+  const file = inceptionPath(root, item.id, "units.md");
+  const original = await readFile(file, "utf8");
+  await writeFile(file, original.replace("- Depends on: u-cart", ""));
+  await assert.rejects(run(["approve-inception", "--root", root, item.id]), /units.md.*Depends on/);
+  await writeFile(file, original.replace("Stories: US-1, US-2", "Stories:  US-2 , US-1 "));
+  assert.equal((await run(["approve-inception", "--root", root, item.id])).inception.approved, true);
+});
+
+test("inception snapshots distinguish pre-existing files from delegation changes", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const item = await readyIntent(root);
+  const other = await readyIntent(root);
+  const snapshot = () => run(["snapshot-inception", "--root", root, item.id]);
+  const before = await snapshot();
+  assert.deepEqual(await snapshot(), before, "creation artifacts are a stable baseline");
+  const changedPaths = (after) => [...new Set([...Object.keys(before.files), ...Object.keys(after.files)])]
+    .filter((file) => before.files[file] !== after.files[file]);
+  await writeFile(inceptionPath(root, item.id, "plan.md"), "updated plan");
+  let after = await snapshot();
+  assert.deepEqual(changedPaths(after), [`${item.id}/inception/plan.md`]);
+  await writeFile(inceptionPath(root, other.id, "units.md"), "changed already-untracked content");
+  await rm(path.join(root, ".agents/work", item.id, "request.md"));
+  await writeFile(path.join(root, ".agents/work", "unexpected.md"), "outside active item");
+  after = await snapshot();
+  assert.deepEqual(changedPaths(after).sort(), [
+    `${item.id}/inception/plan.md`, `${other.id}/inception/units.md`,
+    `${item.id}/request.md`, "unexpected.md",
+  ].sort());
+  assert.equal(after.workId, item.id);
+  assert.equal(after.root, root);
+});
+
+test("inception snapshots fail closed on symbolic links", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
+  const item = await readyIntent(root);
+  await symlink(root, inceptionPath(root, item.id, "outside"));
+  await assert.rejects(run(["snapshot-inception", "--root", root, item.id]), /symbolic link/);
 });

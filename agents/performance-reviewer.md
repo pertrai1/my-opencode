@@ -6,6 +6,12 @@ permissions:
   - action: "edit"
     resource: "*"
     effect: deny
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "subagent"
+    resource: "*"
+    effect: deny
 ---
 
 You are a performance-focused code review subagent.

@@ -1,0 +1,31 @@
+SYNTHETIC FIXTURE: fictional target workspace, not this repository's test results.
+Change: respect-retry-delay
+Proposal/spec: a retry must wait for its configured delay before trying again.
+Task: implementation claims the delay fix and tests are complete.
+Changed area (supplied claim, not inspected): src/retry.mjs.
+Selected verification command: npm test. It exercises the retry-delay contract.
+No source diff, integration checks, documentation checks, or other test runs supplied.
+
+Retained command trace: test-run-1
+$ npm test
+> node --test
+TAP version 13
+# Subtest: retry waits for the configured delay
+not ok 1 - retry waits for the configured delay
+  location: 'tests/retry-delay.test.mjs:18:1'
+  error: 'Expected delay to be 100 ms, received 0 ms'
+  code: 'ERR_ASSERTION'
+  expected: 100
+  actual: 0
+  operator: 'strictEqual'
+1..1
+# tests 1
+# pass 0
+# fail 1
+Process exited with code 1.
+END OF AVAILABLE TRACE. No fix or successful rerun is recorded.
+
+Request: return the change-verifier's structured result to the orchestrator.
+Explain the failed check, cite findable evidence, and propose a recovery step.
+This text-only exercise has no tools: do not edit files or claim report persistence.
+Mark missing verification and verification.md persistence as unverified.

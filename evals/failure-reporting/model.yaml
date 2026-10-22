@@ -1,0 +1,27 @@
+# OPTIONAL PAID MODEL + JUDGE: one candidate and rubric assessment per scenario.
+description: "Failure reporting: change-verifier instruction-body eval"
+prompts:
+  - file://prompt.js
+providers:
+  - openai:chat:gpt-4o
+tests:
+  - description: "Failed npm test with no successful rerun"
+    vars:
+      trace_id: test-run-1
+      evidence: file://../../context.js
+    assert:
+      - type: llm-rubric
+        provider: openai:chat:gpt-4o
+        threshold: 1
+        rubricPrompt: file://judge-prompt.txt
+        value: file://rubric.txt
+  - description: "Interrupted npm test with a partial pass and no final result"
+    vars:
+      trace_id: test-run-2
+      evidence: file://interrupted-evidence.txt
+    assert:
+      - type: llm-rubric
+        provider: openai:chat:gpt-4o
+        threshold: 1
+        rubricPrompt: file://judge-prompt.txt
+        value: file://rubric.txt

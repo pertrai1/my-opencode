@@ -18,25 +18,30 @@ When an AI agent generates or reviews code, it **MUST transpose** these patterns
 ---
 
 ## 1. Vue.js / Nuxt
+
 - **State Binding:** Use `v-bind` or `:` (e.g., `:aria-expanded="isOpen"`).
 - **Event Handling:** Use `@keydown` (e.g., `@keydown.enter="submit"`). Vue's event modifiers are highly recommended for accessibility (e.g., `@keydown.esc`, `@keydown.prevent.space`).
 - **Refs:** Use `ref` for focus management (`element.value.focus()`).
 
 ## 2. Angular
+
 - **State Binding:** Use square brackets `[attr.aria-expanded]="isOpen"`. Note the `attr.` prefix is required for ARIA attributes in Angular.
 - **Event Handling:** Use parentheses `(keydown.enter)="submit()"`.
 - **Focus:** Use `@ViewChild` and `ElementRef` for focus management.
 
 ## 3. Svelte
+
 - **State Binding:** Direct binding `aria-expanded={isOpen}`.
 - **Event Handling:** Use `onkeydown` (Svelte 5 event attributes). The `on:keydown` form is Svelte 4 directive syntax — still accepted, but legacy.
 - **Directives:** Use the `use:` directive for complex focus trapping or reusable accessibility logic (e.g., `use:focusTrap`).
 
 ## 4. SolidJS
+
 - **State Binding:** Similar to React `aria-expanded={isOpen()}`. Note the invocation of the signal.
 - **Event Handling:** Similar to React `onKeyDown={(e) => ...}`.
 
 ## 5. Vanilla JS / Web Components (Lit)
+
 - **State Binding:** In Lit, use `.ariaExpanded=${this.isOpen}` or `?aria-hidden=${this.isHidden}` for boolean attributes.
 - **Shadow DOM:** Be extremely careful with `aria-controls` and `aria-describedby` across Shadow DOM boundaries, as ID references do not cross the boundary. Use `ElementInternals` where applicable.
 

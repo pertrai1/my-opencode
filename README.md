@@ -2,18 +2,22 @@
 
 Global configuration for [opencode](https://opencode.ai).
 
+## Runtime requirements
+
+This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
+
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. V2 does not retain a `#variant` on the root model selection. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents configure `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents use `gpt-6-luna#high`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
-- **Agent style guide** — `docs/agents/style-guide.md` is loaded globally for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. It summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Providers** — locked to `openai` and `ollama` via `enabled_providers`.
-- **Permissions** — developer-friendly defaults. Reads, edits, tasks, and normal shell commands are allowed; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied at the file-tool layer, and core doom-loop handling is set via `permission.doom_loop`.
+- **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
+- **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
+- **Permissions** — V2 ordered `permissions` rules allow reads, edits, subagent launches, and normal shell commands; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied, `.env.example` remains readable, and external-directory access uses OpenCode's approval default.
 - **LSP** — enabled for code intelligence.
-- **Compaction** — auto with pruning (12K token reserved buffer).
+- **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
-- **TUI** — `tui.json` (`tokyonight` theme, mouse, attention notifications).
+- **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
 
 ## Work intake
 
@@ -54,9 +58,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 - `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
 - `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
 - `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — code knowledge graph and repo intelligence tools.
-- [Code Review Graph](https://code-review-graph.com) — local-first knowledge graph tooling used by `crg-plugin.ts`.
-- **Optional repo tool: GitNexus** — repository knowledge graph and impact-analysis tooling for larger or unfamiliar codebases. Most useful when agents need to trace callers, dependency impact, architecture relationships, or PR risk across many files. Best added when a repository is large enough that ordinary grep-and-read workflows stop being efficient.
+- [GitNexus](https://github.com/paretoxyz/gitnexus) — optional repository indexing and impact analysis. Its MCP server is configured but disabled by default.
 
 ## Review
 
@@ -79,23 +81,64 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 `/code-review` uses the [TypeSafe](https://typesafe.ai/) System One API to recommend the read-only specialist reviewers that match the current change. The implementation is `scripts/recommend-reviewers.mjs` and uses the `@typesafe-ai/sdk` package.
 
+The reviewer-only selector now supports `off`, `jev` (the default), and an
+offline-first `subq` adapter. See [provider setup and contracts](docs/reviewer-decision-providers.md)
+and the [deterministic mocked comparison](docs/reviewer-provider-comparison.md).
+No live SubQ transport or credential setup is included.
+
 ### TypeSafe agent/model routing
 
 The optional `plugins/jev-routing.ts` hook uses Jev as a confidence-gated decision primitive for selecting the least powerful suitable route: `lean` for routine local work, `build` for implementation/debugging, and `plan` for architecture, review, planning, or ambiguity. Jev does not replace the coding-agent LLM; it only supplies a typed route judgment, while OpenCode retains control of session switching and all side effects.
 
-Routing is disabled by default. Enable it explicitly for an OpenCode process with:
+Routing is disabled by default. Enable it explicitly for an OpenCode process with a
+TypeSafe credential (then restart OpenCode):
 
 ```sh
 export OPENCODE_JEV_ROUTING=1
-```
-
-If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision logs its route, source, probability, confidence, latency, and fallback reason for later evaluation. The implementation is `scripts/route-agent.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
-
-To enable TypeSafe routing, set `TYPESAFE_API_KEY` in the environment where OpenCode runs, then restart OpenCode:
-
-```sh
 export TYPESAFE_API_KEY="..."
 ```
+
+The plugin prints a startup diagnostic containing the enabled state, the
+`jev-route-policy-v1` revision, TypeSafe availability, and dry-run state. It
+never prints the credential. Missing credentials keep routing disabled. Set
+`OPENCODE_JEV_ROUTING_DRY_RUN=1` with routing enabled to emit decisions without
+switching the primary or child session's agent or model. Dry-run still contacts
+TypeSafe with the same minimized routing payload; it is not an offline mode.
+
+Before calling TypeSafe, the hook reduces each nonempty prompt to a bounded
+routing summary. The provider receives only:
+
+- `requestKind: "nonempty"` and a `requestLengthBucket`: `short` (1–256 UTF-16
+  code units), `medium` (257–2048), or `long` (2049+), using the untrimmed length.
+- Optional current agent/model identifiers, only when present in the closed
+  route table below. Custom identifiers stay local.
+- `attachedFiles`, `attachedAgents`, and `attachedSkills` counts, rounded down
+  and clamped to 0–100. Missing, non-numeric, and non-finite counts become zero;
+  malformed non-object or array context becomes an empty context.
+- The static route-selection policy and closed route question.
+
+Raw prompt text, source code, paths, file contents, credentials, environment
+values, model responses, arbitrary context, and prompt hashes are never included
+in the outbound routing payload. Empty or non-string prompts make no provider
+call. If summary construction fails, routing stays on the current agent/model
+without contacting the provider. Tests use synthetic input and a fake provider.
+
+This intentionally coarse summary cannot distinguish semantic intent or risk
+from prompt wording. Jev must choose `current` when shape metadata is insufficient;
+explicit agent/model selections still bypass routing. The timeout remains three
+seconds with no retries, and acceptance thresholds are unchanged.
+
+The policy is a closed route table in `scripts/route-agent.mjs`. Each route
+binds a task class to an approved OpenCode agent, model, permission profile,
+side-effect level, and current-session fallback. To add a route, update that
+table and its focused tests, then verify the agent/model exists in
+`opencode.jsonc`; approving a new model requires an explicit table entry and a
+configuration review. Jev output is accepted only when its route is present in
+that table.
+
+If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+
+The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
 
 Run `/code-review` normally. It invokes the router before inspecting the diff and launches the reviewers named in `selectedReviewers`. The router evaluates six independent questions in one request:
 
@@ -112,18 +155,73 @@ You can inspect the routing result directly from a repository with changes:
 node ~/.config/opencode/scripts/recommend-reviewers.mjs
 ```
 
+### Routing provenance contract
+
+When Jev routing is enabled, the optional local provenance sink receives a
+privacy-preserving `RoutingProvenanceV1` record. It contains routing metadata,
+never prompt text, attached file contents, credentials, or model responses.
+
+```ts
+export type RoutingProvenanceV1 = {
+  version: 1;
+  event: "routing.decision";
+  sessionId: string;              // opaque, non-user-derived ID
+  timestamp: string;              // ISO-8601 UTC
+  source: "jev" | "fallback" | "explicit";
+  currentAgent?: string;
+  currentModel?: string;
+  selectedRoute: string;
+  selectedAgent?: string;
+  selectedModel?: string;
+  confidence?: number;            // 0..1
+  probability?: number;            // 0..1
+  latencyMs?: number;
+  accepted: boolean;
+  reason: string;
+  fallback: boolean;
+  explicitSelectionBypass: boolean;
+  requestDigest?: string;         // bounded, one-way digest only
+};
+```
+
+Example record:
+
+```json
+{
+  "version": 1,
+  "event": "routing.decision",
+  "sessionId": "sess_opaque_01HXYZ",
+  "timestamp": "2026-09-29T16:00:00.000Z",
+  "source": "jev",
+  "currentAgent": "lean",
+  "currentModel": "openai/gpt-6-luna#high",
+  "selectedRoute": "build",
+  "selectedAgent": "build",
+  "selectedModel": "openai/gpt-6-sol",
+  "confidence": 0.9,
+  "probability": 0.8,
+  "latencyMs": 0,
+  "accepted": true,
+  "reason": "threshold-met",
+  "fallback": false,
+  "explicitSelectionBypass": false
+}
+```
+
+Required fields are the version, event, opaque session ID, UTC timestamp,
+source, selected route, acceptance, reason, fallback flag, and explicit-selection
+bypass flag. Agent/model identifiers, confidence, probability, latency, and a
+bounded one-way request digest are optional. Consumers must ignore unknown future
+fields; the version changes only for breaking shape changes. Sink failures are
+swallowed, and sink dispatch is not awaited, so provenance cannot change route
+selection or block the routing path. The local sink is opt-in and can be
+inspected or disabled with the routing configuration.
+
 The script prints JSON. A `typesafe` source selects reviewers with a probability of at least `0.75` and also includes `uncertain` recommendations at or above `0.35`; because the reviewers are read-only, uncertain cases receive review rather than being skipped. A `fallback` result means TypeSafe was unavailable (for example, no API key); `/code-review` then uses its existing manual selection rules. A `none` result means no working-tree changes were found.
 
 The router sends working-tree file statuses (including file paths), tracked diff statistics, and locally derived file-category counts to TypeSafe. It does not send raw diff content or credentials. File paths can contain sensitive identifiers; use this router only where that metadata may leave the machine.
 
 To evaluate the existing selection policy, run `node scripts/baseline-reviewer-router.mjs` from this repository with `TYPESAFE_API_KEY` set. The [baseline report](docs/reviewer-router-baseline.md) records a labeled historical/synthetic snapshot, including per-reviewer misses, unnecessary selections, latency, usage, fallback frequency, and reproduction details. The [fixtures](tests/fixtures/reviewer-router-baseline.json) keep disputed labels visible and out of accuracy totals. Re-running the command calls TypeSafe again; review any fixture paths before using it with a different dataset.
-
-## Memory
-
-- **`agentmemory`** (local) — explicit long-term memory for `recall`/`remember` commands. `npx -y @agentmemory/mcp` (server: `http://localhost:3111`)
-- `commands/recall.md` — search past session memory.
-- `commands/remember.md` — explicitly save a memory.
-- [agentmemory](https://github.com/agentmemoryai/agentmemory) — long-term memory MCP server for agent sessions.
 
 ## Reference
 
@@ -131,16 +229,15 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Verification
 
+- [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
-- `.github/workflows/ci.yml` — continuously runs `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
+- `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
-- **Verification Guidance** — Shared guidelines, evaluation rubric, and proof of work expectations are defined in [.agents/docs/verification/README.md](.agents/docs/verification/README.md).
-- **Artifacts Location** — Full reports and evidence logs are saved under `.agents/docs/verification/` as `verification-<timestamp>-<source-slug>.md`.
-- **OpenSpec Verification Summary** — change-local `verification.md` files now record intent, completed work, evidence checked, functional check, test coverage check, integration check, documentation impact, scope control, unverified areas, actions not taken, divergences, and recommendation.
+- [Verification guidance](.agents/docs/verification/README.md) defines the `/verify` rubric, evidence requirements, and report naming. OpenSpec reports follow the change-verifier contract instead.
 - **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
 - **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
-- **Optional repo tool: Fallow or similar dead-code analyzers** — worth considering in repositories that already rely on framework-aware dead-code analysis beyond what Knip or compiler tooling can provide. Add these per repo only when the team has a concrete dead-code or unused-module problem and the tool is already validated for that stack.
+- **Fallow** — its MCP server is configured but disabled by default. Enable it only in repositories where its dead-code analysis is needed.
 
 ## Security
 
@@ -157,8 +254,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context by denying heavyweight tools, MCP tools, and skill loading unless you switch to another agent.
-- `opencode.jsonc` keeps `build` and `plan` intact, but makes `lean` the default agent to avoid advertising skills, MCP tools, task orchestration, web fetch/search, and LSP on every first call.
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
 - `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
@@ -219,9 +316,12 @@ Context artifacts: `progress.md` (running conventions and decisions, read on eve
 
 ## Replicating this setup
 
+Install the two AGENTS-required skills on each computer with the
+[shared skill installer](docs/required-skills.md). Keeping `.agents` in this
+configuration checkout alone does not install skills into other projects.
+
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
 2. `rtk init -g --opencode` to install the RTK plugin
 3. `code-review-graph install --platform opencode` to install the graph plugin
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
-6. Start or configure an agentmemory MCP server (default local command: `npx -y @agentmemory/mcp`)

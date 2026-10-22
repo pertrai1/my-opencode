@@ -10,10 +10,10 @@ Interpret `$ARGUMENTS` like this:
 
 - If no arguments are provided, run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed`.
 - If the argument is `changed`, run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed`.
-- If the argument starts with `branch `, treat the rest as the base ref and run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-diff-base <base-ref>`.
-- If the argument starts with `dir `, treat the rest as the directory path and run `node ~/.config/opencode/scripts/halstead-analyzer.js --dir <dir>`.
-- If the argument starts with `files `, treat the rest as the comma-separated file list and run `node ~/.config/opencode/scripts/halstead-analyzer.js --files <files>`.
-- If the argument starts with `raw `, pass the rest straight through to `node ~/.config/opencode/scripts/halstead-analyzer.js`.
+- If the argument starts with `branch`, treat the rest as the base ref and run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-diff-base <base-ref>`.
+- If the argument starts with `dir`, treat the rest as the directory path and run `node ~/.config/opencode/scripts/halstead-analyzer.js --dir <dir>`.
+- If the argument starts with `files`, treat the rest as the comma-separated file list and run `node ~/.config/opencode/scripts/halstead-analyzer.js --files <files>`.
+- If the argument starts with `raw`, pass the rest straight through to `node ~/.config/opencode/scripts/halstead-analyzer.js`.
 
 After running the command:
 

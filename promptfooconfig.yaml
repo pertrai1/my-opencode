@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: "Failure reporting: offline, hand-authored calibration (no model or judge)"
+basePath: evals/failure-reporting
+
+prompts:
+  - "{{candidate}}"
+providers:
+  - echo
+tests: file://calibration.yaml
+
+# Literal smoke checks only. These do not measure semantic accuracy.
+defaultTest:
+  assert:
+    - type: contains-all
+      value:
+        - "Verdict: blocking"
+        - "npm test"
+        - "{{trace_id}}"
+        - "{{trace_locator}}"
+        - "Next action:"
+    - type: not-icontains
+      value: "all tests passed"

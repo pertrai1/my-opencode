@@ -15,7 +15,6 @@
 
 ## JS-gated content — where the §6 anti-pattern lives
 
-
 - **The default rendered state is the readable one.** Two correct shapes: gate the animation on a class an **inline pre-paint script** removes (`<html class="no-js">` → script strips it before first paint; CSS animates only when the class is gone), or start visible and animate *from* visible.
 - **Scroll-reveal is the same trap:** below-the-fold content exists for readers, print and search *before* any `IntersectionObserver` fires — the observer adds the animation, it never adds the content.
 - **`<noscript>` is not the fix.** The failing case is usually JavaScript *enabled* but broken, blocked or late — a `<noscript>` block helps none of those.

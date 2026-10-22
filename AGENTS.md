@@ -20,6 +20,10 @@ Five canonical roles with default label strings: `needs-triage`, `needs-info`, `
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### CodeScene
+
+- For code changes, load and follow the `codescene-mcp` skill for post-edit Code Health reviews, regression handling, and the pre-finish safeguard. If the skill or MCP check is unavailable, report that explicitly rather than claiming it passed.
+
 ## Working protocol
 
 - Before editing, inspect the relevant code, tests, project instructions, and current `git status`/diff.

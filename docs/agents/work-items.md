@@ -69,6 +69,7 @@ node ~/.config/opencode/scripts/work-item.mjs link-unit <work-id> u-checkout --c
 
 | Command | Effect | Guard |
 | --- | --- | --- |
+| `snapshot-inception` | Returns content/mode fingerprints for all files under `.agents/work`, with the root and active work ID. | Read-only; fails on symbolic links or unreadable files. Compare before/after maps around delegation; unchanged pre-existing files are allowed. |
 | `init-inception` | Scaffolds `inception/plan.md`, `stories.md`, `nfr.md`, `risks.md`, and `units.md`. Sets status to `inception`. | Never overwrites existing files. Fails after approval. |
 | `add-unit` | Adds a `proposed` unit with stories and dependencies. | Requires `init-inception` first. Rejects duplicates, unknown dependencies, and changes after approval. |
 | `update-unit` | Replaces a unit's `--summary`, `--story` list, or `--depends-on` list. `--clear-dependencies` empties the dependency list. | Before approval only. Rejects self-dependencies and dependency cycles. |
@@ -82,6 +83,8 @@ node ~/.config/opencode/scripts/work-item.mjs link-unit <work-id> u-checkout --c
 - Every unit lists at least one story, and every story it lists exists in `stories.md`.
 - Every story is assigned to exactly one unit.
 - `units.md` has exactly one `## u-<slug>:` section per registered unit and none for unregistered units. Each section has a `Measurement criteria:` line and a `Suggested bolts:` line.
+
+The `Stories:` and optional `Depends on:` lists in each unit section must match the registered unit as sets (order and surrounding whitespace are ignored). Duplicate list fields are rejected.
 
 HTML comments in the templates are ignored.
 

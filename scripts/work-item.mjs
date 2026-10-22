@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -72,9 +72,13 @@ function getWorkItemPath(root, id) {
 }
 
 function validateId(id) {
-  if (!/^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+-[0-9a-f]{8}$/.test(id)) {
+  if (!isValidId(id)) {
     throw new Error(`Invalid work item ID: ${id}`);
   }
+}
+
+function isValidId(id) {
+  return /^wi-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+-[0-9a-f]{8}$/.test(id);
 }
 
 function formatRequest(value) {
@@ -139,18 +143,30 @@ async function writeFileAtomic(file, content) {
 
 async function writeWorkItem(root, item) {
   const directory = getWorkDirectory(root, item.id);
-  await mkdir(directory, { recursive: false });
-  await writeFile(
-    getWorkItemPath(root, item.id),
-    `${JSON.stringify(item, null, 2)}\n`,
-    "utf8",
-  );
-  await writeFile(
-    path.join(directory, "request.md"),
-    `# ${item.id}\n\n${item.request}\n`,
-    "utf8",
-  );
-  await writeFile(path.join(directory, "progress.md"), renderProgress(item), "utf8");
+  const temporaryDirectory = path.join(root, ".agents", `.${item.id}.tmp-${randomUUID()}`);
+
+  await mkdir(temporaryDirectory, { recursive: false });
+  try {
+    await writeFile(
+      path.join(temporaryDirectory, "work.json"),
+      `${JSON.stringify(item, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(temporaryDirectory, "request.md"),
+      `# ${item.id}\n\n${item.request}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(temporaryDirectory, "progress.md"),
+      renderProgress(item),
+      "utf8",
+    );
+    await rename(temporaryDirectory, directory);
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 async function createCommand(options) {
@@ -379,6 +395,19 @@ function parseUnitSections(markdown) {
   return sections;
 }
 
+// Compare the human-reviewed lists with the registered unit, ignoring order and whitespace.
+function validateUnitList(section, label, expected, required, errors) {
+  const pattern = new RegExp(`^[ \t]*[-*]?[ \t]*${label}:[ \t]*(.*)$`, "gm");
+  const lines = [...section.body.matchAll(pattern)];
+  const first = lines.length > 0 ? lines[0][1] : "";
+  const actual = new Set(first.split(",").map((id) => id.trim()).filter(Boolean));
+  const registered = new Set(expected);
+  if (lines.length > 1 || (required && lines.length !== 1)
+    || actual.size !== registered.size || [...actual].some((id) => !registered.has(id))) {
+    errors.push(`units.md ${section.id} ${label} must match the registered unit exactly`);
+  }
+}
+
 // Collects every reason the inception artifacts are not ready, so one run reports them all.
 async function validateInception(root, item) {
   const errors = [];
@@ -418,6 +447,9 @@ async function validateInception(root, item) {
       errors.push(`units.md describes ${section.id}, which is not a registered unit`);
       continue;
     }
+    const unit = item.units.find((candidate) => candidate.id === section.id);
+    validateUnitList(section, "Stories", unit.stories, true, errors);
+    validateUnitList(section, "Depends on", unit.dependsOn, false, errors);
     if (!/^\s*[-*]?\s*Measurement criteria:\s*\S/im.test(section.body)) {
       errors.push(`${section.id} is missing measurement criteria in units.md`);
     }
@@ -504,6 +536,34 @@ async function linkUnitCommand(options) {
   );
 }
 
+// Read-only evidence for before/after delegation checks, including ignored and dirty files.
+async function snapshotInceptionCommand(options) {
+  const root = getRoot(options);
+  const workId = options.positionals[0];
+  validateId(workId);
+  for (const directory of [path.join(root, ".agents"), path.join(root, ".agents", "work")]) {
+    if ((await lstat(directory)).isSymbolicLink()) throw new Error(`Cannot snapshot symbolic link: ${directory}`);
+  }
+  const directory = path.join(root, ".agents", "work");
+  const entries = [];
+  async function visit(relative) {
+    const file = path.join(directory, relative);
+    const stat = await lstat(file);
+    if (stat.isSymbolicLink()) throw new Error(`Cannot snapshot symbolic link: ${relative}`);
+    if (stat.isDirectory()) {
+      for (const name of (await readdir(file)).sort()) await visit(relative ? `${relative}/${name}` : name);
+    } else if (stat.isFile()) {
+      const digest = createHash("sha256").update(await readFile(file)).digest("hex");
+      entries.push([relative, `${stat.mode}:${digest}`]);
+    } else {
+      throw new Error(`Cannot snapshot unsupported file: ${relative}`);
+    }
+  }
+  await visit("");
+  if (!entries.some(([file]) => file === `${workId}/work.json`)) throw new Error(`Work item not found: ${workId}`);
+  return { root, workId, files: Object.fromEntries(entries) };
+}
+
 async function listCommand(options) {
   const directory = path.join(getRoot(options), ".agents", "work");
   let entries;
@@ -515,7 +575,9 @@ async function listCommand(options) {
   }
 
   const items = [];
-  for (const entry of entries.filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of entries
+    .filter((entry) => entry.isDirectory() && isValidId(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name))) {
     try {
       items.push(normalizeWorkItem(JSON.parse(await readFile(path.join(directory, entry.name, "work.json"), "utf8"))));
     } catch (error) {
@@ -535,6 +597,8 @@ export async function run(argv) {
       return showCommand(options);
     case "list":
       return listCommand(options);
+    case "snapshot-inception":
+      return snapshotInceptionCommand(options);
     case "init-inception":
       return initInceptionCommand(options);
     case "add-unit":
@@ -549,7 +613,7 @@ export async function run(argv) {
       return linkUnitCommand(options);
     default:
       throw new Error(
-        "Usage: work-item.mjs <create|show|resume|list|init-inception|add-unit|update-unit|remove-unit|approve-inception|link-unit> [options]",
+        "Usage: work-item.mjs <create|show|resume|list|snapshot-inception|init-inception|add-unit|update-unit|remove-unit|approve-inception|link-unit> [options]",
       );
   }
 }

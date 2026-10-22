@@ -1,0 +1,189 @@
+[
+  {
+    "id": "docs",
+    "synthetic": {
+      "files": " M README.md",
+      "stat": " synthetic diff statistics"
+    },
+    "expected": [],
+    "disputed": [],
+    "reason": "Synthetic docs contract and policy probe; responses are scripted, not observed.",
+    "providers": {
+      "jev": {
+        "latencyMs": 5,
+        "model": "jev-fixture",
+        "probabilities": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 0
+        }
+      },
+      "subq": {
+        "latencyMs": 5,
+        "model": "subq-snap-preview",
+        "probabilities": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "id": "ui-behavior",
+    "synthetic": {
+      "files": " M src/dialog.tsx\n M tests/dialog.test.tsx",
+      "stat": " synthetic diff statistics"
+    },
+    "expected": [
+      "test-reviewer",
+      "frontend-a11y-reviewer"
+    ],
+    "disputed": [
+      "performance-reviewer"
+    ],
+    "reason": "Synthetic ui-behavior contract and policy probe; responses are scripted, not observed.",
+    "providers": {
+      "jev": {
+        "latencyMs": 6,
+        "model": "jev-fixture",
+        "probabilities": [
+          0.1,
+          0.35,
+          0.1,
+          0.75,
+          0.1,
+          0.9
+        ],
+        "usage": {
+          "input_tokens": 101,
+          "output_tokens": 0
+        }
+      },
+      "subq": {
+        "latencyMs": 6,
+        "model": "subq-snap-preview",
+        "probabilities": [
+          0.1,
+          0.1,
+          0.1,
+          0.8,
+          0.1,
+          0.2
+        ],
+        "usage": {
+          "input_tokens": 101,
+          "output_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "id": "invalid-responses",
+    "synthetic": {
+      "files": " M src/input.ts",
+      "stat": " synthetic diff statistics"
+    },
+    "expected": [
+      "security-audit-reviewer"
+    ],
+    "disputed": [],
+    "reason": "Synthetic invalid-responses contract and policy probe; responses are scripted, not observed.",
+    "providers": {
+      "jev": {
+        "latencyMs": 7,
+        "model": "jev-fixture",
+        "probabilities": [
+          0.1,
+          0.1,
+          0.1,
+          0.8,
+          1.1,
+          0.1
+        ],
+        "usage": {
+          "input_tokens": 102,
+          "output_tokens": 0
+        }
+      },
+      "subq": {
+        "latencyMs": 7,
+        "raw": {
+          "model": "subq-snap-preview",
+          "answers": {}
+        }
+      }
+    }
+  },
+  {
+    "id": "provider-errors",
+    "synthetic": {
+      "files": " M src/client.ts",
+      "stat": " synthetic diff statistics"
+    },
+    "expected": [
+      "production-readiness-reviewer"
+    ],
+    "disputed": [],
+    "reason": "Synthetic provider-errors contract and policy probe; responses are scripted, not observed.",
+    "providers": {
+      "jev": {
+        "latencyMs": 8,
+        "error": true
+      },
+      "subq": {
+        "latencyMs": 8,
+        "error": true
+      }
+    }
+  },
+  {
+    "id": "mixed-coverage",
+    "synthetic": {
+      "files": " M src/store.ts",
+      "stat": " synthetic diff statistics"
+    },
+    "expected": [
+      "production-readiness-reviewer",
+      "test-reviewer"
+    ],
+    "disputed": [],
+    "reason": "Synthetic mixed-coverage contract and policy probe; responses are scripted, not observed.",
+    "providers": {
+      "jev": {
+        "latencyMs": 9,
+        "error": true
+      },
+      "subq": {
+        "latencyMs": 9,
+        "model": "subq-snap-preview",
+        "probabilities": [
+          0.1,
+          0.2,
+          0.8,
+          0.8,
+          0.1,
+          0.1
+        ],
+        "usage": {
+          "input_tokens": 104,
+          "output_tokens": 0
+        }
+      }
+    }
+  }
+]

@@ -79,6 +79,9 @@ permissions:
     resource: "*"
     effect: deny
   - action: "shell"
+    resource: "npx -y modern-web-guidance@latest *"
+    effect: allow
+  - action: "shell"
     resource: "pwd"
     effect: allow
   - action: "shell"
@@ -397,7 +400,7 @@ Inception is an optional stage before `intake` for an intent that is too large f
 
 - Use inception when an intent spans more than one independently deliverable unit. For a single-change request, skip it and use the normal lifecycle.
 - Delegate artifact work to `inception-author`: `plan` mode first, then `execute` mode after the human approves the plan. Name the single active work ID in every handoff.
-- **Scope check.** `inception-author`'s edit permission covers every work item's inception folder, because OpenCode cannot scope a glob to one delegation. Before and after each delegation, run `git status --porcelain --untracked-files=all -- .agents/work`. If any new or changed path is outside `.agents/work/<active-work-id>/inception/`, stop and escalate to the human. If git cannot report these paths, record in `progress.md` that the scope check was not possible.
+- **Scope check.** `inception-author`'s edit permission covers every work item's inception folder, because OpenCode cannot scope a glob to one delegation. Immediately before each delegation, run `work-item.mjs snapshot-inception <active-work-id> --root <resolved-target-root>` and retain the returned `root`, `workId`, and `files` map as the baseline in the orchestrator context. Run it again immediately after delegation, before registering units or writing progress. Require the same root and work ID. Compare the union of paths in both maps: additions, deletions, or changed digests/modes are delegation changes, even when a file was already dirty or untracked. Existing files with unchanged fingerprints are not violations. Only direct Markdown files under `<active-work-id>/inception/` may change; stop and escalate for any other changed path. The command hashes all files under `.agents/work`, including ignored files, without writing a snapshot into that tree. If either snapshot fails (including symbolic links or unreadable files), or the baseline is lost, stop and report that isolation could not be verified; do not delegate or continue on an unverified baseline. Do not allow concurrent work-item writers during this comparison.
 - **Unit registration.** `inception-author` has no shell access. Register the units from its `Proposed Units` result yourself, in dependency order: use `work-item.mjs add-unit` for new units, `update-unit` for changed ones, and `remove-unit` for removed ones. Remove dependents before the units they depend on.
 - Run `work-item.mjs approve-inception` only after explicit human approval of the units in this session. Never infer approval. If the command reports validation errors, route them back to `inception-author` and do not approve.
 - A unit enters the lifecycle at `intake` as its own OpenSpec change. Seed the proposal handoff with the unit's stories, NFRs, risks, and measurement criteria from `.agents/work/<work-id>/inception/`.
@@ -413,14 +416,14 @@ After every workflow-changing action, rerun `openspec status` and validate that 
 
 - Delegate planning, analysis, delivery, and review tasks only to existing role agents.
 - Delegate to:
-   - `explore` for evidence collection and file-level analysis.
-   - `inception-author` for AI-DLC inception artifacts and unit registration on a work item.
-    - `proposal-author`, `spec-author`, `design-author`, `task-planner` for planning artifact updates.
-    - `spec-syncer` for syncing approved delta specs into main specs.
-   - `type-author`, `test-author`, `implementer` for pipeline roles.
-   - `tdd-orchestrator` for orchestration of type→RED→GREEN workflow.
-    - `change-verifier` for artifact/evidence/task verification and archive-readiness input.
-    - review agents (`architecture-reviewer`, `architecture-boundary-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `test-reviewer`) for risk checks.
+  - `explore` for evidence collection and file-level analysis.
+  - `inception-author` for AI-DLC inception artifacts; the orchestrator registers units.
+  - `proposal-author`, `spec-author`, `design-author`, `task-planner` for planning artifact updates.
+  - `spec-syncer` for syncing approved delta specs into main specs.
+  - `type-author`, `test-author`, `implementer` for pipeline roles.
+  - `tdd-orchestrator` for orchestration of type→RED→GREEN workflow.
+  - `change-verifier` for artifact/evidence/task verification and archive-readiness input.
+  - review agents (`architecture-reviewer`, `architecture-boundary-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `test-reviewer`) for risk checks.
 - Keep instructions in each delegation scoped to current artifact path and acceptance criteria.
 
 ## Coordination files

@@ -13,7 +13,7 @@ Use the tracker-neutral work-item intake workflow for this request.
 node ~/.config/opencode/scripts/work-item.mjs create --request "$ARGUMENTS" --type <type> --risk <risk> --route <route>
 ```
 
-4. Include repeated `--acceptance "..."` arguments when acceptance criteria are already clear.
-5. Return the generated work ID, record path, classification, next action, and any unresolved questions.
+1. Include repeated `--acceptance "..."` arguments when acceptance criteria are already clear.
+2. Return the generated work ID, record path, classification, next action, and any unresolved questions.
 
 GitHub, Jira, Linear, or another tracker may be linked later. Do not require an external tracker for intake.

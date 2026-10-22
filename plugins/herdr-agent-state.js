@@ -14,7 +14,7 @@ let reportedRootSessionID;
 
 // Subagent (task tool) sessions carry a parentID; the main agent session does
 // not. Their lifecycle events would otherwise clobber the pane's real state, so
-// learn child session ids from session.created/updated and drop their reports.
+// learn child session ids from v2 session.created data and drop their reports.
 const childSessions = new Set();
 
 function nextReportSeq() {
@@ -129,8 +129,7 @@ export default Plugin.define({
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
         const properties = event.data ?? {};
         const sessionID = sessionIDFromProperties(properties);
-        const info = properties.info;
-        if (info?.id && info.parentID) childSessions.add(info.id);
+        if (event.type === "session.created" && sessionID && properties.parentID) childSessions.add(sessionID);
         if (sessionID && childSessions.has(sessionID)) {
           if (event.type === "permission.asked" || event.type === "question.asked") await reportState("blocked");
           if (["permission.replied", "question.replied", "question.rejected"].includes(event.type)) await reportState("working");
