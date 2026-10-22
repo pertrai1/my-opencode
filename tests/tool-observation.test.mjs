@@ -105,9 +105,10 @@ test("duplicates and invalid events do not mutate results; session IDs isolate r
   observer.after({ ...event(), status: "error" });
   observer.before(null);
   observer.before(event("x".repeat(257)));
-  assert.equal(observer.stats().queued, 1);
-  assert.equal(observer.stats().pending, 1);
-  assert.equal(observer.stats().unmatched, 1);
+  assert.equal(observer.stats().queued, 0);
+  assert.equal(observer.stats().pending, 2);
+  assert.equal(observer.stats().ambiguous, 2);
+  assert.equal(observer.stats().unmatched, 0);
   assert.equal(observer.stats().invalid, 2);
 });
 
@@ -246,3 +247,96 @@ for (const tool of ["shell", "subagent", "bash", "task"]) {
     assert.doesNotMatch(JSON.stringify(spans), /SECRET|PRIVATE/);
   });
 }
+
+test("chunked Unicode replies above 4 KiB are rejected by byte count", async t => {
+  const port = await receiver(t, (_req, res) => {
+    res.write('{"partialSuccess":{"errorMessage":"' + 'é'.repeat(1500));
+    setTimeout(() => res.end('é'.repeat(1000) + '"}}'), 25);
+  });
+  const observer = createToolObserver({ enabled: true, port });
+  t.after(observer.close);
+  observer.before(event());
+  observer.after({ ...event(), status: "completed" });
+  observer.flush();
+  await until(() => !observer.stats().inFlight);
+  assert.equal(observer.stats().exportFailed, 1);
+  assert.equal(observer.stats().sent, 0);
+});
+
+for (const [parentTool, childTool] of [["execute", "read"], ["read", "read"]]) {
+  test(`overlapping shared IDs (${parentTool}/${childTool}) are dropped without attributing child results to parents`, t => {
+    const observer = createToolObserver({ enabled: true });
+    t.after(observer.close);
+    const parent = event("shared", parentTool);
+    const child = event("shared", childTool);
+    observer.before(parent);
+    observer.before(child);
+    observer.after({ ...child, status: "error" });
+    observer.after({ ...parent, status: "completed" });
+    assert.equal(observer.stats().queued, 0);
+    assert.equal(observer.stats().ambiguous, 2);
+    // Late duplicate ends and new overlapping starts must not revive this ID.
+    observer.before(child);
+    observer.after({ ...parent, status: "error" });
+    observer.after({ ...child, status: "completed" });
+    assert.equal(observer.stats().queued, 0);
+    assert.equal(observer.stats().ambiguous, 3);
+    observer.before(event("independent", "read"));
+    observer.after({ ...event("independent", "read"), status: "completed" });
+    assert.equal(observer.stats().queued, 1);
+  });
+}
+
+test("4 KiB Unicode response with a split UTF-8 character remains valid", async t => {
+  const prefix = '{"partialSuccess":{"rejectedSpans":"1","errorMessage":"';
+  const suffix = '"}}';
+  const padding = 4096 - Buffer.byteLength(prefix + 'é' + suffix);
+  const body = Buffer.from(prefix + 'é' + 'x'.repeat(padding) + suffix);
+  assert.equal(body.length, 4096);
+  const split = Buffer.byteLength(prefix) + 1;
+  const port = await receiver(t, (_req, res) => {
+    res.write(body.subarray(0, split));
+    setTimeout(() => res.end(body.subarray(split)), 25);
+  });
+  const observer = createToolObserver({ enabled: true, port });
+  t.after(observer.close);
+  observer.before(event());
+  observer.after({ ...event(), status: "completed" });
+  observer.flush();
+  await until(() => !observer.stats().inFlight);
+  assert.equal(observer.stats().exportFailed, 0);
+  assert.equal(observer.stats().rejected, 1);
+});
+
+test("quarantined IDs stay bounded, expire and export redacted drop accounting", async t => {
+  let payload;
+  const port = await receiver(t, (req, res) => {
+    let body = "";
+    req.on("data", chunk => { body += chunk; });
+    req.on("end", () => { payload = JSON.parse(body); res.end("{}"); });
+  });
+  let time = 0;
+  const observer = createToolObserver({ enabled: true, port, clock: () => time });
+  t.after(observer.close);
+  for (let i = 0; i < 140; i++) {
+    observer.before(event(String(i), "SECRET-custom-parent"));
+    // A missing child before must not consume a different tool's pending entry,
+    // even when both names would be redacted to the same 'other' category.
+    observer.after({ ...event(String(i), "SECRET-custom-child"), status: "error" });
+    observer.after({ ...event(String(i), "SECRET-custom-parent"), status: "completed" });
+  }
+  assert.equal(observer.stats().pending, 128);
+  assert.equal(observer.stats().ambiguous, 128);
+  assert.equal(observer.stats().overflow, 12);
+  assert.equal(observer.stats().queued, 0);
+  time = 600001;
+  observer.before(event("new"));
+  observer.after({ ...event("new"), status: "completed" });
+  assert.equal(observer.stats().pending, 0);
+  assert.equal(observer.stats().incomplete, 0);
+  observer.flush();
+  await until(() => observer.stats().sent === 1);
+  const attributes = payload.resourceSpans.at(0).resource.attributes;
+  assert.deepEqual(attributes.find(a => a.key === "opencode.observer.ambiguous").value, { intValue: "128" });
+  assert.doesNotMatch(JSON.stringify(payload), /SECRET|private-session/);
+});

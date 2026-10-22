@@ -76,7 +76,7 @@ its eventual job completion and failures are not observed.
 
 No prompt, source, path, arguments, results, raw errors, agent/model names,
 credentials, message IDs, call IDs or original session IDs are exported. Original
-session/call IDs are retained only as bounded in-memory pairing keys. Each retained
+session/call IDs and tool names are retained only for bounded in-memory pairing. Each retained
 session receives a random trace ID; spans have random IDs. These IDs correlate
 activity within one retention window, and timestamps/tool categories expose work
 patterns. They are not anonymous evidence suitable for unrestricted sharing.
@@ -84,17 +84,24 @@ There is no join to routing provenance or evals yet. A later explicitly designed
 eval harness could retain the random trace ID with an eval outcome; no eval or
 agent behavior is changed here.
 
-- At most 128 pending calls, 128 session entries and 128 queued spans; 16 spans per
+- At most 128 pending calls/quarantined IDs, 128 session entries and 128 queued spans; 16 spans per
   export, one export at a time, checked every second. Queued overflow is dropped.
 - Pending calls expire after ten minutes. Session counters/IDs reset after ten
   minutes idle, capacity eviction, plugin reload or process restart. Long-running
-  tools can therefore be incomplete. IDs longer than 256 characters are dropped.
+  tools can therefore be incomplete. IDs or tool names longer than 256 characters are dropped.
+- Overlapping starts with a shared session/call ID (including CodeMode wrapper/
+  children and same-tool overlaps) quarantine that ID until its original ten-minute
+  expiry. All affected observations are dropped instead of guessing which end
+  matches which start. `ambiguous` counts dropped starts, including the original;
+  a mismatched terminal tool name also quarantines the original start. Duplicate
+  starts are indistinguishable from overlapping calls and take the same path.
+  Quarantine slots share the 128-entry pending limit; unrelated IDs still work.
 - A fixed 500 ms request deadline, 4 KiB response limit, no retries, redirects,
   proxies, environment-derived headers or remote destination override. Outages
   lose observations without holding up tool callbacks. Cleanup aborts export and
   drops queued/pending work; abrupt process exit can lose the final batch.
 - Resource attributes `opencode.observer.*` contain cumulative local counters:
-  `overflow`, `incomplete`, `unmatched`, `invalid`, `exportFailed`, `rejected`,
+  `overflow`, `incomplete`, `unmatched`, `ambiguous`, `invalid`, `exportFailed`, `rejected`,
   `shutdown`, and `sent`. Each batch snapshots counts **before that export**;
   delivery/rejection results appear in a later batch. Counts cover different
   stages and must not be summed as unique failed calls. If there is no later

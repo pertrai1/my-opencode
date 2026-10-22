@@ -14,13 +14,13 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
   const pending = new Map();
   const sessions = new Map();
   const queue = [];
-  const counts = { overflow: 0, incomplete: 0, unmatched: 0, invalid: 0, exportFailed: 0, rejected: 0, shutdown: 0, sent: 0 };
+  const counts = { overflow: 0, incomplete: 0, unmatched: 0, ambiguous: 0, invalid: 0, exportFailed: 0, rejected: 0, shutdown: 0, sent: 0 };
   let closed = !enabled || !Number.isInteger(port) || port < 1 || port > 65535;
   let flight;
   const bump = (key, amount = 1) => { counts[key] = Math.min(Number.MAX_SAFE_INTEGER, counts[key] + amount); };
 
   function key(event) {
-    if (![event.id, event.sessionID].every(value => typeof value === "string" && value.length > 0 && value.length <= 256)) {
+    if (![event.id, event.sessionID, event.tool].every(value => typeof value === "string" && value.length > 0 && value.length <= 256)) {
       bump("invalid");
       return undefined;
     }
@@ -30,7 +30,7 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
   function expire() {
     const time = clock();
     for (const [key, entry] of pending) {
-      if (time - entry.start >= TTL) { pending.delete(key); bump("incomplete"); }
+      if (time - entry.start >= TTL) { pending.delete(key); if (!entry.ambiguous) bump("incomplete"); }
     }
     for (const [key, entry] of sessions) {
       if (time - entry.used >= TTL) sessions.delete(key);
@@ -52,13 +52,21 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
   function before(event) {
     expire();
     const call = key(event);
-    if (!call || pending.has(call)) return;
+    if (!call) return;
+    const existing = pending.get(call);
+    if (existing) {
+      // CodeMode children and duplicate deliveries can share IDs, even for the
+      // same tool. Keep a bounded tombstone until TTL; never guess a pairing.
+      bump("ambiguous", existing.ambiguous ? 1 : 2);
+      existing.ambiguous = true;
+      return;
+    }
     if (pending.size >= LIMIT) { bump("overflow"); return; }
     const tool = TOOLS.has(event.tool) ? event.tool : "other";
     const group = session(event.sessionID);
     const occurrence = tool === "other" ? 0 : Math.min(Number.MAX_SAFE_INTEGER, (group.tools.get(tool) ?? 0) + 1);
     group.tools.set(tool, occurrence);
-    pending.set(call, { tool, traceId: group.traceId, occurrence, start: clock(), wall: now() });
+    pending.set(call, { tool, rawTool: event.tool, traceId: group.traceId, occurrence, start: clock(), wall: now() });
   }
 
   function after(event) {
@@ -67,6 +75,12 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
     if (!call) return;
     const entry = pending.get(call);
     if (!entry) { bump("unmatched"); return; }
+    if (entry.ambiguous) return;
+    if (entry.rawTool !== event.tool) {
+      entry.ambiguous = true;
+      bump("ambiguous");
+      return;
+    }
     pending.delete(call);
     if (!["completed", "error"].includes(event.status)) { bump("invalid"); return; }
     if (queue.length >= LIMIT) { bump("overflow"); return; }
@@ -104,16 +118,20 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
       // resource attributes, credentials, retries, or inherited trace context.
       const req = request({ hostname: "127.0.0.1", port, path: "/v1/traces", method: "POST", agent: false,
         headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, res => {
-        let reply = "";
+        const chunks = [];
+        let replyBytes = 0;
         res.on("data", chunk => {
-          if (reply.length + chunk.length > 4096) { finish(true); req.destroy(); return; }
-          reply += chunk;
+          if (settled) return;
+          replyBytes += chunk.length;
+          if (replyBytes > 4096) { finish(true); req.destroy(); return; }
+          chunks.push(chunk);
         });
         res.on("error", () => finish(true));
         res.on("end", () => {
+          if (settled) return;
           try {
             if (res.statusCode !== 200) { finish(true); return; }
-            const response = JSON.parse(reply);
+            const response = JSON.parse(Buffer.concat(chunks, replyBytes).toString("utf8"));
             const rejected = Number(response.partialSuccess?.rejectedSpans ?? 0);
             if (!Number.isInteger(rejected) || rejected < 0 || rejected > spans.length) { finish(true); return; }
             finish(false, rejected);
