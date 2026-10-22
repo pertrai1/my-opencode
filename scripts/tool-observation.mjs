@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { request } from "node:http";
 
-const TOOLS = new Set(["bash", "read", "write", "edit", "patch", "glob", "grep", "webfetch", "websearch", "task", "skill", "question", "todowrite", "todoread"]);
+const TOOLS = new Set(["shell", "bash", "subagent", "read", "write", "edit", "patch", "glob", "grep", "webfetch", "websearch", "task", "skill", "question", "todowrite", "todoread"]);
 const LIMIT = 128;
 const TTL = 600_000;
 const attr = (key, value) => ({ key, value: typeof value === "number" ? { intValue: String(value) } : { stringValue: value } });
@@ -71,7 +71,7 @@ export function createToolObserver({ enabled = false, port = 4318, now = Date.no
     if (!["completed", "error"].includes(event.status)) { bump("invalid"); return; }
     if (queue.length >= LIMIT) { bump("overflow"); return; }
     // Read only the documented numeric shell exit metadata, never output text.
-    const exit = event.status === "completed" && entry.tool === "bash" ? event.result?.metadata?.exit : undefined;
+    const exit = event.status === "completed" && (entry.tool === "shell" || entry.tool === "bash") ? event.result?.metadata?.exit : undefined;
     const failed = event.status === "error" || (typeof exit === "number" && Number.isFinite(exit) && exit !== 0);
     const duration = Math.max(0, clock() - entry.start);
     queue.push({

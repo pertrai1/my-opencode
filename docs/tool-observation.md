@@ -55,7 +55,7 @@ node --test tests/tool-observation.test.mjs
 
 The Collector prints `opencode.tool` spans with a random Trace ID, timestamps,
 status, `opencode.tool.name`, `opencode.tool.outcome`, and
-`opencode.tool.occurrence`. For example, two `bash` spans in one Trace ID with
+`opencode.tool.occurrence`. For example, two `shell` spans in one Trace ID with
 occurrences 1 and 2, ERROR statuses and durations 8 s and 11 s identify **19 s
 spent on failed shell calls** worth investigating in your local session. Duration
 is end timestamp minus start timestamp. It includes time between before/after
@@ -65,9 +65,12 @@ Occurrence counts starts for the same allowlisted tool in the retained session.
 It does **not** prove identical arguments, a retry, wasted work, or bad reasoning.
 Unknown/custom tools are grouped as `other`, occurrence 0, so names cannot leak
 paths or arbitrary text and unrelated custom tools are not presented as retries.
-`error` means the hook reported an error or a completed `bash` result carried a
+`error` means the hook reported an error or a completed `shell` (or legacy `bash`) result carried a
 finite nonzero numeric `metadata.exit`. Output text is never parsed; textual-only
 shell failures/cancellation and other domain failures can remain `completed`.
+V2 `shell` and `subagent` names and legacy `bash` and `task` names are retained
+as separate categories. A background tool return measures only the launch call;
+its eventual job completion and failures are not observed.
 
 ## Privacy, bounds and missing data
 

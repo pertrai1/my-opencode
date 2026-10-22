@@ -6,7 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { createToolObserver } from "../scripts/tool-observation.mjs";
 import plugin from "../plugins/tool-observation.ts";
 
-const event = (id = "call", tool = "bash", sessionID = "private-session") => ({ id, tool, sessionID, input: { command: "SECRET /private/file" }, agent: "SECRET", messageID: "SECRET" });
+const event = (id = "call", tool = "shell", sessionID = "private-session") => ({ id, tool, sessionID, input: { command: "SECRET /private/file" }, agent: "SECRET", messageID: "SECRET" });
 async function receiver(t, handle) {
   const server = createServer(handle);
   server.listen(0, "127.0.0.1");
@@ -31,7 +31,7 @@ test("OTLP HTTP exports only allowlisted observations with durations, failures a
   let time = 100;
   const observer = createToolObserver({ enabled: true, port, now: () => 1700000000000, clock: () => time });
   t.after(observer.close);
-  for (const [index, status, tool] of [[1, "error", "bash"], [2, "completed", "bash"], [3, "completed", "SECRET-tool"]]) {
+  for (const [index, status, tool] of [[1, "error", "shell"], [2, "completed", "shell"], [3, "completed", "SECRET-tool"]]) {
     const input = event(String(index), tool);
     const output = { ...input, status, result: { content: "SECRET", metadata: { exit: index === 2 ? 7 : 0 } }, error: new Error("SECRET") };
     const before = structuredClone(output);
@@ -212,3 +212,37 @@ test("session retention resets correlation and counts, and refused connections d
   observer.flush();
   await until(() => observer.stats().exportFailed === 1);
 });
+
+// Names and metadata from V2 core/src/tool/plugin/{shell,subagent}.ts,
+// upstream 09a1db3b088293d48d84d62e86c02b69b40ed3ee. Legacy names remain supported.
+for (const tool of ["shell", "subagent", "bash", "task"]) {
+  test(`${tool} retains its category and counts repeated V2 hook observations`, async t => {
+    let spans;
+    const port = await receiver(t, (req, res) => {
+      let body = "";
+      req.on("data", chunk => { body += chunk; });
+      req.on("end", () => { spans = JSON.parse(body).resourceSpans.at(0).scopeSpans.at(0).spans; res.end("{}"); });
+    });
+    const observer = createToolObserver({ enabled: true, port });
+    t.after(observer.close);
+    for (let i = 1; i <= 2; i++) {
+      const input = event(String(i), tool);
+      const result = {
+        output: { output: "SECRET", sessionID: "PRIVATE-child", exit: i === 1 ? 7 : 0 },
+        content: [{ type: "text", text: "SECRET" }],
+        metadata: { status: "completed", exit: i === 1 ? 7 : 0, shellID: "PRIVATE-shell" },
+      };
+      const after = { ...input, status: "completed", result };
+      const original = structuredClone(after);
+      observer.before(input);
+      observer.after(after);
+      assert.deepEqual(after, original);
+    }
+    observer.flush();
+    await until(() => observer.stats().sent === 2);
+    assert.deepEqual(spans.map(s => s.attributes.at(0).value.stringValue), [tool, tool]);
+    assert.deepEqual(spans.map(s => s.attributes.at(1).value.intValue), ["1", "2"]);
+    assert.deepEqual(spans.map(s => s.status.code), [tool === "shell" || tool === "bash" ? 2 : 1, 1]);
+    assert.doesNotMatch(JSON.stringify(spans), /SECRET|PRIVATE/);
+  });
+}
