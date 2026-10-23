@@ -77,3 +77,25 @@ test("tool discovery changes the model-visible tool set", async () => {
   assert.equal(observations.at(0)?.tools.includes("read_file"), false);
   assert.equal(observations.at(1)?.tools.includes("read_file"), true);
 });
+
+test("rejects schema-invalid arguments before creating file evidence", async () => {
+  const result = await replay("simple", [call("read_file", { path: "other.json" }), report("completed", ["tool-0"])]);
+  assert.equal(result.pass, false);
+  assert.ok(result.trace.every(entry => !entry.observation?.includes('"version"')));
+});
+
+test("simple budget ends before a surplus model request", async () => {
+  let calls = 0;
+  const result = await evaluate("simple", async () => {
+    calls += 1;
+    if (calls > 2) throw new Error("surplus request");
+    return call("read_file");
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.pass, false);
+});
+
+test("accepts latest qualifying CI evidence after repeated refresh", async () => {
+  const result = await replay("stale", [call("remote_head"), call("check_ci", { head: "b222" }), call("remote_head"), call("check_ci", { head: "b222" }), report("passed", ["tool-3"])]);
+  assert.equal(result.pass, true);
+});

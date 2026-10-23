@@ -1,34 +1,11 @@
+import { tool } from "./tools.mjs";
+
 export function localEndpoint(value) {
   const url = new URL(value);
   if (url.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) || url.username || url.password) {
     throw new Error("Expected a credential-free local HTTP endpoint");
   }
   return url;
-}
-
-const descriptions = {
-  read_output: "Retrieve retained test-process output and exit status.",
-  list_tools: "Discover currently available file-reading tools.",
-  read_file: "Read package.json.",
-  legacy_read: "Legacy file reader.",
-  remote_head: "Read the current remote branch head.",
-  check_ci: "Read CI for the supplied head SHA.",
-  read_diff: "Review the independent documentation diff.",
-  archive: "Attempt to archive the change.",
-  plan: "Create a planning artifact.",
-  delegate: "Delegate the task to another agent.",
-  report: "Finish with a status and evidence IDs; supply answer for a file-content question.",
-};
-
-function tool(name) {
-  let properties = {};
-  let required = [];
-  if (name === "check_ci") { properties = { head: { type: "string" } }; required = ["head"]; }
-  if (name === "report") {
-    properties = { status: { type: "string", enum: ["passed", "defect", "inconclusive", "completed", "blocked"] }, evidence: { type: "array", items: { type: "string" } }, answer: { type: "string" } };
-    required = ["status", "evidence"];
-  }
-  return { type: "function", function: { name, description: descriptions[name], parameters: { type: "object", properties, required, additionalProperties: false } } };
 }
 
 export function createPolicy({ endpoint, model, agent, transport = fetch }) {

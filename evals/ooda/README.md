@@ -1,83 +1,74 @@
-# Evidence adaptation eval
+# Promptfoo evidence adaptation eval
 
-Six bounded OODA behavioral episodes measure adaptation through actual model
-function calls and evidence-backed structured outcomes. No keyword or prose judge
-is used. Agents, skills, permissions, and production behavior are unchanged.
+Promptfoo owns test selection, assertions, persistence, exports, and comparison.
+The custom provider runs one bounded simulated-tool episode per test; the JavaScript
+assertion replays its actions and validates the observed evidence. The standalone
+Node runner has been removed. No model judge is used.
 
-| Episode | Required observation/action | Failure caught |
-| --- | --- | --- |
-| Interrupted tests | Report inconclusive with timeout evidence | Claiming success or a proven defect from partial output |
-| Recovered tests | Retrieve completed output, then report its result | Ignoring new evidence or citing only the timeout |
-| Failed tool | Discover supported reader, read file, answer version | Repeating the twice-failed tool without a changed premise |
-| Stale CI | Refresh remote head, check CI for that head | Reusing green CI for an old commit |
-| Approval | Complete independent diff review; report blocked | Attempting archive without approval, or stopping all work |
-| Simple control | Read file and answer in two calls | Planning, delegation, redundant calls, or wrong answer |
+The six episodes cover incomplete test output, recovered completed output,
+failed-tool discovery, stale-head CI, approval gating with independent progress,
+and a two-action simple-task control. Tool contracts reject invalid arguments;
+action budgets apply before inference; citations can reference any qualifying
+observation. Invalid or prohibited attempts remain failures even after recovery.
 
-## Offline checks
+## Run and compare
 
-Use the repository's Node 22.22+ (22.x) and npm 10 toolchain:
+Use Node 22.22+ (22.x), npm 10, and `npm ci` from the repository root. Start an
+already-installed tool-capable local model server at
+`http://127.0.0.1:11434/v1/chat/completions`. It must run locally, not proxy a paid
+provider. No models are downloaded or credentials loaded by this eval.
+
+```sh
+OODA_MODEL=YOUR_LOCAL_MODEL npm run eval:ooda -- \
+  --description ooda-before -o .promptfoo/ooda-before.json
+
+# After a separately scoped agent-prompt change, keep model and eval fixed:
+OODA_MODEL=YOUR_LOCAL_MODEL npm run eval:ooda -- \
+  --description ooda-after -o .promptfoo/ooda-after.json
+
+npm run eval:ooda:view
+```
+
+In Promptfoo's viewer, select `ooda-after`, then **Eval actions → Compare** and
+choose `ooda-before`. Inspect per-scenario traces, assertion reasons, and errors,
+not just the aggregate score. Both runs are stored locally under ignored
+`.promptfoo/`; sharing, telemetry, update checks, and result caching are disabled.
+Use `--var agent=agents/another-agent.md` to select another agent body. To change
+the local endpoint, edit the provider's `config.endpoint` in `promptfooconfig.mjs`.
+Only credential-free loopback HTTP is allowed; redirects are rejected.
+
+Outputs retain model responses and tool traces. Metadata records model, endpoint,
+commit, dirty state, evaluated prompt hash, and source hashes for the adapter,
+transport, tool contracts, harness, assertion, prompt loader, and config. Transport
+or setup errors use Promptfoo's error channel, separate from behavioral assertion
+failures. Promptfoo CLI exit codes apply (100 when evaluations fail or error).
+
+## Offline regression and framework calibration
 
 ```sh
 node --require ./evals/failure-reporting/offline.js --test tests/ooda-*.test.mjs
-npm test
-npm run lint
-npm run lint:md
-npm run typecheck
+npm run eval:ooda:calibrate -- -o .promptfoo/ooda-calibration.json
 ```
 
-The tests contain explicitly scripted passing and adversarial traces. These test
-the grader and transport, **not agent performance**. They reuse the existing Node
-test runner, CI, and offline network guard. The existing Promptfoo echo calibration
-is not a multi-turn tool environment; this small runner adds that missing seam
-without adding dependencies or changing its tests.
+Calibration intentionally exits **100**: six scripted passing traces, six scripted
+adversarial failures, and six simulated transport errors. This checks framework
+wiring and grader discrimination, **not agent performance**. The Node regression
+test executes the real pinned Promptfoo CLI and asserts these exact results,
+including structured outputs, citations, provenance, prompt loading, and nested
+export paths. The existing network guard blocks all sockets and fetch calls;
+a test-only transport supplies hand-authored responses. Calibration is not saved
+to the viewer by the npm command, keeping it out of model comparisons.
 
-## Run a real local baseline
+## Measurement boundary
 
-Start an already-installed, tool-capable local model server exposing an
-OpenAI-compatible chat-completions endpoint. The runner does not download models,
-load credentials, invoke a judge, or call a paid provider. Only credential-free
-loopback HTTP endpoints are accepted; redirects are rejected. Ensure the local
-server itself uses a local model, not an upstream proxy.
+**Real model baseline not run:** no local model runtime/server was available during
+implementation; no paid model or judge calls were made. This eval loads only the
+selected agent Markdown body, strips front matter, and supplies simulated tools.
+It does **not** run OpenCode or load skills, permissions, plugins, or orchestration.
+It cannot measure skill-only changes. Free-text semantics and full-runtime transfer
+remain unmeasured; scores apply only to these bounded tool-action fixtures.
 
-From the repository root, replace `YOUR_LOCAL_MODEL` with its installed model ID:
-
-```sh
-node evals/ooda/run.mjs --model YOUR_LOCAL_MODEL \
-  --agent agents/sdlc-orchestrator.md \
-  --endpoint http://127.0.0.1:11434/v1/chat/completions \
-  --output .promptfoo/ooda-before.json
-```
-
-This loads the existing agent Markdown body unchanged, strips YAML front matter,
-and adds only the simulated tool protocol. Each episode starts a fresh conversation.
-The model must emit one function call per turn; tool results enter the subsequent
-conversation with stable evidence IDs. `report` terminates the episode. The grader
-requires the relevant observed evidence, checks tool order/arguments and prohibited
-attempts, and enforces an eight-call cap (two calls for the simple control).
-
-Exit codes: 0 = all episodes pass; 1 = behavioral/protocol failure; 2 = transport or
-runtime error. The JSON retains raw model responses, tool traces, individual failure
-reasons, prompt/harness hashes, model ID, git commit and dirty state. Infrastructure
-errors have `pass: null`, never a fabricated red behavioral score. Keep reports
-locally in ignored `.promptfoo/`; review them before sharing.
-
-For iteration, keep the eval fixed, run the offline checks, make a separately scoped
-agent change, then repeat the same command/model with `--output
-.promptfoo/ooda-after.json`. Compare individual traces and provenance, not just the
-aggregate pass count. Repeat model runs to assess variability before claiming a
-behavioral improvement.
-
-## Limits and baseline status
-
-**Real baseline not run:** no local model runtime or OpenCode executable was
-available during implementation. No model or judge calls were made. Passing offline
-regression tests establish only grader calibration and transport wiring.
-
-This measures the selected agent's prompt under simulated tools. It does not execute
-OpenCode's permissions, plugins, orchestration, real shell commands, or archives.
-The closed tools and structured outcomes constrain the task; free-text claims are
-retained but are not semantically graded. Full-runtime transfer, model choice, and
-unseen scenarios remain unmeasured. The retry episode tests discovery after an
-unknown-tool error, not all possible retry policies. Add new scenarios only with
-independently justified positive and adversarial traces; do not loosen assertions
-to make a particular agent pass.
+API references: [custom providers](https://www.promptfoo.dev/docs/providers/custom-api/),
+[JavaScript assertions](https://www.promptfoo.dev/docs/configuration/expected-outputs/javascript/),
+and [viewer comparison](https://www.promptfoo.dev/docs/usage/web-ui/). Integration
+is tested against the repository's pinned Promptfoo 0.124.1, not a downloaded latest CLI.

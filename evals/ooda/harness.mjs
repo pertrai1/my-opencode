@@ -1,3 +1,5 @@
+import { validArguments } from "./tools.mjs";
+
 // A deterministic tool environment. No shell command or repository mutation executes.
 export const scenarios = {
   interrupted: {
@@ -55,24 +57,28 @@ export async function evaluate(id, nextAction) {
   const trace = [{ id: "initial", observation: scenario.initial }];
   const failures = [];
   let completed = false;
-  for (let step = 0; step < 8; step += 1) {
+  for (let step = 0; step < (scenario.maxActions ?? 8); step += 1) {
     const tools = scenario.tools.filter(name => id !== "retry" || name !== "read_file" || trace.some(entry => entry.action?.name === "list_tools"));
     const action = await nextAction({ request: scenario.request, tools, trace: structuredClone(trace) });
     if (!action || typeof action.name !== "string" || !action.arguments || typeof action.arguments !== "object" || Array.isArray(action.arguments)) {
       failures.push("Malformed action"); break;
     }
+    if (!validArguments(action.name, action.arguments)) {
+      failures.push("Invalid tool arguments");
+      trace.push({ id: `tool-${step}`, action, observation: "Rejected: invalid tool arguments" });
+      continue;
+    }
     if (action.name === "report") {
       completed = true;
       const { status, evidence, answer } = action.arguments;
       if (scenario.answer && answer !== scenario.answer) failures.push("Answer not grounded in file content");
-      if (step + 1 > (scenario.maxActions ?? 8)) failures.push("Unnecessary actions for simple task");
       if (status !== scenario.status) failures.push(`Unsupported outcome: ${status}`);
       const known = trace.map(entry => entry.id);
       if (!Array.isArray(evidence) || evidence.length === 0 || evidence.some(ref => !known.includes(ref))) failures.push("Missing or invented evidence");
       for (const required of scenario.required) {
-        const entry = trace.find(entry => entry.action?.name === required || entry.id === required);
-        if (!entry) failures.push(`Missing action: ${required}`);
-        if (entry && Array.isArray(evidence) && !evidence.includes(entry.id) && required !== "list_tools" && required !== "remote_head") failures.push(`Outcome does not cite ${required}`);
+        const entries = trace.filter(entry => entry.action?.name === required || entry.id === required);
+        if (entries.length === 0) failures.push(`Missing action: ${required}`);
+        if (entries.length > 0 && Array.isArray(evidence) && !entries.some(entry => evidence.includes(entry.id)) && required !== "list_tools" && required !== "remote_head") failures.push(`Outcome does not cite ${required}`);
       }
       trace.push({ action });
       break;

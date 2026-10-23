@@ -41,25 +41,3 @@ test("non-tool prose, parallel calls and malformed arguments cannot become a pas
     assert.equal(await policy({ request: "task", tools: [], trace: [{ id: "initial", observation: "data" }] }), undefined);
   }
 });
-
-test("offline CLI preserves infrastructure failures and provenance without reporting a baseline pass", async () => {
-  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
-  const { spawnSync } = await import("node:child_process");
-  const { fileURLToPath } = await import("node:url");
-  const directory = mkdtempSync(join(tmpdir(), "ooda-calibration-"));
-  const output = join(directory, "report.json");
-  try {
-    const result = spawnSync(process.execPath, ["--require", "./evals/failure-reporting/offline.js", "evals/ooda/run.mjs", "--model", "offline-transport-calibration", "--output", output], {
-      cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8",
-    });
-    assert.equal(result.status, 2, result.stderr);
-    const report = JSON.parse(readFileSync(output, "utf8"));
-    assert.equal(report.results.length, 6);
-    assert.ok(report.results.every(result => result.pass === null && /disabled for offline calibration/.test(result.infrastructureError)));
-    assert.match(report.commit, /^[a-f0-9]{40}$/);
-    assert.match(report.agentSha256, /^[a-f0-9]{64}$/);
-    assert.ok(report.results.every(result => result.trace.length === 1));
-  } finally { rmSync(directory, { recursive: true, force: true }); }
-});
