@@ -18,19 +18,37 @@ failure_handler() {
 }
 trap failure_handler ERR
 
-# --- 1. Syntax & Type Validation ---
+# --- 1. Toolchain Validation ---
+STAGE="Toolchain Check"
+echo "Checking Node.js and npm versions..."
+npm run verify:toolchain
+echo "✅ Toolchain check passed."
+
+# --- 2. Syntax & Type Validation ---
 STAGE="TypeScript Check"
 echo "Running TypeScript type check..."
 npm run typecheck
 echo "✅ TypeScript check passed."
 
-# --- 2. Lint Check ---
+# --- 3. Lint Check ---
 STAGE="ESLint"
 echo "Running ESLint..."
 npm run lint
 echo "✅ ESLint check passed."
 
-# --- 3. Test Suite ---
+# --- 4. Markdown Lint ---
+STAGE="Markdown Lint"
+echo "Running Markdown lint..."
+npm run lint:md
+echo "✅ Markdown lint passed."
+
+# --- 5. Workflow Actions Validation ---
+STAGE="Workflow Actions Check"
+echo "Checking workflow action pins..."
+npm run verify:workflow-actions
+echo "✅ Workflow actions check passed."
+
+# --- 6. Test Suite ---
 STAGE="Test Suite"
 echo "Running tests..."
 npm run test
