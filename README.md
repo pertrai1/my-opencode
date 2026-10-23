@@ -227,6 +227,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Verification
 
+- [Local tool observations](docs/tool-observation.md) — opt-in, metadata-only OTLP capture of tool failures, durations and repeated calls; local Collector setup and diagnostic walkthrough.
+
 - [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
