@@ -39,3 +39,45 @@ for (const npm of ["9.9.9", "11.0.0", "10.9.9-beta.1", undefined]) {
     assert.match(result.stderr, /npm .* does not satisfy >=10 <11/);
   });
 }
+
+for (const [node, npm, needsNode, needsNpm] of [
+  ["20.19.0", "10.9.9", true, false],
+  ["22.21.9", "10.9.9", true, false],
+  ["22.22.0", "11.0.0", false, true],
+  ["24.0.0", "11.0.0", true, true],
+  ["22.22.0", "", false, false],
+  ["24.0.0", "", true, false],
+]) {
+  test(`failure guidance for Node ${node} and npm ${npm === "" ? "unknown" : npm} is conditional`, () => {
+    const result = verify(node, npm);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /npm run verify:toolchain/);
+    if (needsNode) {
+      assert.match(result.stderr, /For nvm users:\n {2}nvm install 22\n {2}nvm use 22/);
+    } else {
+      assert.doesNotMatch(result.stderr, /nvm/);
+    }
+    if (needsNpm) {
+      assert.match(result.stderr, /npm install --global npm@10\.9\.9\n {2}npm run verify:toolchain/);
+      if (needsNode) {
+        assert.match(result.stderr, /If npm still does not satisfy >=10 <11 after selecting Node\.js/);
+        assert.ok(result.stderr.indexOf("npm run verify:toolchain") < result.stderr.indexOf("npm install --global"));
+      }
+    } else {
+      assert.doesNotMatch(result.stderr, /npm install/);
+    }
+    if (!npm) {
+      assert.match(result.stderr, /npm version is unknown because npm's user-agent was not provided/);
+      assert.doesNotMatch(result.stderr, /npm (?:is )?missing|npm (?:is )?not installed/);
+    }
+    assert.doesNotMatch(result.stderr, /sudo/);
+  });
+}
+
+test("compatible versions keep success output free of repair guidance", () => {
+  const result = verify("22.22.0", "10.9.9");
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "Toolchain OK { node: '22.22.0', npm: '10.9.9' }\n");
+  assert.equal(result.stderr, "");
+});

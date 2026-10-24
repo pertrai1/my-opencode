@@ -227,6 +227,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Verification
 
+- `npm run ubs` — checks the Node.js/npm toolchain first, then TypeScript, ESLint, Markdown, workflow action pins, and tests; stops at the first failure with a stage-specific `UBS_RESULT` record.
 - [Local tool observations](docs/tool-observation.md) — opt-in, metadata-only OTLP capture of tool failures, durations and repeated calls; local Collector setup and diagnostic walkthrough.
 
 - [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
