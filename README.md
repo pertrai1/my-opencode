@@ -8,7 +8,7 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents use `gpt-6-luna#high`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6.1-sol#high`, and sets model-level `high` reasoning effort for `gpt-6.1-sol`. The inline `lean`, `build`, and `plan` agents use `gpt-6-astra#high`, `gpt-6.1-sol`, and `gpt-6-astra`, respectively; Jev routing switches to the same models. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
@@ -192,10 +192,10 @@ Example record:
   "timestamp": "2026-09-29T16:00:00.000Z",
   "source": "jev",
   "currentAgent": "lean",
-  "currentModel": "openai/gpt-6-luna#high",
+  "currentModel": "openai/gpt-6-astra#high",
   "selectedRoute": "build",
   "selectedAgent": "build",
-  "selectedModel": "openai/gpt-6-sol",
+  "selectedModel": "openai/gpt-6.1-sol",
   "confidence": 0.9,
   "probability": 0.8,
   "latencyMs": 0,

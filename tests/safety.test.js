@@ -371,7 +371,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: ["read", "grep", "glob"],
       }
     });
     const sessionID = 'session-loop-consecutive';
@@ -407,7 +406,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: ["read", "grep", "glob"],
       }
     });
     const sessionID = 'session-loop-alternating';
@@ -444,7 +442,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: ["read"],
       }
     });
     const sessionID = 'session-polling';
@@ -463,38 +460,12 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
     fs.rmSync(mockDir, { recursive: true });
   });
 
-  await t.test('exempt tools are not tracked for loop detection', async () => {
-    const { plugin, directory: mockDir } = await createSafetyPlugin({
-      doomLoop: {
-        enabled: true,
-        bufferSize: 5,
-        maxRepetitions: 3,
-        exemptTools: ["read"],
-      }
-    });
-    const sessionID = 'session-exempt';
-
-    const callExempt = { tool: 'read', sessionID, callID: 'r1', args: { path: 'a.txt' } };
-    const resExempt = { title: 'read', output: 'content', metadata: {} };
-
-    // Execute many times - should NOT throw because read is exempt
-    await plugin["tool.execute.after"](callExempt, resExempt);
-    await plugin["tool.execute.after"](callExempt, resExempt);
-    await plugin["tool.execute.after"](callExempt, resExempt);
-    await plugin["tool.execute.after"](callExempt, resExempt);
-
-    assert.ok(true, 'Exempt tool did not trigger loop detection');
-
-    fs.rmSync(mockDir, { recursive: true });
-  });
-
   await t.test('safe read-only tools are not tracked by default', async () => {
     const { plugin, directory: mockDir } = await createSafetyPlugin({
       doomLoop: {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: [],
       }
     });
     const sessionID = 'session-read-only';
@@ -517,7 +488,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: [],
       }
     });
     const sessionID = 'session-reset';
@@ -546,7 +516,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 2,
         maxRepetitions: 2,
-        exemptTools: [],
       },
     });
     const staleCall = { tool: 'bash', sessionID: 'session-to-evict', callID: 'c1', args: {} };
@@ -582,7 +551,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 5,
         maxRepetitions: 3,
-        exemptTools: [],
       }
     });
     const sessionID = 'session-doom-oversized';
@@ -617,7 +585,6 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
         enabled: true,
         bufferSize: 2,
         maxRepetitions: 3,
-        exemptTools: [],
       }
     });
     const call = { tool: 'bash', sessionID: 'session-invalid-threshold', callID: 'c1', args: {} };

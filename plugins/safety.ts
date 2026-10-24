@@ -17,11 +17,8 @@ type SafetyConfig = {
     enabled: boolean;
     bufferSize: number;
     maxRepetitions: number;
-    exemptTools: string[];
   };
 };
-
-const sessionAgents = new Map<string, string>();
 
 // Stateful memory buffer for Doom Loop Detection
 // Maps sessionID -> array of tool call hashes (rolling history)
@@ -42,7 +39,6 @@ const DEFAULT_CONFIG: SafetyConfig = {
     enabled: true,
     bufferSize: 5,
     maxRepetitions: 3,
-    exemptTools: ["read", "grep", "glob"],
   },
 };
 
@@ -109,17 +105,6 @@ function setSessionBuffer(sessionID: string, buffer: string[]): void {
     }
   }
   sessionBuffers.set(sessionID, buffer);
-}
-
-function setSessionAgent(sessionID: string, agent: string): void {
-  sessionAgents.delete(sessionID);
-  if (sessionAgents.size >= MAX_TRACKED_SESSIONS) {
-    const oldestSessionID = sessionAgents.keys().next().value;
-    if (oldestSessionID) {
-      sessionAgents.delete(oldestSessionID);
-    }
-  }
-  sessionAgents.set(sessionID, agent);
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -311,9 +296,6 @@ function mergeSafetyConfig(options: unknown): SafetyConfig {
       maxRepetitions: isValidDoomLoopThreshold
         ? maxRepetitions
         : DEFAULT_CONFIG.doomLoop.maxRepetitions,
-      exemptTools: Array.isArray(doomLoop.exemptTools)
-        ? doomLoop.exemptTools.filter((tool): tool is string => typeof tool === "string")
-        : DEFAULT_CONFIG.doomLoop.exemptTools,
     },
   };
 }
@@ -737,12 +719,7 @@ export default definePlugin({
         const data = event.data as Record<string, unknown> | undefined;
         const info = data?.info as Record<string, unknown> | undefined;
         const sessionID = (info?.id ?? data?.sessionID) as string | undefined;
-        const agent = (info?.agent ?? data?.agent) as string | undefined;
-        if (event.type === "session.created" && sessionID && agent) setSessionAgent(sessionID, agent);
-        if (event.type === "session.deleted" && sessionID) {
-          sessionAgents.delete(sessionID);
-          sessionBuffers.delete(sessionID);
-        }
+        if (event.type === "session.deleted" && sessionID) sessionBuffers.delete(sessionID);
       }
     })();
 
