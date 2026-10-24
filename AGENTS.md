@@ -26,6 +26,16 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 - For code changes, load and follow the `codescene-mcp` skill for post-edit Code Health reviews, regression handling, and the pre-finish safeguard. If the skill or MCP check is unavailable, report that explicitly rather than claiming it passed.
 
+## Code graph
+
+The `code-review-graph` MCP server builds a local graph of the current git repository and updates it while the session runs. The `explore` agent uses the read-only `code-review-graph-explore` server instead.
+
+- Use the graph only inside a git repository. Never build one for a home directory, temporary folder, or other non-repository workspace.
+- Before exploring or changing code in a repository, call `list_graph_stats_tool`. If `files_count` is 0 or `_graph.head_matches_build` is false, call `build_or_update_graph_tool` with `full_rebuild: true`. Incremental updates only compare against `HEAD~1`, so they do not cover a first build, a pull, or a branch switch. If you cannot call the build tool, as with `explore`, report that the graph is missing or stale and continue with text search.
+- Use the graph before broad text search for structural questions: `get_minimal_context_tool` to orient, `query_graph_tool` or `traverse_graph_tool` for callers, callees, and imports, `get_impact_radius_tool` before changing shared code, and `detect_changes_tool` or `get_review_context_tool` when reviewing a diff.
+- Treat graph results as leads. Confirm them by reading the code before editing or reporting a finding.
+- If the server is unavailable, or the repository has no supported source files, say so and use text search instead. Do not describe analysis as graph-based when the graph was not used.
+
 ## Working protocol
 
 - Before editing, inspect the relevant code, tests, project instructions, and current `git status`/diff.

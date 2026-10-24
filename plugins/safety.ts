@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import * as os from "node:os";
+import { isShellTool, splitChainedCommands, withoutRtkPrefix } from "../lib/shell-command.ts";
 
 type SafetyConfig = {
   truncation: {
@@ -42,11 +43,15 @@ const DEFAULT_CONFIG: SafetyConfig = {
   },
 };
 
+// Includes OpenCode V1 (`apply_patch`, `bash`, `task`) and V2 (`patch`, `shell`, `subagent`) tool IDs.
 const TRACKED_TOOL_NAMES = new Set([
   "apply_patch",
   "bash",
   "edit",
+  "patch",
   "question",
+  "shell",
+  "subagent",
   "task",
   "webfetch",
   "write",
@@ -398,16 +403,14 @@ function createOutputArtifact(
 
 
 function isDestructive(cmd: string): boolean {
-  const normalized = cmd.toLowerCase().trim();
+  const normalized = withoutRtkPrefix(cmd.toLowerCase().trim());
   if (!normalized) {
     return false;
   }
 
   const tokens = normalized.split(/\s+/);
-  const [firstToken = ""] = tokens;
-  const commandStart = firstToken === "rtk" ? 1 : 0;
-  const executable = tokens[commandStart] ?? "";
-  const argsStart = commandStart + 1;
+  const [executable = ""] = tokens;
+  const argsStart = 1;
 
   const blockedRoots = [
     "cp", "chmod", "ln", "touch", "truncate", "tee", "rm", "mv", "mkdir",
@@ -542,75 +545,6 @@ function hasWriteRedirection(command: string): boolean {
   return false;
 }
 
-function splitChainedCommands(command: string): string[] {
-  const parts: string[] = [];
-  let current = "";
-  let inSingleQuotes = false;
-  let inDoubleQuotes = false;
-  let escaped = false;
-
-  for (let i = 0; i < command.length; i++) {
-    const char = command[i];
-
-    if (escaped) {
-      current += char;
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      current += char;
-      escaped = true;
-      continue;
-    }
-
-    if (char === "'" && !inDoubleQuotes) {
-      current += char;
-      inSingleQuotes = !inSingleQuotes;
-      continue;
-    }
-
-    if (char === '"' && !inSingleQuotes) {
-      current += char;
-      inDoubleQuotes = !inDoubleQuotes;
-      continue;
-    }
-
-    if (!inSingleQuotes && !inDoubleQuotes) {
-      if (char === ";" || char === "\n" || char === "\r") {
-        parts.push(current);
-        current = "";
-        continue;
-      }
-      if (char === "&" && command[i + 1] === "&") {
-        parts.push(current);
-        current = "";
-        i++;
-        continue;
-      }
-      if (char === "|" && command[i + 1] === "|") {
-        parts.push(current);
-        current = "";
-        i++;
-        continue;
-      }
-      if (char === "|" || char === "&") {
-        parts.push(current);
-        current = "";
-        continue;
-      }
-    }
-
-    current += char;
-  }
-
-  if (current) {
-    parts.push(current);
-  }
-
-  return parts.map((part) => part.trim()).filter(Boolean);
-}
-
 function hasCommandSubstitution(command: string): boolean {
   let inSingleQuotes = false;
   let inDoubleQuotes = false;
@@ -672,7 +606,7 @@ function isSensitiveEnvFilePath(filePath: string): boolean {
 
 function hasSensitiveEnvFileReadInCommand(command: string): boolean {
   for (const cmd of splitChainedCommands(command)) {
-    const normalizedCommand = cmd.trim();
+    const normalizedCommand = withoutRtkPrefix(cmd.trim());
     if (!normalizedCommand) {
       continue;
     }
@@ -682,9 +616,7 @@ function hasSensitiveEnvFileReadInCommand(command: string): boolean {
       continue;
     }
 
-    const [firstToken = ""] = tokens;
-    const startIndex = firstToken?.toLowerCase() === "rtk" ? 1 : 0;
-    for (let i = startIndex + 1; i < tokens.length; i++) {
+    for (let i = 1; i < tokens.length; i++) {
       const token = stripWrappingQuotes(tokens[i] ?? "").toLowerCase();
       if (!token || token.startsWith("-")) {
         continue;
@@ -741,7 +673,7 @@ export default definePlugin({
         const filePath = String(args.filePath ?? args.path ?? "").toLowerCase();
         if (isSensitiveEnvFilePath(filePath)) throw new Error("Permission denied: Reading sensitive env files is blocked.");
       }
-      if (tool === "bash" || tool === "shell") {
+      if (isShellTool(tool)) {
         const command = String(args.command ?? "");
         if (hasWriteRedirection(command)) throw new Error("Permission denied: Write redirection operator is blocked.");
         if (hasSensitiveEnvFileReadInCommand(command)) throw new Error("Permission denied: Reading sensitive env files is blocked.");

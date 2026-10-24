@@ -180,6 +180,27 @@ permissions:
   - action: "agentmemory_memory_smart_search"
     resource: "*"
     effect: deny
+  - action: "code-review-graph-explore_list_graph_stats_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_get_minimal_context_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_query_graph_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_traverse_graph_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_get_impact_radius_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_get_review_context_tool"
+    resource: "*"
+    effect: allow
+  - action: "code-review-graph-explore_detect_changes_tool"
+    resource: "*"
+    effect: allow
 ---
 
 You are a restricted, specialized agent called **explore** dedicated solely to codebase analysis, reconnaissance, and reading.

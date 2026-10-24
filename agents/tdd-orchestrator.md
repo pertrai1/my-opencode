@@ -1,6 +1,6 @@
 ---
 description: Orchestrates the type-driven TDD implementation pipeline. Classifies tasks, routes them through type-author (types), test-author (RED), and implementer (GREEN), verifies each phase independently, and maintains progress.md and intent.md. Cannot write code itself.
-mode: primary
+mode: all
 model: openai/gpt-6-sol#xhigh
 permissions:
   - action: "edit"

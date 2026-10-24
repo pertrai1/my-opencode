@@ -602,6 +602,23 @@ test('Safety Plugin - Doom Loop Detection', async (t) => {
   });
 });
 
+for (const tool of ['shell', 'patch', 'subagent']) {
+  test(`Safety Plugin - Doom Loop Detection tracks the V2 ${tool} tool ID`, async () => {
+    const { plugin, directory: mockDir } = await createSafetyPlugin({
+      doomLoop: { enabled: true, bufferSize: 5, maxRepetitions: 3 },
+    });
+    const call = { tool, sessionID: `session-v2-${tool}`, callID: 'c1', args: { command: 'test' } };
+    const res = { title: tool, output: 'ok', metadata: {} };
+
+    await plugin["tool.execute.after"](call, res);
+    await plugin["tool.execute.after"](call, res);
+    await assert.rejects(plugin["tool.execute.after"](call, res), /\[DOOM LOOP DETECTED\]/);
+
+    await plugin.dispose();
+    fs.rmSync(mockDir, { recursive: true, force: true });
+  });
+}
+
 test('Safety Plugin - Plugin Options Parsing', async (t) => {
   await t.test('accepts plugin options when paths contain //', async () => {
     const mockDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-jsonc-test-'));

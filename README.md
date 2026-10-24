@@ -53,10 +53,10 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 ## Graph
 
-- `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
-- `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
-- `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — optional repository indexing and impact analysis. Its MCP server is configured but disabled by default.
+- **`code-review-graph`** (local MCP) — the [Code Review Graph](https://code-review-graph.com) server for every repository you open. OpenCode starts it in the session's workspace, so one global entry serves each repository. Inside a git repository it runs with `--auto-watch`, which updates the graph as files change while the session runs; elsewhere, such as a home or temporary folder, it starts without the watcher. The graph is stored in the repository's `.code-review-graph/` directory, which ignores itself in git.
+- **`code-review-graph-explore`** (local MCP, Code Mode off) — a second server for the `explore` agent, which denies `execute` and therefore cannot reach Code Mode tools. A global rule hides this server's tools from every other agent; `agents/explore.md` re-allows seven read-only tools: `list_graph_stats_tool`, `get_minimal_context_tool`, `query_graph_tool`, `traverse_graph_tool`, `get_impact_radius_tool`, `get_review_context_tool`, and `detect_changes_tool`. Building, embedding, and refactoring stay denied. This adds one idle process (about 50–100 MB) per OpenCode workspace.
+- `AGENTS.md` → **Code graph** — tells agents to use the graph only in git repositories, check it first, run a full build when it is missing or was built at another commit, and use graph tools before broad text search.
+- `plugins/crg-plugin.ts` — logs a pre-commit change analysis and updates the graph after file edits.
 
 ## Review
 
@@ -256,6 +256,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
 - `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- Lean's MCP deny actions use the registered names: `mdn_search`, `mdn_get-doc`, `mdn_get-compat`, `llm-core_get_active_instructions`, and `llm-core_lint_file`. Hyphens are preserved. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. The seven dormant `agentmemory_*` rules are retained for matching tools registered by other configuration sources; they do not enable those tools. Restart OpenCode after changing agent permissions.
 - `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
@@ -310,6 +311,7 @@ The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 - Use the `opsx-*` commands for OpenSpec change lifecycle work: new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard.
 - The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
 - Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
+- `tdd-orchestrator` uses `mode: all` to support direct `/apply` entry and SDLC delegation. `experimental.subagent_depth: 2` permits SDLC → TDD → worker launches; TDD retains its three-worker allowlist. Restart OpenCode after changing these settings.
 - OpenSpec verification is persisted in change-local `verification.md` and used as the canonical human review surface before archive.
 
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
@@ -322,6 +324,6 @@ configuration checkout alone does not install skills into other projects.
 
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
 2. `rtk init -g --opencode` to install the RTK plugin
-3. `code-review-graph install --platform opencode` to install the graph plugin
+3. `uv tool install code-review-graph` for the CLI used by the graph MCP server and plugin, both already configured here. Do not run `code-review-graph install --platform opencode` in this checkout; it would write to `opencode.jsonc` and append its own instructions to `AGENTS.md`.
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
