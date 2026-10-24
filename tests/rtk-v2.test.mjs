@@ -49,7 +49,7 @@ test('RTK evaluates project rules in the session repository', async (t) => {
   const hooks = await setup(t, 'cwd');
   const event = call();
   await hooks['execute.before'](event);
-  assert.equal(event.input.command, os.tmpdir());
+  assert.equal(event.input.command, fs.realpathSync(os.tmpdir()));
 });
 
 test('RTK timeout preserves the original command even when the CLI ignores SIGTERM', async (t) => {

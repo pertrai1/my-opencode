@@ -7,7 +7,7 @@ import { test } from "node:test";
 import plugin from "../plugins/atuin.ts";
 
 async function setup(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "atuin-test-"));
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "atuin-test-")));
   const log = path.join(directory, "calls.jsonl");
   fs.writeFileSync(path.join(directory, "atuin"), `#!/usr/bin/env node
 const fs = require("node:fs");

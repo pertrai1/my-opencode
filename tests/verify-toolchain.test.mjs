@@ -1,19 +1,32 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 import test from "node:test";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 
-function verify(node, npm = "10.9.9") {
-  return spawnSync(process.execPath, ["--input-type=module", "--eval", `
+function verify(node, npm = "10.9.9", env = {}) {
+  return spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      `
     Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(node)} });
     await import("./scripts/verify-toolchain.mjs");
-  `], {
-    cwd: repository,
-    encoding: "utf8",
-    env: { ...process.env, npm_config_user_agent: npm ? `npm/${npm} node/v${node}` : "" },
-  });
+  `,
+    ],
+    {
+      cwd: repository,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        npm_config_user_agent: npm ? `npm/${npm} node/v${node}` : "",
+        ...env,
+      },
+    },
+  );
 }
 
 for (const [node, expected] of [
@@ -28,7 +41,10 @@ for (const [node, expected] of [
   test(`toolchain verifier ${expected ? "rejects" : "accepts"} reported Node ${node}`, () => {
     const result = verify(node);
     assert.equal(result.status, expected, result.stdout + result.stderr);
-    assert.match(result.stdout + result.stderr, expected ? /node .* does not satisfy >=22\.22\.0 <23/ : /Toolchain OK/);
+    assert.match(
+      result.stdout + result.stderr,
+      expected ? /node .* does not satisfy >=22\.22\.0 <23/ : /Toolchain OK/,
+    );
   });
 }
 
@@ -54,30 +70,57 @@ for (const [node, npm, needsNode, needsNpm] of [
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /npm run verify:toolchain/);
     if (needsNode) {
-      assert.match(result.stderr, /For nvm users:\n {2}nvm install 22\n {2}nvm use 22/);
+      assert.match(
+        result.stderr,
+        /For nvm users:\n {2}nvm install 22\n {2}nvm use 22/,
+      );
     } else {
       assert.doesNotMatch(result.stderr, /nvm/);
     }
     if (needsNpm) {
-      assert.match(result.stderr, /npm install --global npm@10\.9\.9\n {2}npm run verify:toolchain/);
+      assert.match(
+        result.stderr,
+        /npm install --global npm@10\.9\.9\n {2}npm run verify:toolchain/,
+      );
       if (needsNode) {
-        assert.match(result.stderr, /If npm still does not satisfy >=10 <11 after selecting Node\.js/);
-        assert.ok(result.stderr.indexOf("npm run verify:toolchain") < result.stderr.indexOf("npm install --global"));
+        assert.match(
+          result.stderr,
+          /If npm still does not satisfy >=10 <11 after selecting Node\.js/,
+        );
+        assert.ok(
+          result.stderr.indexOf("npm run verify:toolchain") <
+            result.stderr.indexOf("npm install --global"),
+        );
       }
     } else {
       assert.doesNotMatch(result.stderr, /npm install/);
     }
     if (!npm) {
-      assert.match(result.stderr, /npm version is unknown because npm's user-agent was not provided/);
-      assert.doesNotMatch(result.stderr, /npm (?:is )?missing|npm (?:is )?not installed/);
+      assert.match(
+        result.stderr,
+        /npm version is unknown because npm's user-agent was not provided/,
+      );
+      assert.doesNotMatch(
+        result.stderr,
+        /npm (?:is )?missing|npm (?:is )?not installed/,
+      );
     }
     assert.doesNotMatch(result.stderr, /sudo/);
   });
 }
 
-test("compatible versions keep success output free of repair guidance", () => {
-  const result = verify("22.22.0", "10.9.9");
-  assert.equal(result.status, 0);
-  assert.equal(result.stdout, "Toolchain OK { node: '22.22.0', npm: '10.9.9' }\n");
-  assert.equal(result.stderr, "");
-});
+for (const color of ["0", "1"]) {
+  test(`compatible versions keep success output free of repair guidance with FORCE_COLOR=${color}`, () => {
+    const result = verify("22.22.0", "10.9.9", {
+      FORCE_COLOR: color,
+      NO_COLOR: undefined,
+      NODE_DISABLE_COLORS: undefined,
+    });
+    assert.equal(result.status, 0);
+    assert.match(
+      stripVTControlCharacters(result.stdout),
+      /^Toolchain OK \{ node: '22\.22\.0', npm: '10\.9\.9' \}\n$/,
+    );
+    assert.equal(result.stderr, "");
+  });
+}

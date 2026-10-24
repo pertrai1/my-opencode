@@ -1,7 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openai/gpt-6-astra",
-  "small_model": "openai/gpt-6-sol",
+  "model": "openai/gpt-6.1-sol#high",
   "providers": {
     "openai": {
       "settings": {
@@ -10,7 +9,7 @@
         "chunkTimeout": 600000,
       },
       "models": {
-        "gpt-6-astra": {
+        "gpt-6.1-sol": {
           "settings": {
             "reasoningEffort": "high",
           },
@@ -23,7 +22,7 @@
   "agents": {
     "lean": {
       "description": "Lean default agent with a smaller first-call context. Uses local code tools by default and keeps heavier tools opt-in via the build and plan agents.",
-      "model": "openai/gpt-6-luna#high",
+      "model": "openai/gpt-6-astra#high",
       "mode": "primary",
       "permissions": [
         {
@@ -119,7 +118,7 @@
       ],
     },
     "build": {
-      "model": "openai/gpt-6-sol",
+      "model": "openai/gpt-6.1-sol",
     },
     "plan": {
       "model": "openai/gpt-6-astra",
@@ -145,8 +144,7 @@
       "description": "Custom review and implementation agents plus reviewer prompts",
     },
   },
-  "autoupdate": "notify",
-  "enabled_providers": ["openai", "ollama", "anthropic", "github-copilot"],
+  "update": "notify",
   "permissions": [
     { "action": "read", "resource": "*", "effect": "allow" },
     { "action": "read", "resource": "*.env", "effect": "deny" },
@@ -167,21 +165,61 @@
     { "action": "shell", "resource": "git clean *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git clean *", "effect": "deny" },
     { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git reset --hard *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git reset --hard *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git restore *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git restore *", "effect": "deny" },
     { "action": "shell", "resource": "git checkout -- *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git checkout -- *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git checkout -- *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push --force *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push --force *", "effect": "deny" },
-    { "action": "shell", "resource": "git push --force-with-lease *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push --force-with-lease *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git push --force *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push --force-with-lease *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push --force-with-lease *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push * --force", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push * --force", "effect": "deny" },
-    { "action": "shell", "resource": "git push * --force-with-lease", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push * --force-with-lease", "effect": "deny" },
-    { "action": "shell", "resource": "git push origin --delete *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push origin --delete *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git push * --force",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push * --force-with-lease",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push * --force-with-lease",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push origin --delete *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push origin --delete *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push * :*", "effect": "deny" },
     { "action": "shell", "resource": "rtk git push * :*", "effect": "deny" },
     { "action": "shell", "resource": "git tag -d *", "effect": "deny" },
@@ -189,20 +227,6 @@
     { "action": "shell", "resource": "git rebase *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git rebase *", "effect": "deny" },
   ],
-  "provider": {
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama (local)",
-      "options": {
-        "baseURL": "http://localhost:11434/v1",
-      },
-      "models": {
-        "qwen3-coder-30b-64k:latest": {
-          "name": "Qwen-3-Coder-30B-64K",
-        },
-      },
-    },
-  },
   "mcp": {
     "servers": {
       "mdn": {

@@ -88,7 +88,7 @@ test('irrelevant commands and unsuccessful edits do not invoke the graph CLI', a
 });
 
 function graphProcess(t, script) {
-  const directory = fs.mkdtempSync(path.join(tmpdir(), 'graph repository '));
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(tmpdir(), 'graph repository ')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const executions = [];
   const run = async (file, args, options) => {
