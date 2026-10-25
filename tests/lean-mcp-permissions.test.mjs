@@ -20,34 +20,48 @@ function readConfig() {
   return config;
 }
 
-test('lean denies the registered MCP names with hyphens preserved', async () => {
-  const config = readConfig();
+async function leanRules(config) {
   const schemaRequire = createRequire(import.meta.resolve('@opencode/schema/config/agent'));
   const { Schema } = await import(schemaRequire.resolve('effect'));
   const { ConfigAgent } = await import('@opencode/schema/config/agent');
-  const lean = Schema.decodeUnknownSync(ConfigAgent.Info, { onExcessProperty: 'error' })(config.agents.lean);
+  return Schema.decodeUnknownSync(ConfigAgent.Info, { onExcessProperty: 'error' })(config.agents.lean).permissions;
+}
 
-  for (const [server, tool] of restrictedTools) {
+function matches(pattern, value) {
+  const source = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${source}$`).test(value);
+}
+
+// Agent rules follow global rules, and the last matching rule wins.
+function effectOf(rules, action) {
+  return rules.reduce(
+    (result, rule) => (matches(rule.action, action) && matches(rule.resource, '*') ? rule.effect : result),
+    'allow',
+  );
+}
+
+test('lean denies whole restricted servers, including tools they add later', async () => {
+  const config = readConfig();
+  const lean = await leanRules(config);
+  const rules = [...config.permissions, ...lean];
+  for (const server of new Set(restrictedTools.map(([name]) => name))) {
     assert.ok(config.mcp.servers[server], `missing server: ${server}`);
-    const action = `${server}_${tool}`;
-    assert.deepEqual(lean.permissions.filter(rule => rule.action === action), [
-      { action, resource: '*', effect: 'deny' },
-    ], `missing exact deny for registered tool: ${action}`);
-    const obsoleteAlias = action.replaceAll('-', '_');
-    if (obsoleteAlias !== action) {
-      assert.ok(!lean.permissions.some(rule => rule.action === obsoleteAlias),
-        `obsolete underscore alias for ${action}`);
-    }
+    assert.deepEqual(lean.filter(rule => rule.action.startsWith(`${server}_`)), [
+      { action: `${server}_*`, resource: '*', effect: 'deny' },
+    ], `${server} needs one wildcard deny`);
+    assert.equal(effectOf(rules, `${server}_future-tool`), 'deny');
   }
+  for (const [server, tool] of restrictedTools) {
+    assert.equal(effectOf(rules, `${server}_${tool}`), 'deny', `${server}_${tool}`);
+  }
+  assert.equal(effectOf(rules, 'context7_resolve-library-id'), 'allow', 'Context7 stays available');
 });
 
-test('dormant memory restrictions remain explicit without registering a memory server', () => {
+test('dormant memory restrictions remain explicit without registering a memory server', async () => {
   const config = readConfig();
   assert.equal(config.mcp.servers.agentmemory, undefined);
-  const actions = ['audit', 'export', 'governance_delete', 'recall', 'save', 'sessions', 'smart_search'];
-  for (const suffix of actions) {
-    const action = `agentmemory_memory_${suffix}`;
-    assert.deepEqual(config.agents.lean.permissions.find(rule => rule.action === action),
-      { action, resource: '*', effect: 'deny' });
-  }
+  const lean = await leanRules(config);
+  assert.deepEqual(lean.filter(rule => rule.action.startsWith('agentmemory_')), [
+    { action: 'agentmemory_*', resource: '*', effect: 'deny' },
+  ]);
 });

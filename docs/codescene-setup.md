@@ -1,8 +1,27 @@
 # CodeScene setup for OpenCode v2 and Codex CLI
 
-This guide installs the standalone CodeScene MCP server on **Linux x64 with
-glibc**. It preserves the repository's existing `codescene` registration and
-`AGENTS.md`. Other platforms should use the
+## Default OpenCode registration
+
+`opencode.jsonc` registers `codescene` as `npx -y @codescene/codehealth-mcp@1.5.12`.
+The package downloads the `cs-mcp` binary for its own version, so the npm pin also
+pins the binary. OpenCode substitutes `CS_ACCESS_TOKEN` from
+`~/.secrets/codescene-token` through `{file:}`. Keep that file readable only by
+your user (`chmod 600`), and check that it is present without printing it:
+
+```bash
+test -s ~/.secrets/codescene-token && echo present
+```
+
+A missing file becomes an empty string: the server still connects, but analysis
+is unauthenticated. Use `verify_installation` rather than a connection check. To
+upgrade, change the version in `opencode.jsonc`, restart OpenCode, and run
+`verify_installation` again.
+
+## Hosted Linux installation
+
+The rest of this guide installs the standalone CodeScene MCP server on **Linux x64
+with glibc** for hosted environments that inject `CS_ACCESS_TOKEN` as an environment
+variable. It preserves `AGENTS.md`. Other platforms should use the
 [official installation guide](https://github.com/codescene-oss/codescene-mcp-server/blob/MCP-1.5.10/skills/installing-and-activating-codescene-mcp/SKILL.md).
 
 ## Install pinned tools
@@ -81,8 +100,9 @@ Keep `CS_ACCESS_TOKEN` in the environment's secret facility. Never copy its valu
 into configuration, arguments, logs, or the image. Start clients after secret
 injection; restart an existing OpenCode service so it inherits the variable.
 
-For OpenCode, update only the existing `mcp.servers.codescene` entry to launch the
-installed binary. Preserve its environment reference and the surrounding settings:
+For OpenCode in that environment, update only the existing `mcp.servers.codescene`
+entry to launch the installed binary and read the injected variable instead of the
+local token file. Preserve the surrounding settings:
 
 ```json
 {

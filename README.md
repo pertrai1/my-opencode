@@ -66,7 +66,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 ## Graph
 
-- **`code-review-graph`** (local MCP) — the [Code Review Graph](https://code-review-graph.com) server for every repository you open. OpenCode starts it in the session's workspace, so one global entry serves each repository. Inside a git repository it runs with `--auto-watch`, which updates the graph as files change while the session runs; elsewhere, such as a home or temporary folder, it starts without the watcher. The graph is stored in the repository's `.code-review-graph/` directory, which ignores itself in git.
+- **`code-review-graph`** (local MCP) — the [Code Review Graph](https://code-review-graph.com) server for every repository you open. OpenCode starts it in the session's workspace, so one global entry serves each repository. Inside a git repository it runs with `--auto-watch`, which updates the graph as files change while the session runs; elsewhere, such as a home or temporary folder, it starts without the watcher. The graph is stored in the repository's `.code-review-graph/` directory, which ignores itself in git. A global rule denies `apply_refactor_tool`, which writes source files without `edit` permission checks; only `build` re-allows it.
 - **`code-review-graph-explore`** (local MCP, Code Mode off) — a second server for the `explore` agent, which denies `execute` and therefore cannot reach Code Mode tools. A global rule hides this server's tools from every other agent; `agents/explore.md` re-allows seven read-only tools: `list_graph_stats_tool`, `get_minimal_context_tool`, `query_graph_tool`, `traverse_graph_tool`, `get_impact_radius_tool`, `get_review_context_tool`, and `detect_changes_tool`. Building, embedding, and refactoring stay denied. This adds one idle process (about 50–100 MB) per OpenCode workspace.
 - `AGENTS.md` → **Code graph** — tells agents to use the graph only in git repositories, check it first, run a full build when it is missing or was built at another commit, and use graph tools before broad text search.
 - `plugins/crg-plugin.ts` — logs a pre-commit change analysis and updates the graph after file edits.
@@ -237,6 +237,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 ## Reference
 
 - **`mdn`** (remote) — MDN Web Docs reference and browser compatibility data. `https://mcp.mdn.mozilla.net/`
+- **`chrome-devtools`** (local) — Chrome automation and inspection. `--no-usage-statistics` turns off Google's usage statistics, and `--isolated` gives each run a temporary browser profile, so sign-ins do not persist between runs. `npx -y chrome-devtools-mcp@1.12.0`
 
 ## Verification
 
@@ -244,7 +245,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - [Local tool observations](docs/tool-observation.md) — opt-in, metadata-only OTLP capture of tool failures, durations and repeated calls; local Collector setup and diagnostic walkthrough.
 
 - [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
-- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
+- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp@0.29.10`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
@@ -256,6 +257,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 ## Security
 
 - `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
+- **MCP pins** — servers launched by `npx` pin exact versions, and the SonarQube image is pinned by digest; `tests/opencode-mcp.test.mjs` enforces this. Local servers inherit OpenCode's environment, so review a release before changing its pin.
+- `plugins/sonarqube-mcp.ts` — enables `sonarqube` only where `sonar-project.properties` sets `sonar.host.url`, and maps that host's locally resolved address into the container with `--add-host`.
 - `skills/security-audit/` — vendored [security-audit](https://github.com/pertrai1/security-audit-skill) skill. Run `/security-audit [scope]` to load it and start a full audit. Full-audit artifacts default to `.agents/docs/security-audits/<repo-name>/run-<N>` in this configuration directory; generated runs are intentionally ignored by Git.
 
 ## Accessibility
@@ -269,7 +272,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
 - `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions, specialist subagent delegation, and direct web search/fetch. Selected MCP tools remain denied for this agent.
-- Lean's MCP deny actions use the registered names: `mdn_search`, `mdn_get-doc`, `mdn_get-compat`, `llm-core_get_active_instructions`, and `llm-core_lint_file`. Hyphens are preserved. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. The seven dormant `agentmemory_*` rules are retained for matching tools registered by other configuration sources; they do not enable those tools. Restart OpenCode after changing agent permissions.
+- Lean denies the whole `mdn` and `llm-core` servers with `mdn_*` and `llm-core_*`, so tools those servers add later stay denied. Server names keep their hyphens. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. A dormant `agentmemory_*` rule covers matching tools registered by other configuration sources; it does not enable those tools. Restart OpenCode after changing agent permissions.
 - `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
@@ -318,7 +321,7 @@ Model philosophy: specs, architecture, contracts, orchestration, verification, a
 
 How enforcement works:
 
-- **Permission globs** — each agent's `edit` permission scopes its lane; violations are blocked by opencode, not by prompt discipline.
+- **Permission globs** — each agent's `edit` permission scopes its lane; violations are blocked by opencode, not by prompt discipline. The graph server's `apply_refactor_tool` writes files outside these globs, so a global rule denies it to every agent except `build`.
 - **Scoped reads and shell** — the test-author only gets contract/test file reads plus sanitized spec excerpts in its handoff, and the pipeline agents can only run narrow verification commands.
 - **Checksum verification** — the orchestrator hashes contract files after Phase 0 and test files after Phase 1, and rejects Phase 2 work if either changed.
 - **Independent verification** — the orchestrator re-runs typecheck and tests itself between phases; agent reports are claims, not evidence.

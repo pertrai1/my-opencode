@@ -159,27 +159,6 @@ permissions:
   - action: "shell"
     resource: "rtk git stash list *"
     effect: allow
-  - action: "agentmemory_memory_audit"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_export"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_governance_delete"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_recall"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_save"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_sessions"
-    resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_smart_search"
-    resource: "*"
-    effect: deny
   - action: "code-review-graph-explore_list_graph_stats_tool"
     resource: "*"
     effect: allow

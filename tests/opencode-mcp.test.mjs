@@ -16,12 +16,26 @@ async function loadConfig() {
   const { config, error } = ts.parseConfigFileTextToJson(filename, fs.readFileSync(filename, 'utf8'));
   assert.equal(error, undefined);
   const { servers } = Schema.decodeUnknownSync(ConfigMCP.Info, { onExcessProperty: 'error' })(config.mcp);
-  return { servers, permissions: config.permissions };
+  return { servers, permissions: config.permissions, agents: config.agents };
 }
 
 function matches(pattern, value) {
   const source = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(`^${source}$`).test(value);
+}
+
+// Agent rules follow global rules, and the last matching rule wins.
+function effectOf(rules, action) {
+  return rules.reduce(
+    (result, rule) => (matches(rule.action, action) && matches(rule.resource, '*') ? rule.effect : result),
+    'allow',
+  );
+}
+
+function agentFileRules(filename) {
+  const frontMatter = fs.readFileSync(filename, 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+  const rulePattern = /^ {2}- action: "([^"]+)"\n {4}resource: "([^"]+)"\n {4}effect: (allow|deny|ask)$/gm;
+  return [...frontMatter.matchAll(rulePattern)].map(([, action, resource, effect]) => ({ action, resource, effect }));
 }
 
 test('MCP servers load through the v2 schema with both code graph servers enabled', async () => {
@@ -52,12 +66,61 @@ test('the main graph server watches files only inside a git repository', async (
   assert.equal(run(plain), 'mcp');
 });
 
+test('npx and Docker servers run pinned releases', async () => {
+  const { servers } = await loadConfig();
+  const launchers = Object.entries(servers).filter(([, server]) => ['npx', 'docker'].includes(server.command?.[0]));
+  assert.ok(launchers.length > 0);
+  for (const [name, { command: [launcher, ...args] }] of launchers) {
+    if (launcher === 'npx') {
+      const spec = args.find((arg) => arg.startsWith('--package='))?.slice('--package='.length)
+        ?? args.find((arg) => !arg.startsWith('-'));
+      assert.match(spec, /^(@[^/@]+\/)?[^/@]+@\d+\.\d+\.\d+$/, `${name} must pin an exact npm version`);
+    } else {
+      const image = args.findLast((arg) => !arg.startsWith('-'));
+      assert.match(image, /@sha256:[0-9a-f]{64}$/, `${name} must pin an image digest`);
+      assert.ok(!args.some((arg) => arg.startsWith('--pull')), `${name} must not pull a newer image`);
+    }
+  }
+});
+
+test('the CodeScene guide and skill describe the configured registration', async () => {
+  const { servers } = await loadConfig();
+  const { command, environment } = servers.codescene;
+  const tokenFile = environment.CS_ACCESS_TOKEN.match(/^\{file:(.+)\}$/)?.[1];
+  assert.ok(tokenFile, 'the token comes from a file');
+  const guide = fs.readFileSync(new URL('../docs/codescene-setup.md', import.meta.url), 'utf8');
+  const skill = fs.readFileSync(new URL('../skills/codescene-mcp/SKILL.md', import.meta.url), 'utf8');
+  assert.ok(guide.includes(command.join(' ')), 'guide names the launch command');
+  assert.ok(guide.includes(tokenFile), 'guide names the token file');
+  assert.ok(skill.includes(tokenFile), 'skill names the token file');
+});
+
+test('chrome-devtools opts out of usage statistics and uses a temporary profile', async () => {
+  const { servers } = await loadConfig();
+  const { command } = servers['chrome-devtools'];
+  assert.ok(command.includes('--no-usage-statistics'));
+  assert.ok(command.includes('--isolated'));
+});
+
 test('only the explore agent can see the explore graph server', async () => {
   const { permissions } = await loadConfig();
-  const effect = (action) => permissions.reduce(
-    (result, rule) => (matches(rule.action, action) && matches(rule.resource, '*') ? rule.effect : result),
-    'allow',
-  );
-  assert.equal(effect('code-review-graph-explore_list_graph_stats_tool'), 'deny');
-  assert.equal(effect('code-review-graph_list_graph_stats_tool'), 'allow');
+  assert.equal(effectOf(permissions, 'code-review-graph-explore_list_graph_stats_tool'), 'deny');
+  assert.equal(effectOf(permissions, 'code-review-graph_list_graph_stats_tool'), 'allow');
+});
+
+test('only build can apply graph refactors, which bypass edit path rules', async () => {
+  const { permissions, agents } = await loadConfig();
+  const action = 'code-review-graph_apply_refactor_tool';
+  assert.equal(effectOf(permissions, action), 'deny');
+  assert.equal(effectOf(permissions, 'code-review-graph_refactor_tool'), 'allow', 'previews stay available');
+  for (const [name, agent] of Object.entries(agents)) {
+    const expected = name === 'build' ? 'allow' : 'deny';
+    assert.equal(effectOf([...permissions, ...(agent.permissions ?? [])], action), expected, `${name} agent`);
+  }
+  const agentDirectory = fileURLToPath(new URL('../agents/', import.meta.url));
+  for (const file of fs.readdirSync(agentDirectory).filter((entry) => entry.endsWith('.md'))) {
+    const rules = [...permissions, ...agentFileRules(path.join(agentDirectory, file))];
+    assert.ok(rules.length > permissions.length, `agents/${file} rules were not parsed`);
+    assert.equal(effectOf(rules, action), 'deny', `agents/${file}`);
+  }
 });
