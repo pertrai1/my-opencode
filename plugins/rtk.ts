@@ -2,6 +2,7 @@ import { Plugin } from "@opencode/plugin"
 import { Error as ToolError } from "@opencode/plugin/promise/tool"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { isShellTool } from "../lib/shell-command.ts"
 
 const execFileAsync = promisify(execFile)
 const rewriteTimeoutMs = 10_000
@@ -9,11 +10,6 @@ const rewriteTimeoutMs = 10_000
 function getCommandArgs(args: unknown): Record<string, unknown> | null {
   if (!args || typeof args !== "object") return null
   return args as Record<string, unknown>
-}
-
-function isShellTool(tool: unknown): boolean {
-  const normalizedTool = String(tool ?? "").toLowerCase()
-  return normalizedTool === "bash" || normalizedTool === "shell"
 }
 
 export default Plugin.define({

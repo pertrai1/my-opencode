@@ -422,22 +422,48 @@ test("link-unit requires dependencies to be linked unless parallel work is appro
   assert.match(linked.history.at(-1).note, /parallel work approved: Rob approved building checkout/);
 });
 
-test("every state change rewrites progress.md from the work item", async () => {
+test("inception transitions preserve the execution checkpoint while persisting lifecycle state", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "work-item-"));
-  const item = await readyIntent(root, [
-    { name: "Cart", stories: ["US-1"] },
-    { name: "Checkout", stories: ["US-2"], dependsOn: ["u-cart"] },
-  ]);
-  const progressPath = path.join(root, ".agents/work", item.id, "progress.md");
-  assert.match(await readFile(progressPath, "utf8"), /- Status: inception\n/);
+  const item = await createIntent(root);
+  const directory = path.join(root, ".agents/work", item.id);
+  const checkpoint = Buffer.from([
+    `# Progress: ${item.id}`,
+    "Execution state: blocked",
+    "## Acceptance criteria",
+    "- [x] Keep résumé import evidence",
+    "## Steps",
+    "- [x] Reproduced the original defect",
+    "- [ ] Review the pending unit",
+    "## Verification",
+    "- npm test: passed; evidence in /tmp/check.log",
+    "## Blockers",
+    "- Human review is pending",
+    "## Next action",
+    "Ask the owner to review US-1 before continuing",
+    "",
+  ].join("\r\n"));
+  await writeFile(path.join(directory, "progress.md"), checkpoint);
+  const transition = async (command, args = []) => {
+    const updated = await run([command, "--root", root, item.id, ...args]);
+    assert.deepEqual(await readFile(path.join(directory, "progress.md")), checkpoint, `${command} must preserve the checkpoint`);
+    assert.deepEqual(JSON.parse(await readFile(path.join(directory, "work.json"), "utf8")), updated);
+    return updated;
+  };
 
-  await run(["approve-inception", "--root", root, item.id]);
-  await run(["link-unit", "--root", root, item.id, "u-cart", "--change", "add-cart"]);
-  const progress = await readFile(progressPath, "utf8");
-  assert.match(progress, /- Status: inception-approved\n/);
-  assert.match(progress, /- Next action: Start an OpenSpec change for u-checkout, then run link-unit\./);
-  assert.match(progress, /\| u-cart \| linked \| add-cart \|/);
-  assert.match(progress, /\| u-checkout \| approved \| - \|/);
+  assert.equal((await transition("init-inception")).status, "inception");
+  await transition("add-unit", ["--name", "Cart", "--story", "US-1"]);
+  await transition("add-unit", ["--name", "Temporary"]);
+  const changed = await transition("update-unit", ["u-cart", "--summary", "Approved scope"]);
+  assert.equal(changed.units[0].summary, "Approved scope");
+  const removed = await transition("remove-unit", ["u-temporary"]);
+  assert.deepEqual(removed.units.map((unit) => unit.id), ["u-cart"]);
+  await writeInception(root, item.id, { stories: ["US-1"], units: removed.units });
+  assert.equal((await transition("approve-inception", ["--by", "synthetic-test-human"])).inception.approved, true);
+  const linked = await transition("link-unit", ["u-cart", "--change", "add-cart"]);
+  assert.equal(linked.units[0].change, "add-cart");
+  assert.equal(linked.units[0].status, "linked");
+  assert.equal(linked.history.length, 8);
+  assert.equal((await run(["resume", "--root", root, item.id])).units[0].change, "add-cart");
 });
 
 test("approval rejects artifact stories and dependencies that differ from registered units", async () => {

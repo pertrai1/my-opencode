@@ -9,7 +9,7 @@ import {
 const SESSION_ID = "sess_opaque_01HXYZ";
 const TIMESTAMP = "2026-09-29T16:00:00.000Z";
 const CURRENT_AGENT = "lean";
-const CURRENT_MODEL = "openai/gpt-6-luna#high";
+const CURRENT_MODEL = "openai/gpt-6-astra#high";
 
 function typesafeResponse(choice, probabilities, confidence = 0.9) {
   return {
@@ -77,7 +77,7 @@ test("records an accepted Jev route using the stable v1 contract", async () => {
     currentModel: CURRENT_MODEL,
     selectedRoute: "build",
     selectedAgent: "build",
-    selectedModel: "openai/gpt-6-sol",
+    selectedModel: "openai/gpt-6.1-sol",
     confidence: 0.9,
     probability: 0.8,
     latencyMs: 0,
@@ -255,10 +255,10 @@ test("isolates sink failures from the route decision", async () => {
 
   assert.equal(decision.route, "build");
   assert.equal(decision.agent, "build");
-  assert.equal(decision.model, "openai/gpt-6-sol");
+  assert.equal(decision.model, "openai/gpt-6.1-sol");
   assert.equal(record.selectedRoute, "build");
   assert.equal(record.selectedAgent, "build");
-  assert.equal(record.selectedModel, "openai/gpt-6-sol");
+  assert.equal(record.selectedModel, "openai/gpt-6.1-sol");
 });
 
 test("does not wait for a never-settling sink", async () => {
@@ -266,7 +266,7 @@ test("does not wait for a never-settling sink", async () => {
     source: "jev",
     route: "build",
     agent: "build",
-    model: "openai/gpt-6-sol",
+    model: "openai/gpt-6.1-sol",
     accepted: true,
     reason: "threshold-met",
   });

@@ -51,7 +51,7 @@ test("prompt hook keeps provider error text out of diagnostics and provenance", 
   await plugin.setup({
     session: {
       hook: async (name, handler) => { assert.equal(name, "prompt"); promptHook = handler; },
-      get: async () => ({ agent: "lean", model: { providerID: "openai", id: "gpt-6-luna", variant: "high" } }),
+      get: async () => ({ agent: "lean", model: { providerID: "openai", id: "gpt-6-astra", variant: "high" } }),
       switchAgent: async (input) => switches.push(input),
       switchModel: async (input) => switches.push(input),
     },
@@ -72,6 +72,6 @@ test("prompt hook keeps provider error text out of diagnostics and provenance", 
   assert.equal(record.reason, "typesafe-error");
   assert.equal(record.fallback, true);
   assert.equal(record.selectedAgent, "lean");
-  assert.equal(record.selectedModel, "openai/gpt-6-luna#high");
+  assert.equal(record.selectedModel, "openai/gpt-6-astra#high");
   assert.deepEqual(switches, []);
 });

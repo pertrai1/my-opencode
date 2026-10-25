@@ -27,10 +27,12 @@ credentials or permissions.
 
 ## Authentication and availability
 
-Forward `CS_ACCESS_TOKEN` from the environment by name only. Never inspect or
-persist its value, dump the environment, or include credentials in arguments or
-logs. Use `verify_installation` with the repository root for diagnosis. Stop
-dependent analysis on authentication failure and report the blocker safely.
+The `codescene` registration supplies `CS_ACCESS_TOKEN`: from
+`~/.secrets/codescene-token` by default, or from the environment in hosted setups.
+Never read or print the token or its file, persist its value, dump the environment,
+or include credentials in arguments or logs. Use `verify_installation` with the
+repository root for diagnosis. Stop dependent analysis on authentication failure
+and report the blocker safely.
 
 This setup uses standalone Code Health capabilities. Do not configure Core
 projects, account IDs, or on-premises URLs, or call Core APIs to probe entitlement.

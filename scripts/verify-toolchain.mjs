@@ -39,6 +39,22 @@ const mismatches = Object.entries(requirements)
 if (mismatches.length > 0) {
   console.error("Toolchain mismatch:");
   console.error(mismatches.join("\n"));
+  const nodeMismatch = !matchesVersionRange(versions.node, requirements.node);
+  if (nodeMismatch) {
+    const nodeMajor = requirements.node.match(/^>=(\d+)/)[1];
+    console.error("Select a Node.js version satisfying %s.", requirements.node);
+    console.error("For nvm users:\n  nvm install %s\n  nvm use %s", nodeMajor, nodeMajor);
+  }
+  if (!versions.npm) {
+    console.error("npm version is unknown because npm's user-agent was not provided; run the check through npm.");
+  }
+  console.error("Recheck with:\n  npm run verify:toolchain");
+  if (versions.npm && !matchesVersionRange(versions.npm, requirements.npm)) {
+    console.error(nodeMismatch
+      ? `If npm still does not satisfy ${requirements.npm} after selecting Node.js, run:`
+      : `To select the repository's declared npm version (${requirements.npm}), run:`);
+    console.error("  npm install --global %s\n  npm run verify:toolchain", packageJson.packageManager);
+  }
   process.exitCode = 1;
 } else {
   console.log("Toolchain OK", { node: versions.node, npm: versions.npm });

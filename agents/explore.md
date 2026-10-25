@@ -159,27 +159,27 @@ permissions:
   - action: "shell"
     resource: "rtk git stash list *"
     effect: allow
-  - action: "agentmemory_memory_audit"
+  - action: "code-review-graph-explore_list_graph_stats_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_export"
+    effect: allow
+  - action: "code-review-graph-explore_get_minimal_context_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_governance_delete"
+    effect: allow
+  - action: "code-review-graph-explore_query_graph_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_recall"
+    effect: allow
+  - action: "code-review-graph-explore_traverse_graph_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_save"
+    effect: allow
+  - action: "code-review-graph-explore_get_impact_radius_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_sessions"
+    effect: allow
+  - action: "code-review-graph-explore_get_review_context_tool"
     resource: "*"
-    effect: deny
-  - action: "agentmemory_memory_smart_search"
+    effect: allow
+  - action: "code-review-graph-explore_detect_changes_tool"
     resource: "*"
-    effect: deny
+    effect: allow
 ---
 
 You are a restricted, specialized agent called **explore** dedicated solely to codebase analysis, reconnaissance, and reading.

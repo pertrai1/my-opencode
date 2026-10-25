@@ -1,7 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openai/gpt-6-astra",
-  "small_model": "openai/gpt-6-sol",
+  "experimental": {
+    "todo": true,
+    "subagent_depth": 2,
+    "background_compaction": true,
+  },
+  "model": "openai/gpt-6.1-sol#high",
   "providers": {
     "openai": {
       "settings": {
@@ -10,7 +14,7 @@
         "chunkTimeout": 600000,
       },
       "models": {
-        "gpt-6-astra": {
+        "gpt-6.1-sol": {
           "settings": {
             "reasoningEffort": "high",
           },
@@ -19,22 +23,25 @@
     },
   },
   "default_agent": "lean",
+  "websearch": {
+    "provider": "random",
+  },
   // Optional Jev routing is disabled by default; enable with OPENCODE_JEV_ROUTING=1.
   "agents": {
     "lean": {
       "description": "Lean default agent with a smaller first-call context. Uses local code tools by default and keeps heavier tools opt-in via the build and plan agents.",
-      "model": "openai/gpt-6-luna#high",
+      "model": "openai/gpt-6-astra#high",
       "mode": "primary",
       "permissions": [
         {
           "action": "webfetch",
           "resource": "*",
-          "effect": "deny",
+          "effect": "allow",
         },
         {
           "action": "websearch",
           "resource": "*",
-          "effect": "deny",
+          "effect": "allow",
         },
         {
           "action": "skill",
@@ -54,72 +61,35 @@
         {
           "action": "todowrite",
           "resource": "*",
-          "effect": "deny",
+          "effect": "allow",
         },
         {
-          "action": "mdn_search",
+          "action": "mdn_*",
           "resource": "*",
           "effect": "deny",
         },
         {
-          "action": "mdn_get_doc",
+          "action": "llm-core_*",
           "resource": "*",
           "effect": "deny",
         },
+        // Dormant until another configuration source registers agentmemory.
         {
-          "action": "mdn_get_compat",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "llm_core_get_active_instructions",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "llm_core_lint_file",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_audit",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_export",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_governance_delete",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_recall",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_save",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_sessions",
-          "resource": "*",
-          "effect": "deny",
-        },
-        {
-          "action": "agentmemory_memory_smart_search",
+          "action": "agentmemory_*",
           "resource": "*",
           "effect": "deny",
         },
       ],
     },
     "build": {
-      "model": "openai/gpt-6-sol",
+      "model": "openai/gpt-6.1-sol",
+      "permissions": [
+        {
+          "action": "code-review-graph_apply_refactor_tool",
+          "resource": "*",
+          "effect": "allow",
+        },
+      ],
     },
     "plan": {
       "model": "openai/gpt-6-astra",
@@ -145,8 +115,7 @@
       "description": "Custom review and implementation agents plus reviewer prompts",
     },
   },
-  "autoupdate": "notify",
-  "enabled_providers": ["openai", "ollama", "anthropic", "github-copilot"],
+  "update": "notify",
   "permissions": [
     { "action": "read", "resource": "*", "effect": "allow" },
     { "action": "read", "resource": "*.env", "effect": "deny" },
@@ -167,42 +136,80 @@
     { "action": "shell", "resource": "git clean *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git clean *", "effect": "deny" },
     { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git reset --hard *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git reset --hard *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git restore *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git restore *", "effect": "deny" },
     { "action": "shell", "resource": "git checkout -- *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git checkout -- *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git checkout -- *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push --force *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push --force *", "effect": "deny" },
-    { "action": "shell", "resource": "git push --force-with-lease *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push --force-with-lease *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git push --force *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push --force-with-lease *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push --force-with-lease *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push * --force", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push * --force", "effect": "deny" },
-    { "action": "shell", "resource": "git push * --force-with-lease", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push * --force-with-lease", "effect": "deny" },
-    { "action": "shell", "resource": "git push origin --delete *", "effect": "deny" },
-    { "action": "shell", "resource": "rtk git push origin --delete *", "effect": "deny" },
+    {
+      "action": "shell",
+      "resource": "rtk git push * --force",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push * --force-with-lease",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push * --force-with-lease",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "git push origin --delete *",
+      "effect": "deny",
+    },
+    {
+      "action": "shell",
+      "resource": "rtk git push origin --delete *",
+      "effect": "deny",
+    },
     { "action": "shell", "resource": "git push * :*", "effect": "deny" },
     { "action": "shell", "resource": "rtk git push * :*", "effect": "deny" },
     { "action": "shell", "resource": "git tag -d *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git tag -d *", "effect": "deny" },
     { "action": "shell", "resource": "git rebase *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git rebase *", "effect": "deny" },
-  ],
-  "provider": {
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama (local)",
-      "options": {
-        "baseURL": "http://localhost:11434/v1",
-      },
-      "models": {
-        "qwen3-coder-30b-64k:latest": {
-          "name": "Qwen-3-Coder-30B-64K",
-        },
-      },
+    // agents/explore.md re-allows its read-only tools.
+    {
+      "action": "code-review-graph-explore_*",
+      "resource": "*",
+      "effect": "deny",
     },
-  },
+    // Writes source files without edit permission checks; build re-allows it.
+    {
+      "action": "code-review-graph_apply_refactor_tool",
+      "resource": "*",
+      "effect": "deny",
+    },
+  ],
   "mcp": {
     "servers": {
       "mdn": {
@@ -215,14 +222,26 @@
         "url": "https://mcp.context7.com/mcp",
         "disabled": false,
       },
-      "gitnexus": {
+      // Starts in each session's workspace, so one entry serves every repository.
+      // The watcher runs only inside a git repository, never in home or temp folders.
+      "code-review-graph": {
         "type": "local",
-        "command": ["npx", "-y", "gitnexus@latest", "mcp"],
-        "disabled": true,
+        "command": [
+          "sh",
+          "-c",
+          "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then exec code-review-graph mcp --auto-watch; else exec code-review-graph mcp; fi",
+        ],
+      },
+      // Read-only graph tools for the explore agent, which cannot use Code Mode.
+      // A global permission hides this server from every other agent.
+      "code-review-graph-explore": {
+        "type": "local",
+        "command": ["code-review-graph", "mcp"],
+        "codemode": false,
       },
       "llm-core": {
         "type": "local",
-        "command": ["npx", "-y", "eslint-plugin-llm-core-mcp@latest"],
+        "command": ["npx", "-y", "eslint-plugin-llm-core-mcp@0.29.10"],
         "environment": {
           "LLM_CORE_MCP_ENABLE_FALLBACK": "1",
         },
@@ -230,12 +249,19 @@
       },
       "fallow": {
         "type": "local",
-        "command": ["npx", "-y", "--package=fallow", "fallow-mcp"],
+        "command": ["npx", "-y", "--package=fallow@3.35.0", "fallow-mcp"],
         "disabled": true,
       },
+      // Opts out of Google usage statistics and uses a temporary browser profile per run.
       "chrome-devtools": {
         "type": "local",
-        "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
+        "command": [
+          "npx",
+          "-y",
+          "chrome-devtools-mcp@1.12.0",
+          "--no-usage-statistics",
+          "--isolated",
+        ],
       },
       "sonarqube": {
         "type": "local",
@@ -245,22 +271,21 @@
           "-i",
           "--rm",
           "--init",
-          "--pull=always",
           "-e",
           "SONARQUBE_TOKEN",
           "-e",
           "SONARQUBE_URL",
           "-e",
           "SONARQUBE_PROJECT_KEY",
-          "sonarsource/sonarqube-mcp",
+          "sonarsource/sonarqube-mcp:1.30.0.4763@sha256:a85875c818d6235fee1ec815e29b0a33a6ef3dd9ef43c63fb4bc018a3bd9443c",
         ],
         "disabled": false,
       },
       "codescene": {
         "type": "local",
-        "command": ["npx", "-y", "@codescene/codehealth-mcp"],
+        "command": ["npx", "-y", "@codescene/codehealth-mcp@1.5.12"],
         "environment": {
-          "CS_ACCESS_TOKEN": "{env:CS_ACCESS_TOKEN}",
+          "CS_ACCESS_TOKEN": "{file:~/.secrets/codescene-token}",
         },
       },
     },
@@ -270,4 +295,7 @@
     "max_bytes": 51200,
   },
   "formatter": true,
+  "plugins": [
+    "@openchamber/opencode-claude@1.5.0"
+  ],
 }

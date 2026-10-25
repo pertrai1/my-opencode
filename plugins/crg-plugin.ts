@@ -1,23 +1,34 @@
 import { Plugin } from "@opencode/plugin"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { isShellTool, splitChainedCommands, withoutComments, withoutRtkPrefix } from "../lib/shell-command.ts"
 
 const execFileAsync = promisify(execFile)
 const graphTimeoutMs = 10_000
+const directoryChange = /^[({\s]*(?:cd|pushd|popd)(?:\s|$)/i
+const gitCommit = /^git\s+commit(?:\s|$)/i
 
 function getCommandText(args: unknown): string {
   if (!args || typeof args !== "object") return ""
   const record = args as Record<string, unknown>
   if (typeof record.command === "string") return record.command
-  if (typeof record.cmd === "string") return record.cmd
-  return typeof record.content === "string" ? record.content : ""
+  return typeof record.cmd === "string" ? record.cmd : ""
+}
+
+// The graph CLI analyzes the session directory, so a commit after a directory change is skipped.
+function isSessionDirectoryCommit(command: string): boolean {
+  for (const part of splitChainedCommands(withoutComments(command)).map(withoutRtkPrefix)) {
+    if (directoryChange.test(part)) return false
+    if (gitCommit.test(part)) return true
+  }
+  return false
 }
 
 export default Plugin.define({
   id: "code-review-graph",
   async setup(ctx) {
     await ctx.tool.hook("execute.before", async (event) => {
-      if (!/^git\s+commit/i.test(getCommandText(event.input))) return
+      if (!isShellTool(event.tool) || !isSessionDirectoryCommit(getCommandText(event.input))) return
       try {
         const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
           cwd: ctx.location.directory,

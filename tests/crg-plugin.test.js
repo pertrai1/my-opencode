@@ -29,6 +29,7 @@ async function createGraphPlugin(directory, failure, run = async () => ({ stdout
     require: (id) => {
       if (id === 'node:child_process') return { execFile };
       if (id === '@opencode/plugin') return pluginApi;
+      if (id.startsWith('.')) return require(path.resolve(path.dirname(filename), id));
       return require(id);
     },
     console: { log: (...args) => logs.push(args) },
@@ -87,8 +88,44 @@ test('irrelevant commands and unsuccessful edits do not invoke the graph CLI', a
   assert.deepEqual(calls, []);
 });
 
+test('commits are detected in the session directory through RTK prefixes, chains, and comments', async () => {
+  const directory = path.resolve('fixtures', 'session repository');
+  for (const command of [
+    'rtk git commit -m fix',
+    'git add . && git commit -m fix',
+    'git add . ; rtk git commit -m fix',
+    'git commit -m "fix #1" # then cd elsewhere',
+  ]) {
+    const { hooks, calls } = await createGraphPlugin(directory);
+    await hooks['execute.before']({ tool: 'shell', input: { command } });
+    assert.deepEqual(calls, [{ file: 'code-review-graph', args: ['detect-changes', '--brief'], cwd: directory }], command);
+  }
+});
+
+test('commit-like text outside a shell commit does not invoke the graph CLI', async () => {
+  const { hooks, calls } = await createGraphPlugin(path.resolve('fixtures'));
+  await hooks['execute.before']({ tool: 'write', input: { filePath: 'notes.md', content: 'git commit -m fix' } });
+  for (const command of ['echo "git commit -m fix"', 'git commit-graph write', 'echo ok # && git commit -m fix']) {
+    await hooks['execute.before']({ tool: 'shell', input: { command } });
+  }
+  assert.deepEqual(calls, []);
+});
+
+test('commits after a directory change are skipped because their repository is unknown', async () => {
+  const { hooks, calls } = await createGraphPlugin(path.resolve('fixtures'));
+  for (const command of [
+    'cd repo && git commit -m fix',
+    'rtk cd repo; git commit -m fix',
+    '( cd repo && git commit -m fix )',
+    'pushd repo && git commit -m fix',
+  ]) {
+    await hooks['execute.before']({ tool: 'shell', input: { command } });
+  }
+  assert.deepEqual(calls, []);
+});
+
 function graphProcess(t, script) {
-  const directory = fs.mkdtempSync(path.join(tmpdir(), 'graph repository '));
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(tmpdir(), 'graph repository ')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const executions = [];
   const run = async (file, args, options) => {

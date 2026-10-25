@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "wi-20261025T050756Z-complete-h4-ordinary-session-task-state-tracking-a66a62cb",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Complete H4 ordinary-session task-state tracking",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "low",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Define when ordinary sessions need a checklist or durable work item",
+    "Enable and verify lightweight task tracking for lean",
+    "Record acceptance criteria, checks, blockers, and the next action in durable checkpoints",
+    "Verify recovery from persisted state in a fresh session and after compaction"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Configure todo access and document checkpoint ownership and resume steps",
+  "history": [
+    {
+      "at": "2026-10-25T05:07:56.231Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}

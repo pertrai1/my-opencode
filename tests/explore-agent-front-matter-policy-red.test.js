@@ -45,6 +45,18 @@ test('Explore Agent - V2 permissions stay fail-closed, MCP-free, and read-only',
   for (const action of ['glob', 'grep', 'webfetch', 'websearch', 'skill', 'question']) {
     assert.equal(effect(action, '*'), 'allow', `Expected ${action} to stay available`);
   }
+  const graphToolEffects = [
+    ...['list_graph_stats_tool', 'get_minimal_context_tool', 'query_graph_tool', 'traverse_graph_tool',
+      'get_impact_radius_tool', 'get_review_context_tool', 'detect_changes_tool']
+      .map((tool) => [`code-review-graph-explore_${tool}`, 'allow']),
+    ...['code-review-graph-explore_build_or_update_graph_tool', 'code-review-graph-explore_refactor_tool',
+      'code-review-graph-explore_apply_refactor_tool', 'code-review-graph-explore_embed_graph_tool',
+      'code-review-graph_list_graph_stats_tool']
+      .map((action) => [action, 'deny']),
+  ];
+  for (const [action, expected] of graphToolEffects) {
+    assert.equal(effect(action, '*'), expected, `Expected ${action} to be ${expected === 'allow' ? 'available' : 'denied'}`);
+  }
   assert.equal(effect('read', 'src/example.ts'), 'allow');
   assert.equal(effect('read', '.env'), 'deny');
   assert.equal(effect('read', '.env.local'), 'deny');

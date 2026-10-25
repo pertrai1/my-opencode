@@ -2,6 +2,25 @@
 
 Work items are the tracker-neutral intake record for requests that need to survive a session. They are local by default, so a project does not need GitHub Issues or another external tracker to use the workflow.
 
+## When to track work
+
+- A short answer or single mechanical edit needs no task list.
+- For three or more meaningful steps or multiple deliverables, maintain a short
+  session checklist with `todowrite`. Use a Markdown checklist if the tool is
+  unavailable. Track outcomes, not every tool call.
+- Before substantial work spanning files or stages, create a durable work item.
+  Also persist work before a handoff or pause with unfinished steps or blockers.
+  Reuse an active work item or the workflow's existing `progress.md`/`intent.md`;
+  do not create parallel records for the same request.
+- Read-only requests and restricted agents must not write tracking artifacts
+  outside their authorized scope. Return a checkpoint to the owning session,
+  or keep the checklist in the response and explain that it was not persisted.
+
+`AGENTS.md` applies this policy to ordinary sessions. `opencode.jsonc` enables
+`experimental.todo` and allows `todowrite` for lean. The session checklist is a
+working view; the file checkpoint is the durable source for current execution
+state. It does not depend on another session inheriting the original todo list.
+
 ## Create and resume
 
 Create a local work item with:
@@ -23,6 +42,66 @@ Resume or inspect a work item with:
 node ~/.config/opencode/scripts/work-item.mjs resume <work-id>
 node ~/.config/opencode/scripts/work-item.mjs list
 ```
+
+`resume` currently returns `work.json` only. Before making decisions, also read
+`.agents/work/<work-id>/progress.md` and relevant artifacts referenced there.
+If the work ID is unknown, use `list`; ask which record to resume if more than
+one matches. Reconstruct the session checklist from the checkpoint rather than
+repeating completed work or treating an old intake `nextAction` as current.
+
+## Checkpoints
+
+`work.json` preserves intake identity, original scope, and routing metadata.
+Its `status`, `nextAction`, units, and history describe intake and explicit
+inception transitions; they do not replace the execution checkpoint.
+`progress.md` owns current execution state. `request.md` preserves the original
+request. Record user-authorized scope changes in the
+checkpoint and keep them distinguishable from the original acceptance criteria.
+Existing workflow-specific `intent.md` remains the source for design decisions.
+
+The create command seeds a minimal `progress.md`. Expand it before substantial
+execution using these sections, or retain equivalent sections in an existing
+workflow checkpoint:
+
+```md
+# Progress: <work-id>
+
+Updated: <date>
+Execution state: in progress
+
+## Acceptance criteria
+
+- [ ] <observable outcome>
+
+## Steps
+
+- [x] <completed step, with evidence below>
+- [ ] <remaining step>
+
+## Verification
+
+- <command or check>: <passed, failed, blocked, or not run; result/evidence path>
+
+## Blockers
+
+- None, or <specific blocker and what resolves it>.
+
+## Next action
+
+<One concrete next step, or "None; verified work complete.">
+```
+
+Update the checkpoint after a meaningful step or verification result, when a
+blocker appears or changes, and before handoff, manual compaction, or ending with
+unfinished work. Keep unchecked steps and failed, blocked, or unrun checks visible.
+Mark criteria complete only with evidence; if a step is cancelled, record why.
+Mirror changes into `todowrite` when available. Keep the work ID and checkpoint
+path in a handoff response so a fresh session can locate them.
+
+After compaction, read the checkpoint again before continuing. Automatic
+compaction can happen between checkpoints, so checkpoint regularly rather than
+waiting for a context-limit warning. Reconcile the summary with files and test
+results; compaction is not evidence that a pending step succeeded.
 
 ## WorkItem shape
 
@@ -95,10 +174,14 @@ HTML comments in the templates are ignored.
 - Every `dependsOn` unit must be linked first. `--parallel --note "<who approved and why>"` overrides this and records the note in the history.
 - `work-item.mjs` stays independent of OpenSpec, so it does not check that the change exists. The orchestrator confirms the change with `openspec show` before linking.
 
-Every state change rewrites `progress.md` from `work.json`, including a unit table once units exist. `work.json` is the source of truth, and both files are written through a temporary file and a rename.
+Inception transitions update `work.json` atomically, including unit status, relationships, history, and the lifecycle next action. They leave `progress.md` unchanged. Use `show`, `resume`, or `list` for lifecycle metadata, and read `progress.md` for the agent-maintained execution checkpoint. After a meaningful transition, the orchestrator updates that checkpoint using the protocol above, preserving acceptance criteria, evidence, blockers, and pending work.
 
 `inception-author` writes the inception Markdown files and has no shell access. The orchestrator registers the units it proposes and checks that the agent edited only the active work item's inception folder.
 
 ## Scope of this slice
 
-This slice creates and resumes the durable intake record and adds intent-to-unit inception. It does not yet implement domain modeling, bolt-level execution, tracker adapters, or the operations phase.
+The CLI creates and resumes durable records and supports explicit intent-to-unit
+inception transitions. Agents maintain execution checkpoints using the protocol
+above. Domain modeling, bolt-level execution, tracker adapters, and the operations
+phase are not implemented by this CLI. A completed checkpoint does not mutate the
+lifecycle record or close an external issue.

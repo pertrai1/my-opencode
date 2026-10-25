@@ -8,7 +8,7 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6-astra` with model-level `high` reasoning effort. `small_model` selects `gpt-6-sol` for titles. The inline `lean`, `build`, and `plan` agents use `gpt-6-luna#high`, `gpt-6-sol`, and `gpt-6-astra`, respectively. See the assignments below for Markdown agents.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6.1-sol#high`, and sets model-level `high` reasoning effort for `gpt-6.1-sol`. The inline `lean`, `build`, and `plan` agents use `gpt-6-astra#high`, `gpt-6.1-sol`, and `gpt-6-astra`, respectively; Jev routing switches to the same models. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
@@ -38,6 +38,19 @@ For an intent that spans several independently deliverable pieces, run `/incepti
 
 Inspect or resume a record with `node ~/.config/opencode/scripts/work-item.mjs show <work-id>` or `resume <work-id>`, and list records with `node ~/.config/opencode/scripts/work-item.mjs list`.
 
+For three or more meaningful steps or multiple deliverables, agents maintain a
+session checklist with `todowrite` (`experimental.todo: true`, allowed for lean).
+Substantial work spanning files or stages also gets a durable checkpoint in the
+active work item's `progress.md`; existing workflow checkpoints are reused.
+Read-only tasks respect their edit restrictions.
+
+`resume` returns intake metadata only. Read `progress.md` for current acceptance
+criteria, remaining steps, checks, blockers, and the next action, then reconstruct
+the checklist. Do the same after compaction. See the
+[work-item checkpoint protocol](docs/agents/work-items.md) for ownership, update
+triggers, and the template. Reload configuration with `/reload` after changing
+todo settings.
+
 ### Agent model assignments
 
 | Model | Agents |
@@ -55,10 +68,10 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 ## Graph
 
-- `plugins/crg-plugin.ts` — keeps the [Code Review Graph](https://code-review-graph.com) knowledge graph updated. Installed by `code-review-graph install --platform opencode`.
-- `skills/gitnexus-*/` — local GitNexus skills for indexing, exploration, debugging, PR review, impact analysis, and refactoring workflows.
-- `skills/graphify/` — local Graphify skill for building and querying repository knowledge graphs.
-- [GitNexus](https://github.com/paretoxyz/gitnexus) — optional repository indexing and impact analysis. Its MCP server is configured but disabled by default.
+- **`code-review-graph`** (local MCP) — the [Code Review Graph](https://code-review-graph.com) server for every repository you open. OpenCode starts it in the session's workspace, so one global entry serves each repository. Inside a git repository it runs with `--auto-watch`, which updates the graph as files change while the session runs; elsewhere, such as a home or temporary folder, it starts without the watcher. The graph is stored in the repository's `.code-review-graph/` directory, which ignores itself in git. A global rule denies `apply_refactor_tool`, which writes source files without `edit` permission checks; only `build` re-allows it.
+- **`code-review-graph-explore`** (local MCP, Code Mode off) — a second server for the `explore` agent, which denies `execute` and therefore cannot reach Code Mode tools. A global rule hides this server's tools from every other agent; `agents/explore.md` re-allows seven read-only tools: `list_graph_stats_tool`, `get_minimal_context_tool`, `query_graph_tool`, `traverse_graph_tool`, `get_impact_radius_tool`, `get_review_context_tool`, and `detect_changes_tool`. Building, embedding, and refactoring stay denied. This adds one idle process (about 50–100 MB) per OpenCode workspace.
+- `AGENTS.md` → **Code graph** — tells agents to use the graph only in git repositories, check it first, run a full build when it is missing or was built at another commit, and use graph tools before broad text search.
+- `plugins/crg-plugin.ts` — logs a pre-commit change analysis and updates the graph after file edits.
 
 ## Review
 
@@ -194,10 +207,10 @@ Example record:
   "timestamp": "2026-09-29T16:00:00.000Z",
   "source": "jev",
   "currentAgent": "lean",
-  "currentModel": "openai/gpt-6-luna#high",
+  "currentModel": "openai/gpt-6-astra#high",
   "selectedRoute": "build",
   "selectedAgent": "build",
-  "selectedModel": "openai/gpt-6-sol",
+  "selectedModel": "openai/gpt-6.1-sol",
   "confidence": 0.9,
   "probability": 0.8,
   "latencyMs": 0,
@@ -226,11 +239,15 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 ## Reference
 
 - **`mdn`** (remote) — MDN Web Docs reference and browser compatibility data. `https://mcp.mdn.mozilla.net/`
+- **`chrome-devtools`** (local) — Chrome automation and inspection. `--no-usage-statistics` turns off Google's usage statistics, and `--isolated` gives each run a temporary browser profile, so sign-ins do not persist between runs. `npx -y chrome-devtools-mcp@1.12.0`
 
 ## Verification
 
+- `npm run ubs` — checks the Node.js/npm toolchain first, then TypeScript, ESLint, Markdown, workflow action pins, and tests; stops at the first failure with a stage-specific `UBS_RESULT` record.
+- [Local tool observations](docs/tool-observation.md) — opt-in, metadata-only OTLP capture of tool failures, durations and repeated calls; local Collector setup and diagnostic walkthrough.
+
 - [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
-- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp`
+- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp@0.29.10`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
@@ -242,6 +259,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 ## Security
 
 - `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
+- **MCP pins** — servers launched by `npx` pin exact versions, and the SonarQube image is pinned by digest; `tests/opencode-mcp.test.mjs` enforces this. Local servers inherit OpenCode's environment, so review a release before changing its pin.
+- `plugins/sonarqube-mcp.ts` — enables `sonarqube` only where `sonar-project.properties` sets `sonar.host.url`, and maps that host's locally resolved address into the container with `--add-host`.
 - `skills/security-audit/` — vendored [security-audit](https://github.com/pertrai1/security-audit-skill) skill. Run `/security-audit [scope]` to load it and start a full audit. Full-audit artifacts default to `.agents/docs/security-audits/<repo-name>/run-<N>` in this configuration directory; generated runs are intentionally ignored by Git.
 
 ## Accessibility
@@ -254,7 +273,8 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions, specialist subagent delegation, and direct web search/fetch. Selected MCP tools remain denied for this agent.
+- Lean denies the whole `mdn` and `llm-core` servers with `mdn_*` and `llm-core_*`, so tools those servers add later stay denied. Server names keep their hyphens. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. A dormant `agentmemory_*` rule covers matching tools registered by other configuration sources; it does not enable those tools. Restart OpenCode after changing agent permissions.
 - `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
 - Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
@@ -271,6 +291,21 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - [lazygit](https://github.com/jesseduffield/lazygit) - simple terminal UI for git commands.
 - [lazydocker](https://github.com/jesseduffield/lazydocker) - The lazier way to manage everything docker.
 - [Matt Pocock Skills](https://github.com/mattpocock/skills) - Skills for Real Engineers.
+
+### Web research
+
+`opencode.jsonc` owns search-provider selection and `lean`'s web permissions.
+`websearch.provider: "random"` selects an available provider and retains it for
+the session; HTTP 429 triggers a retry with another available provider. Connect
+a provider through `/connect` when needed. See the
+[V2 websearch guide](https://opencode.ai/v2/docs/websearch).
+
+Use `websearch` for general discovery and `webfetch` to read a relevant primary
+source. Context7 remains the library-documentation route. If search is
+unavailable, the agent reports the observed limitation and can inspect a supplied
+URL or ask for a provider connection; it must not describe that fallback as a
+completed search. `AGENTS.md` defines this reporting behavior. Reload configuration
+with `/reload` after changing these settings.
 
 ### Type-Driven TDD Pipeline
 
@@ -289,7 +324,7 @@ Model philosophy: specs, architecture, contracts, orchestration, verification, a
 
 How enforcement works:
 
-- **Permission globs** — each agent's `edit` permission scopes its lane; violations are blocked by opencode, not by prompt discipline.
+- **Permission globs** — each agent's `edit` permission scopes its lane; violations are blocked by opencode, not by prompt discipline. The graph server's `apply_refactor_tool` writes files outside these globs, so a global rule denies it to every agent except `build`.
 - **Scoped reads and shell** — the test-author only gets contract/test file reads plus sanitized spec excerpts in its handoff, and the pipeline agents can only run narrow verification commands.
 - **Checksum verification** — the orchestrator hashes contract files after Phase 0 and test files after Phase 1, and rejects Phase 2 work if either changed.
 - **Independent verification** — the orchestrator re-runs typecheck and tests itself between phases; agent reports are claims, not evidence.
@@ -310,6 +345,7 @@ The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 - Use the `opsx-*` commands for OpenSpec change lifecycle work: new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard.
 - The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
 - Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
+- `tdd-orchestrator` uses `mode: all` to support direct `/apply` entry and SDLC delegation. `experimental.subagent_depth: 2` permits SDLC → TDD → worker launches; TDD retains its three-worker allowlist. Restart OpenCode after changing these settings.
 - OpenSpec verification is persisted in change-local `verification.md` and used as the canonical human review surface before archive.
 
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
@@ -322,6 +358,6 @@ configuration checkout alone does not install skills into other projects.
 
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
 2. `rtk init -g --opencode` to install the RTK plugin
-3. `code-review-graph install --platform opencode` to install the graph plugin
+3. `uv tool install code-review-graph` for the CLI used by the graph MCP server and plugin, both already configured here. Do not run `code-review-graph install --platform opencode` in this checkout; it would write to `opencode.jsonc` and append its own instructions to `AGENTS.md`.
 4. herdr install for agent-state reporting
 5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library

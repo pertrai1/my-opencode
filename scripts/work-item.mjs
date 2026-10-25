@@ -125,15 +125,6 @@ export function createWorkItem(options, now = new Date()) {
   };
 }
 
-function renderProgress(item) {
-  const lines = [`# Progress: ${item.id}`, "", `- Status: ${item.status}`, `- Next action: ${item.nextAction}`];
-  if (item.units?.length > 0) {
-    lines.push("", "## Units", "", "| Unit | Status | Change |", "| --- | --- | --- |");
-    for (const unit of item.units) lines.push(`| ${unit.id} | ${unit.status} | ${unit.change ?? "-"} |`);
-  }
-  return `${lines.join("\n")}\n`;
-}
-
 // Writes to a sibling temp file and renames it, so readers never see a partial file.
 async function writeFileAtomic(file, content) {
   const temporary = `${file}.${randomUUID().slice(0, 8)}.tmp`;
@@ -159,7 +150,7 @@ async function writeWorkItem(root, item) {
     );
     await writeFile(
       path.join(temporaryDirectory, "progress.md"),
-      renderProgress(item),
+      `# Progress: ${item.id}\n\n- Status: ${item.status}\n- Next action: ${item.nextAction}\n`,
       "utf8",
     );
     await rename(temporaryDirectory, directory);
@@ -193,9 +184,8 @@ async function saveWorkItem(options, item, status, note, now = new Date()) {
   const at = now.toISOString();
   const updated = { ...item, version: WORK_ITEM_VERSION, status, history: [...item.history, { at, status, note }] };
   const root = getRoot(options);
-  // work.json is the source of truth; progress.md is a rendered view written after it.
+  // Persist lifecycle metadata only; agents own the execution checkpoint in progress.md.
   await writeFileAtomic(getWorkItemPath(root, item.id), `${JSON.stringify(updated, null, 2)}\n`);
-  await writeFileAtomic(path.join(getWorkDirectory(root, item.id), "progress.md"), renderProgress(updated));
   return updated;
 }
 
