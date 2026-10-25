@@ -295,4 +295,7 @@
     "max_bytes": 51200,
   },
   "formatter": true,
+  "plugins": [
+    "@openchamber/opencode-claude@1.5.0"
+  ],
 }
