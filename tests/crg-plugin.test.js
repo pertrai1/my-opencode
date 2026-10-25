@@ -9,13 +9,23 @@ const { tmpdir } = require('node:os');
 const ts = require('typescript');
 
 // Exercise the registered hooks, replacing only the external CLI boundary.
-async function createGraphPlugin(directory, failure, run = async () => ({ stdout: '' })) {
+async function createGraphPlugin(directory, failure, run = async () => ({ stdout: '' }), statusOutput = JSON.stringify({
+  files: 1,
+  built_at_commit: 'same',
+  current_sha: 'same',
+  built_on_branch: 'main',
+  current_branch: 'main',
+})) {
   const calls = [];
+  const statusCalls = [];
   const logs = [];
   const execFile = () => {};
   execFile[promisify.custom] = async (file, args, options = {}) => {
-    calls.push({ file, args: Array.from(args), cwd: options.cwd });
+    const call = { file, args: Array.from(args), cwd: options.cwd };
+    if (args.at(0) === 'status') statusCalls.push(call);
+    else calls.push(call);
     if (failure) throw failure;
+    if (args.at(0) === 'status') return { stdout: statusOutput };
     return run(file, args, options);
   };
   const filename = path.join(__dirname, '../plugins/crg-plugin.ts');
@@ -42,8 +52,40 @@ async function createGraphPlugin(directory, failure, run = async () => ({ stdout
     });
     return hooks;
   }
-  return { calls, logs, hooks: await setup(directory), setup };
+  return { calls, statusCalls, logs, hooks: await setup(directory), setup };
 }
+
+test('startup builds a missing graph', async () => {
+  const { calls, statusCalls } = await createGraphPlugin(
+    path.resolve('fixtures', 'missing repository'),
+    undefined,
+    undefined,
+    JSON.stringify({ files: 0 }),
+  );
+  assert.equal(statusCalls.length, 1);
+  assert.deepEqual(calls, [{
+    file: 'code-review-graph', args: ['build'], cwd: path.resolve('fixtures', 'missing repository'),
+  }]);
+});
+
+test('startup rebuilds a graph from another commit or branch', async () => {
+  const directory = path.resolve('fixtures', 'stale repository');
+  const { calls, statusCalls } = await createGraphPlugin(directory, undefined, undefined, JSON.stringify({
+    files: 10,
+    built_at_commit: 'old',
+    current_sha: 'new',
+    built_on_branch: 'main',
+    current_branch: 'feature',
+  }));
+  assert.equal(statusCalls.length, 1);
+  assert.deepEqual(calls, [{ file: 'code-review-graph', args: ['build'], cwd: directory }]);
+});
+
+test('startup does not rebuild a current graph', async () => {
+  const { calls, statusCalls } = await createGraphPlugin(path.resolve('fixtures', 'current repository'));
+  assert.equal(statusCalls.length, 1);
+  assert.deepEqual(calls, []);
+});
 
 test('graph hooks inspect and update the session repository instead of the server cwd', async () => {
   const directory = path.resolve('fixtures', 'another repository');
@@ -76,7 +118,7 @@ test('graph CLI failures remain non-blocking in the session directory', async ()
     tool: 'bash', input: { command: 'git commit -m fix' },
   }));
   await assert.doesNotReject(() => hooks['execute.after']({ tool: 'edit', status: 'completed' }));
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.ok(calls.every((call) => call.cwd === directory));
 });
 

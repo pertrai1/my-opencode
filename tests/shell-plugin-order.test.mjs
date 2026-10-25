@@ -12,7 +12,7 @@ async function setup(t) {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-plugins-bin-'));
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-plugins-repo-')));
   fs.writeFileSync(path.join(bin, 'rtk'), '#!/bin/sh\nprintf "rtk %s\\n" "$2"\n', { mode: 0o700 });
-  fs.writeFileSync(path.join(bin, 'code-review-graph'), '#!/bin/sh\necho "$*" >> graph-calls.log\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'code-review-graph'), '#!/bin/sh\nif [ "$1" = status ]; then printf \'{"files":1,"built_at_commit":"same","current_sha":"same","built_on_branch":"main","current_branch":"main"}\n\'; exit 0; fi\necho "$*" >> graph-calls.log\n', { mode: 0o700 });
   const previousPath = process.env.PATH;
   process.env.PATH = `${bin}:${previousPath}`;
   t.after(() => {
