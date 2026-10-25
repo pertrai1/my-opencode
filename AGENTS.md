@@ -54,6 +54,14 @@ The `code-review-graph` MCP server builds a local graph of the current git repos
 - Before committing, inspect `git status`, `git diff`, and recent commit messages. Commit only when explicitly requested.
 - When a commit is explicitly requested, prefer small atomic commits. For behavior-changing work, commit after REFACTOR and final verification, not after GREEN. Keep each commit scoped to one verified behavior, slice, or other inseparable unit of work.
 
+### Task state
+
+- For three or more meaningful steps or multiple deliverables, maintain a short `todowrite` checklist. A short answer or single mechanical edit needs no checklist. If the tool is unavailable, use a Markdown checklist.
+- Before substantial work spanning files or stages, a handoff, or a pause with unfinished work, create or resume a durable work item using the `work-intake` skill. Reuse an existing work item or workflow `progress.md`/`intent.md` rather than creating a second record. For read-only tasks or restricted agents, respect edit permissions and return the checkpoint to the owning session instead.
+- Keep current execution state in `progress.md`: acceptance criteria, completed and remaining steps, verification commands and outcomes, blockers, and one concrete next action. Update after a meaningful step or check, when blocked, and before handoff, manual compaction, or ending with unfinished work. Mirror that state in the session checklist; a todo completion alone is not verification evidence.
+- On resume or after compaction, read the active checkpoint before acting and reconstruct the checklist from it. `work-item.mjs resume` returns intake metadata only; also read the work item's `progress.md`. If the active ID is unknown, use `list` and ask when multiple records could match. Never infer completion from an intake status or a summary alone.
+- Follow `docs/agents/work-items.md` in the `workflow` reference for checkpoint format and ownership. Update checkpoints regularly because automatic compaction can occur before an explicit handoff.
+
 ## Documentation
 
 - Read repository-local `AGENTS.md`, `README`, and relevant docs before making decisions; nearer instructions override broader ones.

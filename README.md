@@ -36,6 +36,19 @@ node ~/.config/opencode/scripts/work-item.mjs create \
 
 Inspect or resume a record with `node ~/.config/opencode/scripts/work-item.mjs show <work-id>` or `resume <work-id>`, and list records with `node ~/.config/opencode/scripts/work-item.mjs list`.
 
+For three or more meaningful steps or multiple deliverables, agents maintain a
+session checklist with `todowrite` (`experimental.todo: true`, allowed for lean).
+Substantial work spanning files or stages also gets a durable checkpoint in the
+active work item's `progress.md`; existing workflow checkpoints are reused.
+Read-only tasks respect their edit restrictions.
+
+`resume` returns intake metadata only. Read `progress.md` for current acceptance
+criteria, remaining steps, checks, blockers, and the next action, then reconstruct
+the checklist. Do the same after compaction. See the
+[work-item checkpoint protocol](docs/agents/work-items.md) for ownership, update
+triggers, and the template. Reload configuration with `/reload` after changing
+todo settings.
+
 ### Agent model assignments
 
 | Model | Agents |
