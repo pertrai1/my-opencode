@@ -38,6 +38,13 @@ The `code-review-graph` MCP server builds a local graph of the current git repos
 
 ## Working protocol
 
+### Web research
+
+- Use `websearch` for general discovery and `webfetch` to read relevant primary sources. Keep using Context7 for library documentation as instructed.
+- If search is unavailable, lacks credentials, or all providers fail, report that the search could not be completed and state the observed reason. Do not present remembered information or a known-URL fetch as search results. Offer to inspect a user-provided URL or ask the user to connect a search provider through `/connect`.
+
+### Changes and verification
+
 - Before editing, inspect the relevant code, tests, project instructions, and current `git status`/diff.
 - Treat user requirements, repository documentation, tests, and existing behavior as the source of truth, in that order. Ask a concise question when they conflict or leave a material ambiguity.
 - Make the smallest change that fully resolves the request. Do not refactor unrelated code or add compatibility paths without a concrete need.

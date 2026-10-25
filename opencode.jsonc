@@ -22,6 +22,9 @@
     },
   },
   "default_agent": "lean",
+  "websearch": {
+    "provider": "random",
+  },
   // Optional Jev routing is disabled by default; enable with OPENCODE_JEV_ROUTING=1.
   "agents": {
     "lean": {
@@ -32,12 +35,12 @@
         {
           "action": "webfetch",
           "resource": "*",
-          "effect": "deny",
+          "effect": "allow",
         },
         {
           "action": "websearch",
           "resource": "*",
-          "effect": "deny",
+          "effect": "allow",
         },
         {
           "action": "skill",
@@ -231,7 +234,11 @@
     { "action": "shell", "resource": "git rebase *", "effect": "deny" },
     { "action": "shell", "resource": "rtk git rebase *", "effect": "deny" },
     // agents/explore.md re-allows its read-only tools.
-    { "action": "code-review-graph-explore_*", "resource": "*", "effect": "deny" },
+    {
+      "action": "code-review-graph-explore_*",
+      "resource": "*",
+      "effect": "deny",
+    },
   ],
   "mcp": {
     "servers": {
@@ -302,7 +309,7 @@
         "type": "local",
         "command": ["npx", "-y", "@codescene/codehealth-mcp"],
         "environment": {
-          "CS_ACCESS_TOKEN": "{env:CS_ACCESS_TOKEN}",
+          "CS_ACCESS_TOKEN": "{file:~/.secrets/codescene-token}",
         },
       },
     },

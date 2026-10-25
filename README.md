@@ -255,7 +255,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions and specialist subagent delegation. Web fetch/search and selected MCP tools remain denied for this agent.
+- `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions, specialist subagent delegation, and direct web search/fetch. Selected MCP tools remain denied for this agent.
 - Lean's MCP deny actions use the registered names: `mdn_search`, `mdn_get-doc`, `mdn_get-compat`, `llm-core_get_active_instructions`, and `llm-core_lint_file`. Hyphens are preserved. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. The seven dormant `agentmemory_*` rules are retained for matching tools registered by other configuration sources; they do not enable those tools. Restart OpenCode after changing agent permissions.
 - `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
 - The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
@@ -272,6 +272,21 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - [lazygit](https://github.com/jesseduffield/lazygit) - simple terminal UI for git commands.
 - [lazydocker](https://github.com/jesseduffield/lazydocker) - The lazier way to manage everything docker.
 - [Matt Pocock Skills](https://github.com/mattpocock/skills) - Skills for Real Engineers.
+
+### Web research
+
+`opencode.jsonc` owns search-provider selection and `lean`'s web permissions.
+`websearch.provider: "random"` selects an available provider and retains it for
+the session; HTTP 429 triggers a retry with another available provider. Connect
+a provider through `/connect` when needed. See the
+[V2 websearch guide](https://opencode.ai/v2/docs/websearch).
+
+Use `websearch` for general discovery and `webfetch` to read a relevant primary
+source. Context7 remains the library-documentation route. If search is
+unavailable, the agent reports the observed limitation and can inspect a supplied
+URL or ask for a provider connection; it must not describe that fallback as a
+completed search. `AGENTS.md` defines this reporting behavior. Reload configuration
+with `/reload` after changing these settings.
 
 ### Type-Driven TDD Pipeline
 
