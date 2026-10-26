@@ -41,6 +41,11 @@ test("mechanics reject malformed ratings, missing fields and invalid output", ()
   assert.equal(check(valid.replaceAll("\n", "\r\n")).pass, true);
 });
 
+test("R2 alone requires at least focused review without a separate override", () => {
+  assert.equal(check(assessment([2, 0, 0], 2, "focused")).pass, true);
+  assert.equal(check(assessment([2, 0, 0], 2, "quick")).pass, false);
+});
+
 test("mechanical success cannot establish semantic judgment", () => {
   // If the actual evidence were an authorization bypass, this would be wrong.
   // Mechanics deliberately cannot infer that failure from free-form evidence.

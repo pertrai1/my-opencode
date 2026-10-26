@@ -56,6 +56,8 @@ inspection establishes the relevant consumers; explain the fallback and limits.
 | 2–3 | focused, about 10–20 minutes |
 | 4–6 | deep, 30+ minutes |
 
+With R2, the total is already at least 2, so review is at least focused.
+
 High consequence (C2), security boundaries, credentials, destructive operations,
 and migrations override the total to **deep** review. State the override even for
 a tiny change. These are heuristic starting budgets for discussion; reviewers may
