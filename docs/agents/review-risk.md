@@ -17,9 +17,10 @@ other repositories. File count and line count alone do not establish reach or
 consequence. Give brief evidence for each rating, reviewer focus, and verification
 gaps; distinguish observations from assumptions.
 
-For a PR, assess the full PR base-to-head diff, including already committed
-changes, not merely the working tree or last commit. Record the exact base and
-head SHAs; if using a three-dot comparison, also record its merge-base SHA. For
+For a PR or explicit base/head comparison, including branch names or tags without
+a PR, assess the full scoped diff, including already committed changes, not merely
+the working tree or last commit. Resolve and record the exact base and head SHAs;
+if using a three-dot comparison, also record its merge-base SHA. For
 an ordinary working-tree handoff or review, include staged, unstaged, and relevant
 untracked changes, recording HEAD and the inspected snapshot (files and observation
 time). Refresh after meaningful edits, new evidence, or base/head changes; an

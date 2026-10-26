@@ -66,8 +66,12 @@ test("global trigger and review command resolve to the one shared rubric", () =>
   const { config, error } = ts.parseConfigFileTextToJson("opencode.jsonc", read("opencode.jsonc"));
   assert.equal(error, undefined);
   assert.ok(config.instructions.includes("~/.config/opencode/docs/agents/style-guide.md"));
-  for (const path of ["docs/agents/style-guide.md", "commands/code-review.md"]) {
-    assert.match(read(path), /\]\(~\/\.config\/opencode\/docs\/agents\/review-risk\.md\)/);
+  for (const [path, target] of [["docs/agents/style-guide.md", "review-risk.md"], ["commands/code-review.md", "../docs/agents/review-risk.md"]]) {
+    const source = read(path);
+    const link = source.match(/\[proposed review-risk rubric\]\(([^)]+)\)/)?.at(1);
+    assert.equal(link, target, path);
+    assert.equal(new URL(link, new URL(`../${path}`, import.meta.url)).href, new URL("../docs/agents/review-risk.md", import.meta.url).href);
+    assert.match(source, /`~\/\.config\/opencode\/docs\/agents\/review-risk\.md`/);
   }
   const command = read("commands/code-review.md");
   assert.match(command, /Do not edit files, apply patches, or change the repository state/);
@@ -75,4 +79,14 @@ test("global trigger and review command resolve to the one shared rubric", () =>
   assert.match(command, /Do not remove a router-selected reviewer/);
   assert.match(command, /Independently assess reach, consequence, and uncertainty/);
   assert.match(command, /Do not post remote comments or publish changes/);
+});
+
+test("PR and explicit base/head comparisons resolve reproducible revisions", () => {
+  for (const path of ["commands/code-review.md", "docs/agents/review-risk.md"]) {
+    const scope = read(path).replace(/\s+/g, " ");
+    assert.match(scope, /For a PR or explicit base\/head comparison/);
+    assert.match(scope, /branch names or tags without a PR/);
+    assert.match(scope, /resolve and record the exact base and head SHAs/i);
+    assert.match(scope, /record (?:the |its )?merge-base SHA/i);
+  }
 });

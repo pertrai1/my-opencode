@@ -11,15 +11,18 @@ This is a review-only task. Do not edit files, apply patches, or change the repo
 
 ## Scope and independent risk assessment
 
-For a PR, resolve and record the exact base and head SHAs and inspect the full
-base-to-head PR diff, including committed changes. Record the merge-base SHA when
-using a three-dot comparison. Do not substitute the local working-tree diff or
-last commit. If the full diff or revisions cannot be obtained, report the missing
-scope and uncertainty rather than claiming a complete PR review.
+For a PR or explicit base/head comparison, including branch names or tags without
+a PR, resolve and record the exact base and head SHAs and inspect the full scoped
+diff, including committed changes. Record the merge-base SHA when using a
+three-dot comparison. Do not substitute the local working-tree diff or last
+commit. If the full diff or revisions cannot be obtained, report the missing
+scope and uncertainty rather than claiming a complete PR or revision review.
 
 For an ordinary working-tree review, retain staged, unstaged, and relevant
 untracked changes; record HEAD and the files/time of the inspected snapshot.
-Read the shared [proposed review-risk rubric](~/.config/opencode/docs/agents/review-risk.md).
+Read the shared [proposed review-risk rubric](../docs/agents/review-risk.md).
+In a target repository, load it from the installed path
+`~/.config/opencode/docs/agents/review-risk.md`.
 Independently assess reach, consequence, and uncertainty from source and impact
 evidence, then compare with the author's assessment. Report agreement or
 disagreement with reasons, including an absent or stale author assessment. Refresh
