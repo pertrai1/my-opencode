@@ -1,0 +1,21 @@
+description: Angular skill — recorded OpenCode turn
+
+prompts:
+  - "Explain how the application's root component works. Do not modify files."
+
+providers:
+  - id: file://replay-provider.mjs
+
+tests:
+  - description: Loads Angular skill during root-component explanation
+    vars:
+      messageId: msg_1732753b80012eJVswQIQLnZCs
+    assert:
+      - type: javascript
+        value: |
+          const { toolCalls } = JSON.parse(output);
+          return toolCalls.some(call =>
+            call.name === "skill" &&
+            call.arguments?.id === "angular" &&
+            call.status === "completed"
+          );

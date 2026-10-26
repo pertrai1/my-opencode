@@ -1,0 +1,31 @@
+description: Angular skill assertion calibration
+
+prompts:
+  - "{{trace}}"
+
+providers:
+  - echo
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        const trace = JSON.parse(output);
+        return trace.toolCalls.some(call =>
+          call.name === "skill" &&
+          call.arguments?.id === "angular" &&
+          call.status === "completed"
+        );
+
+tests:
+  - description: Successful load - should pass
+    vars:
+      trace: '{"toolCalls":[{"name":"skill","arguments":{"id":"angular"},"status":"completed"}]}'
+
+  - description: Failed load - should fail
+    vars:
+      trace: '{"toolCalls":[{"name":"skill","arguments":{"id":"angular"},"status":"error"}]}'
+
+  - description: No tool call - should fail
+    vars:
+      trace: '{"toolCalls":[]}'

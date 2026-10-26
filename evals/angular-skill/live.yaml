@@ -1,0 +1,24 @@
+description: Angular skill — fresh OpenCode session
+
+evaluateOptions:
+  maxConcurrency: 1
+
+prompts:
+  - "Explain how the application's root component works. Do not modify files."
+
+providers:
+  - id: file://live-provider.mjs
+
+tests:
+  - description: Loads Angular skill during root-component explanation
+    vars:
+      fixture: angular
+    assert:
+      - type: javascript
+        value: |
+          const { toolCalls } = JSON.parse(output);
+          return toolCalls.some(call =>
+            call.name === "skill" &&
+            call.arguments?.id === "angular" &&
+            call.status === "completed"
+          );
