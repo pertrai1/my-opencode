@@ -269,7 +269,6 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 - `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
-- `.agents/skills/` — engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills), managed via `npx skills` and updated with `npx skills update` (sources recorded in `skills-lock.json`).
 - `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
 - `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions, specialist subagent delegation, and direct web search/fetch. Selected MCP tools remain denied for this agent.
 - Lean denies the whole `mdn` and `llm-core` servers with `mdn_*` and `llm-core_*`, so tools those servers add later stay denied. Server names keep their hyphens. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. A dormant `agentmemory_*` rule covers matching tools registered by other configuration sources; it does not enable those tools. Restart OpenCode after changing agent permissions.
@@ -287,7 +286,6 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - [RTK](https://github.com/rtk-ai/rtk) — token-saving command proxy for terminal workflows.
 - [lazygit](https://github.com/jesseduffield/lazygit) - simple terminal UI for git commands.
 - [lazydocker](https://github.com/jesseduffield/lazydocker) - The lazier way to manage everything docker.
-- [Matt Pocock Skills](https://github.com/mattpocock/skills) - Skills for Real Engineers.
 
 ### Web research
 
@@ -357,4 +355,3 @@ configuration checkout alone does not install skills into other projects.
 2. `rtk init -g --opencode` to install the RTK plugin
 3. `uv tool install code-review-graph` for the CLI used by the graph MCP server and plugin, both already configured here. Do not run `code-review-graph install --platform opencode` in this checkout; it would write to `opencode.jsonc` and append its own instructions to `AGENTS.md`.
 4. herdr install for agent-state reporting
-5. `npx skills add mattpocock/skills` and `npx skills update` for the skill library
