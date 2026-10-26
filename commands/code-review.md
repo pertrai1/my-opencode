@@ -1,12 +1,44 @@
 ---
-description: Review the current diff for architectural fit and launch Difit with findings.
+description: Review a working-tree or PR diff for architectural fit, challenge review risk, and launch Difit with findings.
 agent: plan
 model: openai/gpt-6-astra
 ---
 
-Review the current change set in the working tree.
+Review the current change set in the working tree, or the full PR diff when the
+user supplies a PR or explicit base/head revisions.
 
 This is a review-only task. Do not edit files, apply patches, or change the repository state.
+
+## Scope and independent risk assessment
+
+For a PR or explicit base/head comparison, including branch names or tags without
+a PR, resolve and record the exact base and head SHAs and inspect the full scoped
+diff, including committed changes. Record the merge-base SHA when using a
+three-dot comparison. Do not substitute the local working-tree diff or last
+commit. If the full diff or revisions cannot be obtained, report the missing
+scope and uncertainty rather than claiming a complete PR or revision review.
+
+For an ordinary working-tree review, retain staged, unstaged, and relevant
+untracked changes; record HEAD and the files/time of the inspected snapshot.
+Read the shared [proposed review-risk rubric](../docs/agents/review-risk.md).
+In a target repository, load it from the installed path
+`~/.config/opencode/docs/agents/review-risk.md`.
+Independently assess reach, consequence, and uncertainty from source and impact
+evidence, then compare with the author's assessment. Report agreement or
+disagreement with reasons, including an absent or stale author assessment. Refresh
+after meaningful changes or revision updates. The score does not replace findings,
+specialist selection, or human validation, and grants no publication permission.
+
+Reuse graph impact/review evidence only when it covers the assessed revisions;
+verify it against source. If missing, stale, or incomplete, inspect source and
+consumers directly and state uncertainty; missing evidence never means zero impact.
+
+## Reviewer selection
+
+The selector below reads working-tree metadata only. For PR or explicit
+base/head reviews, skip it and apply the existing manual rules to the full scoped
+diff. A clean working tree must not suppress PR reviewers. For working-tree
+reviews, retain the selector behavior below.
 
 The router sends working-tree file statuses (including paths), diff statistics,
 and locally derived file-category counts to the selected reviewer provider, not raw diffs or credentials.
@@ -22,7 +54,7 @@ Build one reviewer set:
 
 - For `source: typesafe` or `source: subq`, include every `selectedReviewers` entry, including uncertain recommendations.
 - If routing was skipped, or for `source: fallback` or `source: none`, start with an empty set and use the manual rules below.
-- Inspect the working-tree diff and add reviewers required by the manual rules or the user's explicit request. Do not remove a router-selected reviewer because your own classification differs.
+- Inspect the scoped diff and add reviewers required by the manual rules or the user's explicit request. Do not remove a router-selected reviewer because your own classification differs.
 - Launch each selected reviewer once, in parallel where possible.
 
 ## Manual reviewer selection
@@ -45,16 +77,22 @@ When invoking a specialist reviewer, pass:
 - the specific files or file groups that are relevant to that reviewer
 - a brief summary of the change area
 - any explicit risk focus that caused you to invoke that reviewer
+- the exact assessed scope/revisions and the full relevant diff, so a PR reviewer does not default to working-tree changes
 
 Then answer this question while comparing the change to the surrounding code:
 
 Does this change match the conventions, complexity level, and intent of the surrounding code?
 
-Then use the `difit-review` skill to perform a diff review of the current working tree diff, attach any findings as Difit comments, and launch Difit.
+Then use the `difit-review` skill to review the same scoped diff, attach findings
+as local Difit comments, and launch Difit. For a PR or revision comparison, pass
+the assessed revisions or PR URL supported by the installed viewer. If that view
+is unavailable, report the limitation; do not display a working-tree diff as the
+PR review. Do not post remote comments or publish changes as part of this command.
 
 In your final synthesis:
 
 - summarize the overall review in 2-3 sentences
+- include the compact independent review-risk assessment, assessed revisions, and any disagreement with the author's score
 - group specialist findings by domain or risk area when that improves clarity
 - deduplicate overlapping findings from multiple reviewers
 - produce a clear overall verdict on whether the change looks ready, needs changes, or needs discussion

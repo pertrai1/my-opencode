@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: "Review risk: offline hand-authored examples, mechanics only"
+prompts:
+  - "{{candidate}}"
+providers:
+  - echo
+tests: file://examples.yaml
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://mechanics.mjs

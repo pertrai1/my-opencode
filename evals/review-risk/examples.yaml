@@ -1,0 +1,56 @@
+# SYNTHETIC, HAND-AUTHORED examples. Echo does not assess the supplied evidence.
+# semantic_review is for separate human/model judgment, never a mechanical pass.
+- description: "Docs-only: bounded spelling correction"
+  vars:
+    evidence: "Full PR diff changes one misspelled heading in docs/install.md; links, commands, configuration and instructions unchanged. Source comparison confirms editorial scope."
+    semantic_review: "R0/C0/U0 is defensible because no workflow or behavior changes. Documentation that changes agent behavior would have broader reach."
+    candidate: |
+      Review risk (proposed): R0 + C0 + U0 = 0/6; quick (~5 min); override: none.
+      Scope: PR base aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -> head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; full two-revision diff inspected.
+      Evidence: R0 heading only; C0 spelling has negligible behavioral effect; U0 complete editorial diff inspected.
+      Impact: install-doc readers; graph not applicable to heading, source comparison confirms unchanged links and commands.
+      Focus / gaps: check spelling and heading rendering; no runtime verification needed for this fixture; advisory, not approval.
+
+- description: "Isolated behavior: local empty-state rendering"
+  vars:
+    evidence: "Full PR diff changes formatCount in src/widget.mjs. Import search shows only Widget consumes it. Tests cover zero and positive counts; rendered UI has not been inspected."
+    semantic_review: "Known local consumers support R1; recoverable display failure supports C1; missing rendered validation warrants U1 rather than claiming complete certainty."
+    candidate: |
+      Review risk (proposed): R1 + C1 + U1 = 3/6; focused (~10–20 min); override: none.
+      Scope: PR base aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -> head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; full two-revision diff inspected.
+      Evidence: R1 Widget is the only importer; C1 incorrect counts are recoverable display errors; U1 rendered validation missing.
+      Impact: widget users and empty-state text; graph unavailable, direct import/source search found one consumer with dynamic imports unverified.
+      Focus / gaps: zero/positive count behavior and accessibility of rendered text; UI inspection pending; advisory, not approval.
+
+- description: "Shared runtime: retry helper consumed by several plugins"
+  vars:
+    evidence: "Full PR diff changes lib/retry.mjs used by three plugins. A fresh graph at head identifies callers, confirmed against imports/source. Helper tests pass; plugin integration and failure recovery remain untested."
+    semantic_review: "R2 shared runtime, C1 recoverable retry disruption and U1 integration gaps imply deep at 4. Source confirmation matters even with a fresh graph."
+    candidate: |
+      Review risk (proposed): R2 + C1 + U1 = 4/6; deep (30+ min); override: none.
+      Scope: PR base aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -> head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; full two-revision diff inspected.
+      Evidence: R2 three plugin consumers; C1 retry disruption is recoverable in this fixture; U1 consumer integration untested.
+      Impact: retry timing and errors in three plugins; graph current at assessed head and diff coverage checked, caller imports verified against source.
+      Focus / gaps: plugin interaction and failure recovery; helper tests pass but integration checks missing; advisory, not approval.
+
+- description: "Tiny security-critical change: authorization predicate"
+  vars:
+    evidence: "Full PR diff changes one predicate in src/authorize.mjs for the administrative endpoint. Source review establishes callers and routing; allow/deny and privilege-escalation regressions pass. A failed predicate could grant administrative access. Author calls it low risk because it is one line."
+    semantic_review: "Challenge the author's size-based score. C2 authorization boundary overrides a focused total of 3 to deep even with strong verification. R1/U0 are defensible from the supplied evidence; security review still applies."
+    candidate: |
+      Review risk (reviewer): R1 + C2 + U0 = 3/6; deep (30+ min); override: authorization boundary.
+      Scope: PR base aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -> head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; full two-revision diff inspected.
+      Evidence: R1 known endpoint; C2 unauthorized admin access; U0 source/routing and allow/deny regressions inspected; disagree with author's low rating based on line count.
+      Impact: administrative authorization and endpoint callers; graph unavailable, direct source and route search establishes the fixture's consumers.
+      Focus / gaps: recheck deny cases and privilege escalation with security specialist; passing tests do not prove safety; advisory, not approval.
+
+- description: "Unknown evidence: incomplete diff and stale graph"
+  vars:
+    evidence: "Only an excerpt of a shared module is available. PR base/head cannot be resolved and the graph was built at another head. Author reports no consumers because the graph returned no callers. Full diff, source consumers and tests are unavailable."
+    semantic_review: "Unknown scope requires R2/U2 and cannot be called low impact. Reject empty stale graph as evidence; C1 is provisional with plausible failures still unresolved. Review is incomplete."
+    candidate: |
+      Review risk (reviewer): R2 + C1 + U2 = 5/6; deep (30+ min); override: none.
+      Scope: PR base/head unresolved; only supplied excerpt assessed, full PR review incomplete.
+      Evidence: R2 scope unknown; C1 provisional recoverable failure, serious harm not ruled out; U2 full diff and consumers unavailable; author's zero-impact claim unsupported.
+      Impact: shared-module consumers unknown; stale graph cannot establish impact, source fallback attempted but source unavailable, uncertainty remains.
+      Focus / gaps: obtain exact revisions/full diff and inspect source consumers and failure modes before completion; advisory, not approval.

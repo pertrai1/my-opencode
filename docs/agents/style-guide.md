@@ -93,3 +93,10 @@ Ground plans and reviews in repository evidence. Name the files, behavior, or
 observations that support a conclusion. Label assumptions and open questions,
 and ask rather than inventing missing requirements. Report risks and limitations
 without overstating their likelihood or impact.
+
+When preparing a PR or a final change handoff, load the shared
+[proposed review-risk rubric](review-risk.md). In a target repository, load it from
+the installed path `~/.config/opencode/docs/agents/review-risk.md`.
+Include its compact, evidence-backed assessment for the current revisions in the
+target repository. Refresh it after meaningful changes. The assessment is advisory
+and grants no publication permission.

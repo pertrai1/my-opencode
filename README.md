@@ -73,6 +73,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 
 ## Review
 
+- [Proposed review-risk rubric](docs/agents/review-risk.md) — start here for advisory risk assessments during PR preparation, change handoffs, and independent review; includes evidence requirements and suggested review depth.
 - `agents/architecture-boundary-reviewer.md` — narrow, diff-only companion to `architecture-reviewer`; checks changed dependency and public-API edges for boundary violations.
 - `agents/architecture-reviewer.md` — broader architectural reviewer for pre-implementation fitness and post-implementation drift.
 - `agents/explore.md` — read-only reconnaissance agent for codebase analysis and safe shell/file inspection.
