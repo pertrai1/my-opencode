@@ -1,12 +1,31 @@
 import { execFile } from "node:child_process";
+import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { promisify } from "node:util";
 
-const roots = {
-  angular: "/Users/robsimpson/Repos/angular-net-learning-app",
-  plainJs: "/Users/robsimpson/Projects/sample-eval-repos/eval-plain-js-fixture",
+const fixtureVariables = {
+  angular: "ANGULAR_SKILL_ANGULAR_ROOT",
+  plainJs: "ANGULAR_SKILL_PLAIN_JS_ROOT",
 };
 
 const run = promisify(execFile);
+
+async function fixtureRoot(fixture) {
+  if (!Object.hasOwn(fixtureVariables, fixture)) {
+    throw new Error(`Unknown eval fixture: ${fixture}`);
+  }
+  const variable = fixtureVariables[fixture];
+  const configured = process.env[variable];
+  if (!configured?.trim()) {
+    throw new Error(`Set ${variable} to the ${fixture} fixture directory`);
+  }
+  const root = resolve(configured);
+  const info = await stat(root).catch(() => null);
+  if (!info?.isDirectory()) {
+    throw new Error(`${variable} must point to an existing directory: ${root}`);
+  }
+  return root;
+}
 
 async function api(method, path, body) {
   const args = ["api", method, path];
@@ -29,8 +48,7 @@ export default class LiveProvider {
     let sessionId;
 
     try {
-      const root = roots[context.vars.fixture];
-      if (!root) throw new Error("Unknown eval fixture");
+      const root = await fixtureRoot(context.vars.fixture);
 
       const created = await api("post", "/api/session", {
         title: "Angular skill eval",
