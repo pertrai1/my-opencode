@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import test from "node:test";
@@ -102,7 +102,8 @@ test("relative roots resolve from the eval process working directory", (t) => {
     ANGULAR_SKILL_ANGULAR_ROOT: "Angular fixture with spaces",
   });
   assert.equal(response.error, undefined);
-  assert.equal(calls.find(call => call.path === "/api/session").body.root, setup.angular);
+  // The child process working directory resolves symlinks such as macOS /var.
+  assert.equal(calls.find(call => call.path === "/api/session").body.root, realpathSync(setup.angular));
 });
 
 function assertSetupError(result, expected) {
