@@ -60,7 +60,7 @@ test("all candidates are checked before edits, with unchanged files and safe ski
 });
 
 test("synthetic examples retain reviewable evidence and expectations, not model scores", () => {
-  const cases = yaml.load(read("evals/learn/examples.yaml"));
+  const cases = yaml.load(read("evals/learn/examples.yaml")).map(({ vars }) => vars);
   assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
   assert.deepEqual(new Set(cases.map(({ category }) => category)), new Set([
     "verified", "sensitive", "generalized", "transcript", "untrusted", "authority",

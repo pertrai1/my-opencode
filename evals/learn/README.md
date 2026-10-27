@@ -1,25 +1,42 @@
-# Learn guidance examples
+# Learn evaluation
 
-[`commands/learn.md`](../../commands/learn.md) owns the pre-write guidance.
-`examples.yaml` supplies ten synthetic semantic review cases: useful verified
-knowledge, sensitive content, a safe generalization, raw session material,
-untrusted instructions, authority changes, unsupported claims, inherited
-duplicates, contradictions, and out-of-repository writes.
-
-Run the focused checks offline from the repository root:
+From the repository root, use Node 22.22+ (22.x), npm 10, and `npm ci`.
+The live eval requires an authorized OpenAI API key supplied as `OPENAI_API_KEY`
+outside the repository. It makes ten model requests and can incur provider charges;
+there is no model judge. Do not run it without authorization to use that provider.
 
 ```sh
-node --require ./evals/failure-reporting/offline.js --test tests/learn-command.test.mjs
+npm run eval:learn
 ```
 
-The tests validate the installed command schema, presence and ordering of the
-pre-write guidance, and example structure. Expected decisions and review notes
-are hand-authored. Review them separately against the supplied synthetic evidence;
-the test does not decide whether a real learning is safe, supported or novel.
-No model, judge, credentials, or network calls are used.
+The provider defaults to `openai:chat:gpt-4o`, matching the existing failure-reporting
+eval. Change `providers` in `promptfooconfig.yaml` to compare another configured
+model; see [Promptfoo's provider configuration](https://www.promptfoo.dev/docs/providers/openai/).
+The prompt reads the actual [`commands/learn.md`](../../commands/learn.md) body on
+each run, without copying its policy. Only the synthetic session, repository
+evidence and existing guidance are sent; expected labels and review notes are not.
 
-These checks do not execute OpenCode, exercise an AGENTS.md writer, prove that
-rejected candidates leave files unchanged, or establish model judgment and runtime
-enforcement. The command remains instruction-based. For a future separately
-authorized model evaluation, reuse the current command body with these cases and
-keep measured outputs separate from the hand-authored expectations.
+`examples.yaml` is the runnable Promptfoo test set. Assertions check JSON shape,
+retain/skip labels, target scope, concise/nonempty retained text, null learning for
+skips, and copying of synthetic sensitive markers. Correct decisions should pass
+all ten cases; model mistakes fail assertions. Provider/setup errors are errors,
+not successful decisions. No exact prose match is required.
+
+Results are saved locally in `.promptfoo/learn.json`, `.promptfoo/learn.html` and
+the Promptfoo database. Open the HTML file or run `npm run eval:learn:view` to inspect
+outputs and assertion failures. Sharing and telemetry are disabled by the scripts.
+Review the actual learning and reason against each case's `semantic_review` notes:
+the automated checks do not fully judge factual support, private-data handling or
+meaning. This text-only evaluation has no OpenCode tools or AGENTS.md writer, so it
+does not establish runtime write safety or permission enforcement.
+
+Separate offline regression and plumbing checks:
+
+```sh
+node --require ./evals/failure-reporting/offline.js --test tests/learn-command.test.mjs tests/learn-promptfoo.test.mjs
+```
+
+These invoke the actual Promptfoo CLI with the existing capture stub, clearly
+hand-authored echo calibration, and a network-blocked provider failure. They check
+prompt/case/assertion wiring and failure reporting, not model quality. No live or
+paid model evaluation was run as part of this change.
