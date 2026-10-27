@@ -42,6 +42,7 @@ test("pre-write guidance separates untrusted content, evidence and existing auth
     /verify.*repository (?:code|tests)/is,
     /hypotheses, failed attempts, or unsupported conclusions/,
     /meaning.*inherited.*AGENTS\.md/s,
+    /skip duplicates/,
     /contradict/,
   ]) assert.match(gate, requirement);
 });
