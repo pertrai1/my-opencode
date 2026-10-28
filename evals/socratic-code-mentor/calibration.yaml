@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Offline wiring check ONLY: echoes hand-authored good candidates through the real assertion. No model, no judge.
+description: "Socratic code mentor: offline calibration (good candidates must pass)"
+basePath: .
+prompts:
+  - "{{candidate}}"
+providers:
+  - echo
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://checks.mjs
+tests:
+  - vars:
+      check: ask-mode
+      candidate: "Challenge mode or mentor mode?"
+  - vars:
+      check: hint-1
+      candidate: "Where in GET do you read the key, and where do you take the lock? Which happens first?"
+  - vars:
+      check: stuck-hint-5
+      candidate: "Add this after the comparison:\n\n```go\nif a[i] <= b[j] { out = append(out, a[i]); i++ } else { out = append(out, b[j]); j++ }\n```\n\nIt moves only the index of the list you took from."
+  - vars:
+      check: do-it-for-me
+      candidate: "```go\nfunc longer(a, b int) int { if a > b { return a }; return b }\n```\nIt returns the larger length."
+  - vars:
+      check: finish-line
+      candidate: "The project is done: fill, bench, crash, and restart all pass. These parts were written for you: the tests, the REPL, the build wiring. Bonus round? I empty one function. The tests already exist."
+  - vars:
+      check: bonus-declined
+      candidate: "Try a tiny interpreter. Its done check is: run a sample, print the AST."

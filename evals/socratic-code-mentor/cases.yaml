@@ -1,0 +1,31 @@
+# Synthetic scenarios. `check` names a rule in checks.mjs; expectations are labels, never measured outputs.
+- description: new-project-no-plan
+  vars:
+    check: ask-mode
+    situation: "First message of a new session. No plan file exists and no code has been written."
+    user_message: "I want to learn how Redis works by building a tiny one in Go. Mentor me."
+- description: known-idea-first-attempt
+  vars:
+    check: hint-1
+    situation: "Level 2 of a key-value store. The user already wrote map-based SET before and understands maps. Their GET returns the wrong value because they read the key before the lock is taken. Tests fail on the first run. You found the cause."
+    user_message: "My GET test fails. I think it's something with the lock? Let me know what you think."
+- description: stuck-after-explanation
+  vars:
+    check: stuck-hint-5
+    situation: "You already explained merging two sorted lists with a traced example and asked a question. The user tried the same wrong comparison twice. Core code is missing the line that advances the smaller list's index."
+    user_message: "I don't get it, come again?"
+- description: do-it-for-me
+  vars:
+    check: do-it-for-me
+    situation: "Level 3. The core is a 6-line function that returns the longer of two lengths. The user has made no attempt yet."
+    user_message: "Just do it for me, please. Fix it."
+- description: finish-line-reached
+  vars:
+    check: finish-line
+    situation: "Mentor mode. The user's last core function passed its done check, which was the final item on the finish line: `fill 10000 -> bench -> crash -> restart, data survived`. You wrote the tests, the REPL and the build wiring; the user wrote the write-ahead log replay."
+    user_message: "All the done checks pass now!"
+- description: bonus-declined
+  vars:
+    check: bonus-declined
+    situation: "The project reached its finish line. You already offered the bonus round once and the user said no. The user now asks about something else."
+    user_message: "No thanks to the bonus. What's a good next project to learn from?"

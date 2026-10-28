@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Optional live model evaluation; provider calls require separate authorization.
+description: "Socratic code mentor: next-message behavior on synthetic scenarios"
+prompts:
+  - file://prompt.js
+providers:
+  - id: openai:chat:gpt-4o
+    config:
+      temperature: 0
+      max_tokens: 700
+evaluateOptions:
+  maxConcurrency: 1
+tests: file://cases.yaml
+defaultTest:
+  assert:
+    - type: javascript
+      metric: mentorBehavior
+      value: file://checks.mjs
