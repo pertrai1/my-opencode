@@ -248,8 +248,8 @@
       },
       "fallow": {
         "type": "local",
-        "command": ["npx", "-y", "--package=fallow@3.35.0", "fallow-mcp"],
-        "disabled": true,
+        "command": ["npx", "-y", "--package=fallow@3.36.0", "fallow-mcp"],
+        "disabled": false,
       },
       // Opts out of Google usage statistics and uses a temporary browser profile per run.
       "chrome-devtools": {
