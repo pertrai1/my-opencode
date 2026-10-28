@@ -1,67 +1,46 @@
 # Learn evaluation
 
-## Try a small benchmark
+## Compare prompt versions
 
-Promptfoo is the runner; the benchmark is the fixed set of ten cases in
-[`examples.yaml`](examples.yaml), the actual `/learn` instruction body, and the
-assertions in [`promptfooconfig.yaml`](promptfooconfig.yaml). Each case passes
-only when all assertions pass. This is a small prompt-level decision benchmark,
-not an end-to-end coding or OpenCode runtime benchmark.
+Promptfoo runs the benchmark: ten fixed cases from `examples.yaml` and the
+existing assertions from `promptfooconfig.yaml`. `benchmark.mjs` snapshots
+`commands/learn.md` at `origin/main` (baseline) and in the working copy (candidate),
+then runs both through the same prompt renderer and one model. Set
+`LEARN_BASELINE_REF` to a commit/ref for a different baseline; it resolves once to
+an exact commit. The report records that SHA and the working-copy SHA-256 hash.
 
-From the repository root, use Node 22.22+ (22.x), npm 10, and install with `npm ci`.
-Start with the **no-cost, offline demonstration**:
-
-```sh
-npm run eval:learn:demo
-```
-
-Open `.promptfoo/learn-calibration.html` in your browser. It shows the same ten
-rows against two columns; open a failed cell's details to inspect its output and assertion.
-The JSON report is at `.promptfoo/learn-calibration.json`. Both files stay local
-and are overwritten on rerun; copy them elsewhere to preserve a run.
-
-| Column | Expected passing cases | What produced the output |
-| --- | --- | --- |
-| synthetic-baseline | 7/10 | Expected-answer fixtures with three deliberately wrong decisions |
-| synthetic-candidate | 10/10 | Expected-answer fixtures |
-
-These are manufactured calibration results, **not measured model performance or
-an improvement to `/learn`**. The built-in `echo` provider and local transforms
-produce the outputs; no model or model judge is called. A network-blocking preload
-also prevents outbound connections. The three failures (`failed-attempt`,
-`inherited-paraphrase`, `stale-contradiction`) are intentional, so Promptfoo exits
-**100**. The regression test checks both this failing run and an all-pass run.
-Promptfoo's overall 17/20 (85%) combines both columns; compare the per-column
-passing counts above. A failed cell can have a partial score such as 0.67 while
-still failing the case.
-
-## Optional real-model comparison
-
-Only after separately authorizing provider charges, supply `OPENAI_API_KEY`
-outside the repository and run:
+Use Node 22.22+ (22.x), npm 10 and `npm ci`. After separately authorizing provider
+charges and supplying `OPENAI_API_KEY` outside the repository:
 
 ```sh
-LEARN_BASELINE_PROVIDER=openai:chat:gpt-4o \
-LEARN_CANDIDATE_PROVIDER=openai:chat:gpt-4o-mini \
-  npm run eval:learn:compare
+git fetch origin main
+export LEARN_BENCHMARK_PROVIDER='openai:chat:YOUR_VERIFIED_API_MODEL_ID'
+export LEARN_BENCHMARK_REASONING_EFFORT=high
+LEARN_BASELINE_REF=origin/main npm run eval:learn:compare -- --repeat 3
 ```
 
-This makes twenty candidate requests, ten per model, with no model judge. These
-are also the default providers; the names baseline/candidate identify comparison
-roles and do not predict which model will perform better. Both inherit the
-existing temperature, output limit and JSON response settings. The real-model
-config has no calibration transforms: only synthetic snapshots and current
-command instructions reach the model, never expected answers or review notes.
+Replace the provider placeholder with an API model ID you have verified. There
+is no model default or automatic translation from OpenCode's `provider/model#effort`
+names: the repo's global model and `lean` agent override differ. Both settings
+are required and reject blank values. The pinned OpenAI chat provider uses
+`reasoning_effort`; choose an effort supported by your model. The config retains
+the original JSON format, temperature and token limit settings; Promptfoo applies
+the selected model's API restrictions (reasoning models may omit temperature).
 
-Open `.promptfoo/learn-benchmark.html` to compare the baseline/candidate columns,
-or run `npm run eval:learn:view` for the local Promptfoo results browser. JSON is
-saved to `.promptfoo/learn-benchmark.json`; the live run also enters the local
-database. Archive reports and record the repo commit, provider IDs and run date
-when comparing later runs. Keep cases, assertions and instructions fixed and
-change one variable at a time; this example changes only the model. Ten cases
-give a useful regression signal, not a broad quality ranking. A passing count
-does not establish the correctness of retained prose: also inspect outputs using
-each case's `semantic_review` notes. Provider errors are not passes.
+Three repeats mean 60 case requests (two prompts × ten cases × three), without
+a model judge. Open `.promptfoo/learn-benchmark.html`, inspect the JSON alongside
+it, or run `npm run eval:learn:view`. Compare each case's decision, scope and
+pass/fail across repeats, including regressions and inconsistent answers, before
+comparing totals. Each case passes only if all assertions pass; provider errors
+are not passes. Keep cases, assertions, model and settings fixed while editing
+the prompt. Archive reports before rerunning and record the repo commit/settings.
+
+This small prompt-level benchmark cannot establish improvement from a one- or
+two-case gap. Review retained prose and reasons against each case's
+`semantic_review` notes: automated checks do not fully judge meaning or evidence.
+It does not test end-to-end coding, OpenCode tools, file writes or permissions.
+No live model comparison has been run. Offline CLI wiring tests use the existing
+capture stub; their placeholder failures are not model performance results.
 
 ## Existing single-model evaluation
 
