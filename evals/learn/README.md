@@ -23,12 +23,20 @@ Replace the provider placeholder with an API model ID you have verified. There
 is no model default or automatic translation from OpenCode's `provider/model#effort`
 names: the repo's global model and `lean` agent override differ. Both settings
 are required and reject blank values. The pinned OpenAI chat provider uses
-`reasoning_effort`; choose an effort supported by your model. The config retains
-the original JSON format, temperature and token limit settings; Promptfoo applies
-the selected model's API restrictions (reasoning models may omit temperature).
+`reasoning_effort`; choose an effort supported by your model. The benchmark keeps
+the original JSON format and temperature settings, but sets its own
+`max_completion_tokens: 25000` and removes inherited `max_tokens`. This budget
+covers reasoning plus visible output, giving reasoning models more room than the
+single-model eval's unchanged 600-token setting. Promptfoo applies the selected
+model's API restrictions (reasoning models may omit temperature).
 
 Three repeats mean 60 case requests (two prompts × ten cases × three), without
-a model judge. Open `.promptfoo/learn-benchmark.html`, inspect the JSON alongside
+a model judge. At this cap those requests could consume up to 1.5 million
+completion tokens, plus input tokens; provider retries can add usage. The cap is
+a ceiling, not expected usage, and increases potential cost. It does not guarantee
+complete JSON: inspect finish reasons and token usage before treating incomplete
+output as a prompt regression. No live truncation has been observed or measured.
+Open `.promptfoo/learn-benchmark.html`, inspect the JSON alongside
 it, or run `npm run eval:learn:view`. Compare each case's decision, scope and
 pass/fail across repeats, including regressions and inconsistent answers, before
 comparing totals. Each case passes only if all assertions pass; provider errors

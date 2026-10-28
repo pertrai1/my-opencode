@@ -50,10 +50,14 @@ test("prompt comparison preserves fixed cases, assertions and one explicitly con
     assert.deepEqual(config[field], original[field], field);
   }
   assert.equal(config.providers.length, 1);
+  const expectedConfig = { ...original.providers[0].config, reasoning_effort: "high", max_completion_tokens: 25_000 };
+  delete expectedConfig.max_tokens;
   assert.deepEqual(config.providers, [{
     ...original.providers[0], id: settings.LEARN_BENCHMARK_PROVIDER,
-    config: { ...original.providers[0].config, reasoning_effort: "high" },
+    config: expectedConfig,
   }]);
+  assert.equal(original.providers[0].config.max_tokens, 600);
+  assert.equal(original.providers[0].config.max_completion_tokens, undefined);
   assert.equal(config.providers[0].transform, undefined);
   assert.match(config.description, new RegExp(git(["rev-parse", "origin/main"], root)));
 });
@@ -115,7 +119,8 @@ test("pinned OpenAI provider emits configured reasoning and JSON settings withou
   assert.equal(body.model, "gpt-6.1-sol");
   assert.equal(body.reasoning_effort, "high");
   assert.deepEqual(body.response_format, original.providers[0].config.response_format);
-  assert.equal(body.max_completion_tokens, original.providers[0].config.max_tokens);
+  assert.equal(body.max_completion_tokens, 25_000);
+  assert.equal(body.max_tokens, undefined);
   assert.equal(body.temperature, undefined); // Pinned provider applies reasoning-model restrictions.
 });
 

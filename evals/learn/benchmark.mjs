@@ -40,11 +40,13 @@ export function createBenchmark({ root = repository, env = process.env } = {}) {
     return { label, raw: command, function: context => prompt.fromCommand(command, context) };
   };
   const [originalProvider] = learn.providers;
+  const providerConfig = { ...originalProvider.config, reasoning_effort: effort, max_completion_tokens: 25_000 };
+  delete providerConfig.max_tokens; // Reasoning and visible output share the benchmark's completion budget.
   return {
     ...learn,
     description: `Learn prompt benchmark: baseline ${revision}; working copy sha256 ${hash}`,
     prompts: [snapshot(`baseline ${revision.slice(0, 12)}`, baseline), snapshot(`working copy ${hash.slice(0, 12)}`, candidate)],
-    providers: [{ ...originalProvider, id: provider, config: { ...originalProvider.config, reasoning_effort: effort } }],
+    providers: [{ ...originalProvider, id: provider, config: providerConfig }],
   };
 }
 
