@@ -230,6 +230,7 @@
           "-c",
           "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then exec code-review-graph mcp --auto-watch; else exec code-review-graph mcp; fi",
         ],
+        "disabled": false,
       },
       // Read-only graph tools for the explore agent, which cannot use Code Mode.
       // A global permission hides this server from every other agent.
@@ -261,6 +262,7 @@
           "--no-usage-statistics",
           "--isolated",
         ],
+        "disabled": false,
       },
       "sonarqube": {
         "type": "local",
@@ -286,18 +288,15 @@
         "environment": {
           "CS_ACCESS_TOKEN": "{file:~/.secrets/codescene-token}",
         },
+        "disabled": false,
       },
       "rea": {
         "type": "local",
-        "command": [
-          "npx",
-          "-y",
-          "rea-agents@6.7.0",
-          "mcp"
-        ],
+        "command": ["npx", "-y", "rea-agents@6.7.0", "mcp"],
         "environment": {
-          "HOPPER_LAUNCHER_PATH": "/Users/robsimpson/Applications/Hopper Disassembler.app/Contents/MacOS/hopper"
-        }
+          "HOPPER_LAUNCHER_PATH": "/Users/robsimpson/Applications/Hopper Disassembler.app/Contents/MacOS/hopper",
+        },
+        "disabled": true,
       },
     },
   },
@@ -306,7 +305,5 @@
     "max_bytes": 51200,
   },
   "formatter": true,
-  "plugins": [
-    "@openchamber/opencode-claude@1.6.0"
-  ],
+  "plugins": ["@openchamber/opencode-claude@1.6.0"],
 }
