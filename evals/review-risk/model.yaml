@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# OPTIONAL PAID MODEL + GRADER: synthetic evidence, not a live repository review.
+description: "Review risk: model assessments of supplied evidence"
+prompts:
+  - file://prompt.mjs
+providers:
+  - id: openai:chat:gpt-5.4-mini-2026-03-17
+    config:
+      reasoning_effort: low
+      max_completion_tokens: 8000
+tests: file://cases.mjs
+defaultTest:
+  options:
+    provider:
+      id: openai:chat:gpt-5.4-2026-03-05
+      config:
+        reasoning_effort: low
+        max_completion_tokens: 8000
+    rubricPrompt: file://grader.mjs
+  assert:
+    - type: javascript
+      value: file://mechanics.mjs
