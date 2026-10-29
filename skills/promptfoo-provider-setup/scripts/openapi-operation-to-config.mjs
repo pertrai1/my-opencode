@@ -96,7 +96,7 @@ const credentialParamNames = new Set(
 );
 const headers =
   inputs.requestMediaEntry && !inputs.requestIsMultipart
-    ? { 'Content-Type': inputs.requestMediaEntry?.mediaType || 'application/json' }
+    ? { 'Content-Type': inputs.requestMediaEntry.mediaType }
     : {};
 for (const name of inputs.headerFields) {
   headers[name] = credentialParamNames.has(name)
@@ -193,7 +193,7 @@ for (const name of inputs.bodyFields) {
   }
 }
 const config = {
-  description: args.description || `Provider setup generated from ${args['operation-id']}`,
+  description: args.description ? args.description : `Provider setup generated from ${args['operation-id']}`,
   prompts: ['{{message}}'],
   providers: [{ id: 'https', label: args.label || args['operation-id'], config: providerConfig }],
   tests: [

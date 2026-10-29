@@ -63,7 +63,8 @@ function isIdentityField(name) {
 }
 
 function isTechnicalIdField(name) {
-  return TECHNICAL_ID_FIELDS.has(name) || name.endsWith('_trace_id');
+  const isKnownTechnicalId = TECHNICAL_ID_FIELDS.has(name);
+  return isKnownTechnicalId || name.endsWith('_trace_id');
 }
 
 function inputDescription(name) {
@@ -208,15 +209,15 @@ if (fields.length === 0) {
     'Selected operation has no controllable request inputs; use provider setup for response checks.',
   );
 }
-const numTests = Number.parseInt(args['num-tests'] || '1', 10);
+const numTests = Number.parseInt(args['num-tests'] ? args['num-tests'] : '1', 10);
 if (!Number.isInteger(numTests) || numTests < 1) {
   usage('--num-tests must be a positive integer');
 }
-const policy = args.policy || inferPolicy(fields, args['operation-id']);
+const policy = args.policy ? args.policy : inferPolicy(fields, args['operation-id']);
 
 const headers =
   inputs.requestMediaEntry && !inputs.requestIsMultipart
-    ? { 'Content-Type': inputs.requestMediaEntry?.mediaType || 'application/json' }
+    ? { 'Content-Type': inputs.requestMediaEntry.mediaType }
     : {};
 for (const name of inputs.headerFields) {
   headers[name] = credentialParamNames.has(name)
@@ -297,7 +298,7 @@ const defaultVars = Object.fromEntries(
 );
 const includeSmokeTest = isTruthy(args['smoke-test']) || Boolean(args['smoke-assert']);
 const config = {
-  description: args.description || `Redteam setup generated from ${args['operation-id']}`,
+  description: args.description ? args.description : `Redteam setup generated from ${args['operation-id']}`,
   targets: [
     {
       id: 'https',

@@ -52,25 +52,25 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
   }
 
   function getJsonMediaEntry(document, content) {
-    const contentRecord = asRecord(content || {}, 'content');
+    const contentRecord = asRecord(content ?? {}, 'content');
     const exactJson = contentRecord['application/json'];
     const entry = exactJson
       ? ['application/json', exactJson]
       : Object.entries(contentRecord).find(([mediaType]) => isJsonMediaType(mediaType));
-    return entry
+    return entry?.length > 0
       ? { mediaType: entry[0], media: asRecord(resolveRef(document, entry[1]), entry[0]) }
       : undefined;
   }
 
   function getRequestMediaEntry(document, content) {
-    const contentRecord = asRecord(content || {}, 'content');
+    const contentRecord = asRecord(content ?? {}, 'content');
     const jsonEntry = getJsonMediaEntry(document, contentRecord);
     if (jsonEntry) {
       return jsonEntry;
     }
     for (const isMediaType of [isFormUrlEncodedMediaType, isMultipartMediaType, isTextMediaType]) {
       const entry = Object.entries(contentRecord).find(([mediaType]) => isMediaType(mediaType));
-      if (entry) {
+      if (entry?.length > 0) {
         return {
           mediaType: entry[0],
           media: asRecord(resolveRef(document, entry[1]), entry[0]),
@@ -138,7 +138,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
   }
 
   function schemaProperties(document, schema) {
-    const resolved = asRecord(resolveRef(document, schema || { type: 'object' }), 'schema');
+    const resolved = asRecord(resolveRef(document, schema ?? { type: 'object' }), 'schema');
     const variantProperties = schemaVariant(resolved)
       ? schemaProperties(document, schemaVariant(resolved))
       : {};
@@ -148,12 +148,12 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
     return {
       ...variantProperties,
       ...allOfProperties,
-      ...asRecord(resolved.properties || {}, 'schema.properties'),
+      ...asRecord(resolved.properties ?? {}, 'schema.properties'),
     };
   }
 
   function schemaRequired(document, schema) {
-    const resolved = asRecord(resolveRef(document, schema || { type: 'object' }), 'schema');
+    const resolved = asRecord(resolveRef(document, schema ?? { type: 'object' }), 'schema');
     const variantRequired = schemaVariant(resolved)
       ? schemaRequired(document, schemaVariant(resolved))
       : [];
@@ -221,7 +221,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
       }
     }
     return schemaType(resolved) === 'array'
-      ? resolveRef(document, resolved.items || {})
+      ? resolveRef(document, resolved.items ?? {})
       : undefined;
   }
 
@@ -249,7 +249,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
   }
 
   function orderedProperties(document, schema) {
-    const resolved = asRecord(schema || { type: 'object' }, 'schema');
+    const resolved = asRecord(schema ?? { type: 'object' }, 'schema');
     const properties = schemaProperties(document, resolved);
     const required = schemaRequired(document, resolved);
     return [...required, ...Object.keys(properties).filter((name) => !required.includes(name))];
@@ -260,6 +260,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
       return false;
     }
     const resolved = asRecord(resolveRef(document, schema), 'schema');
+    // Schema flags must be literal booleans, not truthy strings.
     if (resolved[flag] === true) {
       return true;
     }
@@ -305,7 +306,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
 
   function responseOutputField(document, properties) {
     const responseProperties = Object.fromEntries(
-      Object.entries(properties).filter(([_name, schema]) => !isWriteOnlySchema(document, schema)),
+      Object.entries(properties).filter(([, schema]) => !isWriteOnlySchema(document, schema)),
     );
     for (const candidate of [
       'output',
@@ -324,7 +325,7 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
   }
 
   function successResponse(document, operation) {
-    const responses = asRecord(operation.responses || {}, 'responses');
+    const responses = asRecord(operation.responses ?? {}, 'responses');
     const status = responses['200']
       ? '200'
       : Object.keys(responses)
@@ -352,9 +353,16 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
+  function firstArrayItem(value) {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+    return value.length > 0 ? value[0] : undefined;
+  }
+
   function firstExample(document, examples) {
-    if (Array.isArray(examples) && examples.length > 0) {
-      return examples[0];
+    if (Array.isArray(examples)) {
+      return firstArrayItem(examples);
     }
     if (!isPlainRecord(examples)) {
       return undefined;
@@ -413,7 +421,8 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
 
   function isCredentialParamName(name) {
     const normalized = varName(name);
-    return CREDENTIAL_PARAM_NAMES.has(normalized) || CREDENTIAL_SUFFIX_REGEX.test(normalized);
+    const isKnownCredential = CREDENTIAL_PARAM_NAMES.has(normalized);
+    return isKnownCredential || CREDENTIAL_SUFFIX_REGEX.test(normalized);
   }
 
   function authFromScheme(scheme) {
@@ -444,9 +453,9 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
   }
 
   function inferAuths(document, operation) {
-    const components = asRecord(document.components || {}, 'components');
+    const components = asRecord(document.components ?? {}, 'components');
     const securitySchemes = asRecord(
-      components.securitySchemes || {},
+      components.securitySchemes ?? {},
       'components.securitySchemes',
     );
     const hasOperationSecurity = Array.isArray(operation.security);
@@ -560,22 +569,22 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
       .filter((parameter) => parameter.in === 'cookie')
       .map((parameter) => parameter.name)
       .filter((name) => typeof name === 'string');
-    const requestBody = asRecord(resolveRef(document, operation.requestBody || {}), 'requestBody');
+    const requestBody = asRecord(resolveRef(document, operation.requestBody ?? {}), 'requestBody');
     const requestMediaEntry = getRequestMediaEntry(
       document,
-      asRecord(requestBody.content || {}, 'requestBody.content'),
+      asRecord(requestBody.content ?? {}, 'requestBody.content'),
     );
     const requestMedia = requestMediaEntry?.media;
     const requestExample = objectSample(document, requestMedia, 'requestBody application/json');
     const requestExampleIsArray = Array.isArray(requestExample);
-    const requestExampleArrayItemIsObject =
-      requestExampleIsArray && isPlainRecord(requestExample[0]);
+    const requestExampleItem = firstArrayItem(requestExample);
+    const requestExampleArrayItemIsObject = isPlainRecord(requestExampleItem);
     const requestExampleIsScalar =
       requestExample !== undefined && !requestExampleIsArray && !isPlainRecord(requestExample);
     const requestSchema = schemaFromMedia(document, requestMedia);
-    const requestIsFormUrlEncoded = isFormUrlEncodedMediaType(requestMediaEntry?.mediaType || '');
-    const requestIsMultipart = isMultipartMediaType(requestMediaEntry?.mediaType || '');
-    const requestIsText = isTextMediaType(requestMediaEntry?.mediaType || '');
+    const requestIsFormUrlEncoded = isFormUrlEncodedMediaType(requestMediaEntry?.mediaType ?? '');
+    const requestIsMultipart = isMultipartMediaType(requestMediaEntry?.mediaType ?? '');
+    const requestIsText = isTextMediaType(requestMediaEntry?.mediaType ?? '');
     const requestArrayItemSchema =
       requestSchema && !requestIsFormUrlEncoded && !requestIsMultipart && !requestIsText
         ? schemaArrayItems(document, requestSchema)
@@ -613,10 +622,10 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
             : {};
     const requestExampleFields = isPlainRecord(requestExample)
       ? requestExample
-      : Array.isArray(requestExample) && isPlainRecord(requestExample[0])
-        ? requestExample[0]
+      : requestExampleArrayItemIsObject
+        ? requestExampleItem
         : Array.isArray(requestExample) && requestExample.length > 0
-          ? { message: requestExample[0] }
+          ? { message: requestExampleItem }
           : requestExampleIsScalar
             ? { message: requestExample }
             : {};
@@ -637,17 +646,18 @@ export function createOpenApiHelpers(usage, promptBeforeSchema = false) {
         );
     const { status: responseStatus, response } = successResponse(document, operation);
     const responseContent = asRecord(
-      response.content || {},
+      response.content ?? {},
       `responses.${responseStatus ?? 'success'}.content`,
     );
     const responseMediaEntry = getJsonMediaEntry(document, responseContent);
     const responseMedia = responseMediaEntry?.media;
     const responseExample = objectSample(document, responseMedia, 'response application/json');
     const responseExampleIsArray = Array.isArray(responseExample);
+    const responseExampleItem = firstArrayItem(responseExample);
     const responseExampleFields = isPlainRecord(responseExample)
       ? responseExample
-      : responseExampleIsArray && isPlainRecord(responseExample[0])
-        ? responseExample[0]
+      : isPlainRecord(responseExampleItem)
+        ? responseExampleItem
         : {};
     const responseSchema = schemaFromMedia(document, responseMedia);
     const responseArrayItemSchema = responseSchema

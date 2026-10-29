@@ -10,6 +10,7 @@ const TYPE_CHECKS = {
 
 // Check declared JSON types, not the full schema (required keys, enums, formats, etc.).
 function typeCheck(schema, resolveRef, seen = new Set()) {
+  // Only the literal false schema rejects every value; absent schemas do not.
   if (schema === false) {
     return 'false';
   }
@@ -37,6 +38,7 @@ function typeCheck(schema, resolveRef, seen = new Set()) {
     }
   }
   const check = checks.length ? checks.map((part) => `(${part})`).join(' && ') : 'true';
+  // A truthy non-boolean nullable flag must not allow null.
   return resolved.nullable === true ? `value === null || (${check})` : check;
 }
 

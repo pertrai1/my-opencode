@@ -287,6 +287,18 @@
           "CS_ACCESS_TOKEN": "{file:~/.secrets/codescene-token}",
         },
       },
+      "rea": {
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "rea-agents@6.7.0",
+          "mcp"
+        ],
+        "environment": {
+          "HOPPER_LAUNCHER_PATH": "/Users/robsimpson/Applications/Hopper Disassembler.app/Contents/MacOS/hopper"
+        }
+      },
     },
   },
   "tool_output": {
@@ -294,5 +306,7 @@
     "max_bytes": 51200,
   },
   "formatter": true,
-  "plugins": ["@openchamber/opencode-claude@1.5.0"],
+  "plugins": [
+    "@openchamber/opencode-claude@1.6.0"
+  ],
 }

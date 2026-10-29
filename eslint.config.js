@@ -6,7 +6,11 @@ const globals = require("globals");
 
 module.exports = [
   {
-    ignores: ["node_modules/**", "dist/**", ".gitnexus/**", "skills/security-audit/**"],
+    ignores: [
+      "node_modules/**", "dist/**", ".gitnexus/**", "skills/security-audit/**",
+      // Upstream js-yaml distribution; keep repository rules on the helper scripts.
+      "skills/promptfoo-provider-setup/scripts/vendor/js-yaml.mjs",
+    ],
   },
   ...llmCore.configs.recommended,
   {
@@ -22,6 +26,16 @@ module.exports = [
     },
   },
   js.configs.recommended,
+  {
+    files: [
+      "skills/promptfoo-provider-setup/scripts/openapi-helpers.mjs",
+      "skills/promptfoo-provider-setup/scripts/response-contract.mjs",
+    ],
+    rules: {
+      // Untyped JSON Schema values require literal boolean checks, not truthiness.
+      "llm-core/no-redundant-logic": "off",
+    },
+  },
   ...tsPlugin.configs["flat/recommended"].map(config => ({
     ...config,
     files: ["**/*.ts"],
