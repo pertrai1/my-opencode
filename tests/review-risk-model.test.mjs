@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -15,14 +15,29 @@ const repository = fileURLToPath(new URL("../", import.meta.url));
 const caseDirectory = join(repository, "evals/review-risk");
 const read = path => readFileSync(join(repository, path), "utf8");
 const examples = yaml.load(read("evals/review-risk/examples.yaml"));
+const settings = { REVIEW_RISK_PROVIDER: "file://offline-generator.cjs", REVIEW_RISK_GRADER: "file://offline-grader.cjs" };
+const configuredCases = () => cases({ env: settings });
 const output = `Review risk (reviewer): R2 + C0 + U0 = 2/6; focused (~10–20 min); override: none.
 Scope: supplied synthetic evidence only; exact revisions unresolved.
 Evidence: controlled wiring output, not a model assessment.
 Impact: no real repository inspected; graph not accessed.
 Focus / gaps: live judgment unverified; advisory, not approval.`;
 
+test("both provider IDs must be explicitly configured without model defaults", () => {
+  const config = yaml.load(read("evals/review-risk/model.yaml"));
+  assert.deepEqual(config.providers.map(provider => provider.id), ["{{ env.REVIEW_RISK_PROVIDER | trim }}"]);
+  assert.equal(config.defaultTest.options.provider.id, "{{ env.REVIEW_RISK_GRADER | trim }}");
+  for (const name of Object.keys(settings)) {
+    for (const value of [undefined, "", " \t\n "]) {
+      assert.throws(() => cases({ env: { ...settings, [name]: value } }), {
+        message: `${name} must be explicitly configured and nonblank`,
+      });
+    }
+  }
+});
+
 test("model cases reuse evidence but keep candidates and grading notes out of generation", () => {
-  const scenarios = cases();
+  const scenarios = configuredCases();
   assert.equal(scenarios.length, 6);
   for (const [index, scenario] of scenarios.entries()) {
     assert.deepEqual(Object.keys(scenario.vars), ["evidence"]);
@@ -60,32 +75,35 @@ test("generation and grading load actual canonical rubric and independent review
   assert.match(grader(), /R2 alone requires focused, not automatically deep/);
 });
 
-function runCli(t, mechanicalPass, semanticPass) {
+function runCli(t, mechanicalPass, semanticPass, providerSettings = {}) {
   const directory = mkdtempSync(join(tmpdir(), "review-risk-wiring-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const log = join(directory, "requests.jsonl");
   const report = join(directory, "report.json");
   const provider = join(directory, "provider.cjs");
-  writeFileSync(provider, `const { appendFileSync } = require("node:fs");
+  const judgeProvider = join(directory, "judge.cjs");
+  const providerSource = `const { appendFileSync } = require("node:fs");
 module.exports = class {
   constructor(options) { this.config = options.config; }
-  id() { return "review-risk-offline-wiring"; }
+  id() { return "OFFLINE_ENDPOINT"; }
   async callApi(prompt, context) {
     const kind = prompt.startsWith("Grade the candidate") ? "judge" : "candidate";
-    appendFileSync(this.config.log, JSON.stringify({ kind, prompt, vars: context.vars }) + "\\n");
+    appendFileSync(this.config.log, JSON.stringify({ endpoint: this.id(), kind, prompt, vars: context.vars }) + "\\n");
     return { output: kind === "judge"
       ? JSON.stringify({ pass: this.config.semanticPass, score: Number(this.config.semanticPass), reason: "Controlled wiring response; no semantic grading performed." })
       : this.config.output };
   }
-};`);
+};`;
+  writeFileSync(provider, providerSource.replace("OFFLINE_ENDPOINT", "offline-generator"));
+  writeFileSync(judgeProvider, providerSource.replace("OFFLINE_ENDPOINT", "offline-judge"));
   const config = yaml.load(read("evals/review-risk/model.yaml"));
-  // Preserve real prompts, cases, both assertions and base path. Replace only
-  // the paid provider endpoints; all networking is blocked by the preload.
-  const controlled = { id: `file://${provider}`, config: {
+  // Preserve both environment-templated provider IDs, prompts and assertions.
+  // Select separate local endpoints through the actual environment variables.
+  const controlled = {
     log, semanticPass, output: mechanicalPass ? output : output.replace("2/6", "1/6"),
-  } };
-  config.providers = [controlled];
-  config.defaultTest.options.provider = controlled;
+  };
+  for (const provider of config.providers) Object.assign(provider.config, controlled);
+  Object.assign(config.defaultTest.options.provider.config, controlled);
   config.basePath = caseDirectory;
   const path = join(directory, "config.yaml");
   writeFileSync(path, yaml.dump(config));
@@ -96,19 +114,33 @@ module.exports = class {
     "--no-progress-bar", "--no-table", "-o", report,
   ], {
     cwd: repository, encoding: "utf8", timeout: 30_000,
-    env: { ...process.env, PROMPTFOO_CONFIG_DIR: join(directory, "state"),
+    env: { ...process.env, REVIEW_RISK_PROVIDER: ` file://${provider} `,
+      REVIEW_RISK_GRADER: ` file://${judgeProvider} `, ...providerSettings,
+      PROMPTFOO_CONFIG_DIR: join(directory, "state"),
       PROMPTFOO_DISABLE_TELEMETRY: "1", PROMPTFOO_DISABLE_UPDATE: "1" },
   });
-  assert.equal(result.status, mechanicalPass && semanticPass ? 0 : 100, result.stdout + result.stderr);
   return {
-    results: JSON.parse(readFileSync(report, "utf8")).results,
-    calls: readFileSync(log, "utf8").trim().split("\n").map(line => JSON.parse(line)),
+    result,
+    results: existsSync(report) ? JSON.parse(readFileSync(report, "utf8")).results : undefined,
+    calls: existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").map(line => JSON.parse(line)) : [],
   };
+}
+
+for (const name of Object.keys(settings)) {
+  test(`actual Promptfoo CLI stops before provider calls when ${name} is unset or blank`, t => {
+    for (const value of [undefined, "", " \t\n "]) {
+      const { result, results, calls } = runCli(t, true, true, { [name]: value });
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.equal(results, undefined, "Setup errors must not become evaluation results");
+      assert.deepEqual(calls, [], "Neither generation nor grading should start");
+    }
+  });
 }
 
 for (const [mechanicalPass, semanticPass] of [[true, true], [true, false], [false, true]]) {
   test(`actual Promptfoo CLI combines mechanics=${mechanicalPass} and controlled grader=${semanticPass} offline`, t => {
-    const { results, calls } = runCli(t, mechanicalPass, semanticPass);
+    const { result, results, calls } = runCli(t, mechanicalPass, semanticPass);
+    assert.equal(result.status, mechanicalPass && semanticPass ? 0 : 100, result.stdout + result.stderr);
     assert.equal(results.stats.errors, 0);
     assert.equal(results.results.length, 6);
     assert.equal(results.stats.successes, mechanicalPass && semanticPass ? 6 : 0);
@@ -116,7 +148,9 @@ for (const [mechanicalPass, semanticPass] of [[true, true], [true, false], [fals
     const judges = calls.filter(call => call.kind === "judge");
     assert.equal(candidates.length, 6);
     assert.equal(judges.length, 6);
-    for (const scenario of cases()) {
+    assert.ok(candidates.every(call => call.endpoint === "offline-generator"));
+    assert.ok(judges.every(call => call.endpoint === "offline-judge"));
+    for (const scenario of configuredCases()) {
       const candidate = candidates.find(call => call.vars.evidence === scenario.vars.evidence);
       const judge = judges.find(call => call.vars.evidence === scenario.vars.evidence);
       assert.ok(candidate);

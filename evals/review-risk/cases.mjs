@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 
-export default function cases() {
+export default function cases({ env = process.env } = {}) {
+  for (const name of ["REVIEW_RISK_PROVIDER", "REVIEW_RISK_GRADER"]) {
+    if (!env[name]?.trim()) throw new Error(`${name} must be explicitly configured and nonblank`);
+  }
   const examples = yaml.load(readFileSync(new URL("./examples.yaml", import.meta.url), "utf8"));
   const scenarios = examples.map(({ description, vars: { evidence, semantic_review } }) => ({
     description, evidence, criteria: semantic_review,

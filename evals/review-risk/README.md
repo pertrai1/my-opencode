@@ -43,12 +43,17 @@ Generation receives only evidence; hand-authored candidates are excluded and
 `llm-rubric` assertion must both pass. Semantic grading checks evidence, overrides,
 consumer claims and uncertainty, allowing justified rating variation.
 
-This command makes paid generation and grading calls using your configured
-`OPENAI_API_KEY`. Check both explicit provider IDs and completion budgets in
-`model.yaml` before running; model access depends on your account. The configured
-API snapshots are [GPT-5.4 Mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini)
-for generation and [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4)
-for grading. Each has an 8,000-token completion budget including reasoning.
+Set both `REVIEW_RISK_PROVIDER` (generation) and `REVIEW_RISK_GRADER` (semantic
+grading) to full Promptfoo provider IDs for models you use. Neither has a default;
+unset or blank values stop setup before any model call. For OpenAI Chat
+Completions, use `openai:chat:<actual API model ID>` without an OpenCode `#` suffix.
+Check the provider-specific parameters in `model.yaml` against your selected
+models: the supplied OpenAI configuration uses low reasoning and an 8,000-token
+completion budget including reasoning for each provider.
+
+The following command makes paid generation and grading calls using your
+providers' configured credentials (such as `OPENAI_API_KEY`). Model access depends
+on your account. Offline validation below requires no credentials or paid calls.
 
 ```sh
 PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.promptfoo \
@@ -71,7 +76,8 @@ node --test tests/review-risk.test.mjs tests/review-risk-model.test.mjs
 
 The model wiring test uses the pinned Promptfoo 0.124.1 CLI with controlled local
 outputs and network blocked. It checks canonical instructions, evidence/criteria
-separation, and independent mechanical/semantic result aggregation. Scripted
+separation, independent provider selection, fail-fast setup for missing/blank
+provider IDs, and mechanical/semantic result aggregation. Scripted
 grader responses establish wiring only, not semantic grader accuracy. No live
 model quality is established by these tests. Neither eval executes OpenCode or
 validates real repository inspection, graph behavior, or end-to-end review quality.

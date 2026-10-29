@@ -4,7 +4,7 @@ description: "Review risk: model assessments of supplied evidence"
 prompts:
   - file://prompt.mjs
 providers:
-  - id: openai:chat:gpt-5.4-mini-2026-03-17
+  - id: "{{ env.REVIEW_RISK_PROVIDER | trim }}"
     config:
       reasoning_effort: low
       max_completion_tokens: 8000
@@ -12,7 +12,7 @@ tests: file://cases.mjs
 defaultTest:
   options:
     provider:
-      id: openai:chat:gpt-5.4-2026-03-05
+      id: "{{ env.REVIEW_RISK_GRADER | trim }}"
       config:
         reasoning_effort: low
         max_completion_tokens: 8000
