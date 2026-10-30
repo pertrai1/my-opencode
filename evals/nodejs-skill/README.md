@@ -45,3 +45,35 @@ code fixes, or establish automatic discovery in a real codebase. To make those
 claims, separately run fresh OpenCode sessions in representative Node and browser
 fixtures and inspect completed skill/reference reads plus resulting code/tests.
 No live calls are part of repository tests or the offline commands above.
+
+## Real OpenCode activation and reference trace
+
+`trace.mjs` reuses the Angular live provider, creating a fresh `lean` session with
+`openai/gpt-6-astra` at high reasoning for each case. This makes paid calls; do
+not run without separate authorization. Install this checkout's skills into the
+OpenCode configuration used by the running server and restart it first. The Node
+fixture must contain `export.mjs`, a Node CLI with faulty stream error handling,
+and a `package.json` declaring its runtime/module system. The browser fixture
+must contain a browser UI application with a root component and Node-based build
+tooling, with no Node code in the requested task. Fixtures are user-maintained;
+use disposable checkouts without secrets. The provider requires existing fixture
+directories and an available `opencode` CLI/server before making session calls.
+
+```sh
+NODEJS_SKILL_NODE_ROOT="/absolute/path/to/node-cli" \
+NODEJS_SKILL_BROWSER_ROOT="/absolute/path/to/browser-app" \
+PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.promptfoo \
+  npx --no-install promptfoo eval -c evals/nodejs-skill/trace.mjs \
+  --no-cache --no-write --no-share --no-progress-bar
+node --test tests/angular-skill-live-provider.test.mjs tests/nodejs-skill-trace.test.mjs
+```
+
+The trace grader requires a completed `nodejs` skill call and completed `read`
+calls for the relevant topic paths in the Node case, and no completed Node skill
+load for the browser case. It matches OpenCode's `read` input `filePath`; different
+tool schemas must be adapted explicitly. It rejects incomplete/failed sessions
+through the shared provider. This checks actual loading, not correctness of a
+proposed fix or proof that the model understood a reference. Trace inputs can
+contain local paths, so review artifacts before sharing. Offline fake-CLI tests
+exercise fixture selection, session wiring, trace retention and grader behavior;
+no real OpenCode/model session was run during implementation.

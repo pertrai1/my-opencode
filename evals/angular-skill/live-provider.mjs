@@ -10,11 +10,11 @@ const fixtureVariables = {
 
 const run = promisify(execFile);
 
-async function fixtureRoot(fixture) {
-  if (!Object.hasOwn(fixtureVariables, fixture)) {
+async function fixtureRoot(fixture, variables) {
+  if (!Object.hasOwn(variables, fixture)) {
     throw new Error(`Unknown eval fixture: ${fixture}`);
   }
-  const variable = fixtureVariables[fixture];
+  const variable = variables[fixture];
   const configured = process.env[variable];
   if (!configured?.trim()) {
     throw new Error(`Set ${variable} to the ${fixture} fixture directory`);
@@ -40,18 +40,28 @@ async function api(method, path, body) {
 }
 
 export default class LiveProvider {
+  constructor(options = {}) {
+    this.options = {
+      fixtureVariables,
+      id: "angular-skill-live",
+      title: "Angular skill eval",
+      traceInputs: false,
+      ...options,
+    };
+  }
+
   id() {
-    return "angular-skill-live";
+    return this.options.id;
   }
 
   async callApi(prompt, context) {
     let sessionId;
 
     try {
-      const root = await fixtureRoot(context.vars.fixture);
+      const root = await fixtureRoot(context.vars.fixture, this.options.fixtureVariables);
 
       const created = await api("post", "/api/session", {
-        title: "Angular skill eval",
+        title: this.options.title,
         root,
         agent: "lean",
         model: {
@@ -96,7 +106,7 @@ export default class LiveProvider {
         .filter((part) => part.type === "tool")
         .map((tool) => ({
           name: tool.name,
-          arguments: tool.name === "skill" ? tool.state.input : undefined,
+          arguments: this.options.traceInputs || tool.name === "skill" ? tool.state.input : undefined,
           status: tool.state.status,
         }));
 
