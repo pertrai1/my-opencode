@@ -1,0 +1,111 @@
+[
+  {
+    "id": "api-rejection",
+    "task": "Node 22 CommonJS Express 4 API. Fix a route that starts saveOrder() without awaiting it and responds success before persistence finishes. Preserve Express 4.",
+    "activate": true,
+    "references": [
+      "async-and-errors",
+      "testing"
+    ],
+    "actions": [
+      "await-owned-work",
+      "forward-route-error",
+      "test-rejection"
+    ]
+  },
+  {
+    "id": "cli-output",
+    "task": "Node 20 ESM CLI. Export a large file through streams; errors currently corrupt JSON stdout and exit successfully. Preserve ESM and the CLI interface.",
+    "activate": true,
+    "references": [
+      "async-and-errors",
+      "runtime-reliability",
+      "testing"
+    ],
+    "actions": [
+      "preserve-stdout",
+      "stderr-diagnostics",
+      "nonzero-exit",
+      "stream-cleanup"
+    ]
+  },
+  {
+    "id": "library-rejection",
+    "task": "Node-targeted CommonJS library. Its public API silently swallows a rejected dependency call. Fix the error contract without changing exports.",
+    "activate": true,
+    "references": [
+      "async-and-errors",
+      "testing"
+    ],
+    "actions": [
+      "propagate-rejection",
+      "preserve-exports",
+      "host-owns-process"
+    ]
+  },
+  {
+    "id": "script-input",
+    "task": "Node 22 build script invokes a child process using a shell string containing an untrusted filename. Fix it without adding a web server.",
+    "activate": true,
+    "references": [
+      "security-and-validation",
+      "testing"
+    ],
+    "actions": [
+      "separate-arguments",
+      "validate-options",
+      "test-hostile-input"
+    ]
+  },
+  {
+    "id": "service-shutdown",
+    "task": "Node 22 Fastify API deployment: shutdown drops in-flight jobs. Review the service lifecycle and tests; preserve the platform supervisor.",
+    "activate": true,
+    "references": [
+      "services-and-production",
+      "runtime-reliability",
+      "testing"
+    ],
+    "actions": [
+      "stop-intake",
+      "bounded-drain",
+      "close-resources"
+    ]
+  },
+  {
+    "id": "mixed-server",
+    "task": "Monorepo: Angular browser app and Node 22 ESM worker. Change only the worker to bound concurrent file processing and cancel remaining work on failure.",
+    "activate": true,
+    "references": [
+      "runtime-reliability",
+      "async-and-errors",
+      "testing"
+    ],
+    "actions": [
+      "bound-concurrency",
+      "cancel-inflight",
+      "worker-only"
+    ]
+  },
+  {
+    "id": "browser-angular",
+    "task": "Angular browser component template edit: change a button label. Root package.json uses Node for Angular tooling. No SSR or server code changes.",
+    "activate": false,
+    "references": [],
+    "actions": []
+  },
+  {
+    "id": "browser-library",
+    "task": "Browser-only JavaScript package: fix DOM focus behavior. package.json has npm scripts. No Node runtime exports or server code is involved.",
+    "activate": false,
+    "references": [],
+    "actions": []
+  },
+  {
+    "id": "mixed-browser",
+    "task": "Monorepo with Node API and Angular UI. Change only UI CSS spacing. API packages remain untouched.",
+    "activate": false,
+    "references": [],
+    "actions": []
+  }
+]
