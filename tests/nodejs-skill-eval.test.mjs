@@ -34,3 +34,13 @@ test("grader rejects extra actions that contradict an otherwise valid library pl
     assert.equal(grade(JSON.stringify({ ...plan, actions: [...plan.actions, action] }), scenario), false);
   }
 });
+
+
+test("plan schema rejects unexpected top-level migration recommendations", async () => {
+  const scenario = cases.find(item => item.id === "api-rejection");
+  const result = await new ReplayProvider().callApi("", { vars: { scenario } });
+  const plan = JSON.parse(result.output);
+  assert.ok(plan.references.includes("services-and-production"));
+  assert.equal(grade(result.output, scenario), true);
+  assert.equal(grade(JSON.stringify({ ...plan, recommendation: "Switch to ESM" }), scenario), false);
+});

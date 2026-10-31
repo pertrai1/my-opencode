@@ -13,8 +13,8 @@ PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.p
 node --test tests/nodejs-skill-eval.test.mjs
 ```
 
-`replay.mjs` uses explicitly hand-authored synthetic plans, not recorded model
-sessions. It checks Promptfoo/provider/grader wiring for API async errors, CLI
+`replay.mjs` derives synthetic plans from the hand-authored expectations in
+`cases.json`, not recorded model sessions. It checks Promptfoo/provider/grader wiring for API async errors, CLI
 streams/output, library contracts, script injection, service shutdown, Node worker
 selection, and three browser/Angular nonactivation cases. `calibration.mjs` checks
 that known good/bad candidates receive the expected verdict; all calibration rows
@@ -33,7 +33,10 @@ PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.p
   --no-cache --no-write --no-share --no-progress-bar
 ```
 
-`live.mjs` uses `openai:gpt-6.1-sol` and the same scenarios/grader. It supplies the
+`live.mjs` uses `openai:gpt-6.1-sol` and the same scenarios/grader. The plan probe
+intentionally uses this model while the trace eval preserves the existing Angular
+harness choice of `gpt-6-astra` at high reasoning; results are not comparable
+between models, and availability has not been verified by live calls. It supplies the
 current skill entrypoint and asks for structured activation/reference/action plans.
 Expectations stay in the grader, outside the model prompt. The action vocabulary
 is supplied so scoring does not depend on prose synonyms. Exact reference/action matching
@@ -65,15 +68,23 @@ NODEJS_SKILL_BROWSER_ROOT="/absolute/path/to/browser-app" \
 PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.promptfoo \
   npx --no-install promptfoo eval -c evals/nodejs-skill/trace.mjs \
   --no-cache --no-write --no-share --no-progress-bar
-node --test tests/angular-skill-live-provider.test.mjs tests/nodejs-skill-trace.test.mjs
+node --test tests/angular-skill-live-provider.test.mjs tests/nodejs-skill-trace.test.mjs tests/nodejs-skill-promptfoo.test.mjs
 ```
 
 The trace grader requires a completed `nodejs` skill call and completed `read`
 calls for the relevant topic paths in the Node case, and no completed Node skill
-load for the browser case. It matches OpenCode's `read` input `filePath`; different
+load or Node topic-reference reads for the browser case. A browser pass counts
+only when the positive Node case also passes in the same full, unfiltered run;
+an isolated browser pass does not establish installation or correct discovery.
+The CLI case rejects completed reads of `services-and-production`. Reference
+arrays stay intact through `disableVarExpansion`; the full config has two cases.
+It matches OpenCode's `read` input `filePath`; different
 tool schemas must be adapted explicitly. It rejects incomplete/failed sessions
 through the shared provider. This checks actual loading, not correctness of a
-proposed fix or proof that the model understood a reference. Trace inputs can
-contain local paths, so review artifacts before sharing. Offline fake-CLI tests
-exercise fixture selection, session wiring, trace retention and grader behavior;
+proposed fix or proof that the model understood a reference. Only `skill` and `read` inputs are retained; inputs for bash, write/edit, and
+other tools are omitted. Retained read inputs can still contain local paths, so
+review artifacts before sharing. Offline fake-CLI tests
+exercise fixture selection, session wiring, input filtering and grader behavior.
+The Promptfoo boundary regression runs this exact trace config with a fake CLI,
+requires exactly two sessions, and rejects a synthetic forbidden read;
 no real OpenCode/model session was run during implementation.

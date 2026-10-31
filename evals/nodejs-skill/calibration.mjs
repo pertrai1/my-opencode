@@ -1,18 +1,19 @@
 import { readFileSync } from "node:fs";
+import { syntheticPlan } from "./synthetic-plan.mjs";
 const cases = JSON.parse(readFileSync(new URL("./cases.json", import.meta.url), "utf8"));
-const plans = JSON.parse(readFileSync(new URL("./synthetic-plans.json", import.meta.url), "utf8"));
 const api = cases.find(item => item.id === "api-rejection");
 const cliCase = cases.find(item => item.id === "cli-output");
 const browserCase = cases.find(item => item.id === "browser-angular");
-const good = plans[api.id];
-const cli = plans[cliCase.id];
-const browser = plans[browserCase.id];
+const good = syntheticPlan(api);
+const cli = syntheticPlan(cliCase);
+const browser = syntheticPlan(browserCase);
 const samples = [
   [api, good, true],
   [api, { ...good, activate: false }, false],
   [api, { ...good, actions: [] }, false],
   [api, { ...good, actions: [...good.actions, "terminate-host-process", 42] }, false],
   [api, { ...good, migrations: ["Switch to ESM"] }, false],
+  [api, { ...good, recommendation: "Switch to ESM" }, false],
   [cliCase, { ...cli, references: [...cli.references, "services-and-production"] }, false],
   [browserCase, { ...browser, activate: true }, false],
   [browserCase, { ...browser, references: ["services-and-production"] }, false],

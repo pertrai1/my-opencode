@@ -11,14 +11,14 @@ const skill = { name: "skill", status: "completed", arguments: { id: "nodejs" } 
 const read = { name: "read", status: "completed", arguments: { filePath: "/config/skills/nodejs/references/testing.md" } };
 
 test("trace grader requires completed skill and relevant reference reads", () => {
-  const context = { vars: { activate: true, references: ["testing"] } };
+  const context = { vars: { activate: true, references: ["testing"], forbiddenReferences: ["services-and-production"] } };
   assert.equal(grade(JSON.stringify({ toolCalls: [skill, read] }), context), true);
   for (const toolCalls of [[skill], [read], [{ ...skill, status: "error" }, read], [skill, { ...read, status: "error" }]]) {
     assert.equal(grade(JSON.stringify({ toolCalls }), context), false);
   }
   assert.equal(grade("malformed", context), false);
-  assert.equal(grade(JSON.stringify({ toolCalls: [skill] }), { vars: { activate: false } }), false);
-  assert.equal(grade(JSON.stringify({ toolCalls: [] }), { vars: { activate: false } }), true);
+  assert.equal(grade(JSON.stringify({ toolCalls: [skill] }), { vars: { activate: false, references: [], forbiddenReferences: [] } }), false);
+  assert.equal(grade(JSON.stringify({ toolCalls: [] }), { vars: { activate: false, references: [], forbiddenReferences: [] } }), true);
 });
 
 for (const fixture of ["node", "browser"]) {
@@ -36,6 +36,8 @@ if (path === "/api/session") result = { data: { id: "trace-session" } };
 if (method === "get") result = { data: [
   { type: "user", text: "review" },
   { type: "assistant", content: [
+    { type: "tool", name: "bash", state: { status: "completed", input: { command: "private command" } } },
+    { type: "tool", name: "write", state: { status: "completed", input: { content: "private content" } } },
     { type: "tool", name: "read", state: { status: "completed", input: { filePath: "/config/skills/nodejs/references/testing.md" } } }
   ] },
   { type: "idle", outcome: "succeeded" }
@@ -60,6 +62,15 @@ console.log(JSON.stringify(result));
     const result = call(root);
     assert.equal(result.error, undefined);
     assert.equal(result.metadata.sessionId, "trace-session");
-    assert.deepEqual(JSON.parse(result.output).toolCalls, [read]);
+    assert.deepEqual(JSON.parse(result.output).toolCalls, [{ name: "bash", status: "completed" }, { name: "write", status: "completed" }, read]);
   });
 }
+
+
+test("trace grader rejects forbidden reads and malformed reference variables", () => {
+  const context = { vars: { activate: true, references: ["testing"], forbiddenReferences: ["services-and-production"] } };
+  const forbidden = { ...read, arguments: { filePath: "/config/skills/nodejs/references/services-and-production.md" } };
+  assert.equal(grade(JSON.stringify({ toolCalls: [skill, read, forbidden] }), context), false);
+  assert.equal(grade(JSON.stringify({ toolCalls: [skill, read, { ...forbidden, status: "error" }] }), context), true);
+  assert.equal(grade(JSON.stringify({ toolCalls: [skill, read] }), { vars: { ...context.vars, references: "testing" } }), false);
+});

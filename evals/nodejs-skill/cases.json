@@ -5,7 +5,8 @@
     "activate": true,
     "references": [
       "async-and-errors",
-      "testing"
+      "testing",
+      "services-and-production"
     ],
     "actions": [
       "await-owned-work",

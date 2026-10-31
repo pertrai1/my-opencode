@@ -9,7 +9,7 @@ export default class NodeTraceProvider extends LiveProvider {
         node: "NODEJS_SKILL_NODE_ROOT",
         browser: "NODEJS_SKILL_BROWSER_ROOT",
       },
-      traceInputs: true,
+      traceInputTools: ["skill", "read"],
     });
   }
 }

@@ -45,7 +45,7 @@ export default class LiveProvider {
       fixtureVariables,
       id: "angular-skill-live",
       title: "Angular skill eval",
-      traceInputs: false,
+      traceInputTools: ["skill"],
       ...options,
     };
   }
@@ -106,7 +106,7 @@ export default class LiveProvider {
         .filter((part) => part.type === "tool")
         .map((tool) => ({
           name: tool.name,
-          arguments: this.options.traceInputs || tool.name === "skill" ? tool.state.input : undefined,
+          arguments: this.options.traceInputTools.includes(tool.name) ? tool.state.input : undefined,
           status: tool.state.status,
         }));
 

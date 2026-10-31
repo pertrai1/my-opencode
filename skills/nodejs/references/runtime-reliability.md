@@ -2,7 +2,7 @@
 
 - Avoid blocking the event loop in request or concurrent-work paths. Bound large parsing, loops, and synchronous I/O; measure before introducing workers or changing architecture. Synchronous startup or small one-off CLI work can be appropriate.
 - Bound concurrency and queue sizes. `Promise.all` over an unbounded input can exhaust sockets or memory; account for in-flight work when one task fails.
-- Apply timeouts and cancellation using APIs supported by the project's Node version. A `Promise.race` timeout does not cancel the losing operation: propagate cancellation and release resources explicitly.
+- Apply timeouts and cancellation using APIs supported by the project's Node version: `AbortController` on Node 15.0+/14.17+ and `AbortSignal.timeout()` on Node 17.3+/16.14+, where the receiving operation supports a signal. A `Promise.race` timeout does not cancel the losing operation: propagate cancellation and release resources explicitly.
 - Respect stream backpressure and await completion; avoid buffering unbounded input/output. Handle early close, aborted clients, and partial files according to the output contract.
 - Pair resource acquisition with cleanup on success and failure. Avoid network/database startup as a side effect of importing reusable code; expose explicit initialization and disposal.
 - For CLIs, preserve machine-readable stdout, use stderr for diagnostics, and set a nonzero `process.exitCode` on failure while allowing pending output and cleanup to finish. Do not abruptly call `process.exit()` before writes complete. Libraries must not terminate the host process.

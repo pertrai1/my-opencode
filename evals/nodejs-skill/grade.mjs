@@ -1,6 +1,8 @@
 export function grade(output, scenario) {
   try {
     const plan = JSON.parse(output);
+    if (!plan || Array.isArray(plan) || typeof plan !== "object" ||
+        Object.keys(plan).some(key => !["activate", "references", "actions", "migrations"].includes(key))) return false;
     const refs = plan.references;
     const actions = plan.actions;
     if (plan.activate !== scenario.activate || !Array.isArray(refs) ||
