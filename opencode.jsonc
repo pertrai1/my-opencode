@@ -4,6 +4,7 @@
     "todo": true,
     "subagent_depth": 2,
     "background_compaction": true,
+    "artifacts": true,
   },
   "model": "openai/gpt-6.1-sol#high",
   "providers": {
