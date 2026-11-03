@@ -28,6 +28,15 @@ saved project approvals can satisfy an `ask`; configured denies remain enforced.
 The wildcard rule uses no machine-specific paths. Restart OpenCode on each
 computer after updating its configuration. See the [v2 permissions documentation](https://opencode.ai/v2/docs/permissions/#directories).
 
+## Node.js guidance
+
+The [Node.js skill](skills/nodejs/SKILL.md) applies to Node APIs, workers, CLIs,
+libraries, and scripts, including Node packages within mixed monorepos. It loads
+curated references by task and excludes browser-only edits. Source provenance and
+CC-BY-SA-4.0 attribution accompany the adapted reference documents. See the
+[offline and optional live eval commands](evals/nodejs-skill/README.md). Restart
+OpenCode after installing updated skill files so discovery reflects the change.
+
 ## Work intake
 
 Use `/intake <request>` to create a tracker-neutral local work item for a request that must survive the current session. The command classifies the request, records acceptance criteria and an initial route, and writes `work.json`, `request.md`, and `progress.md` under `.agents/work/<work-id>/` in the selected target repository.

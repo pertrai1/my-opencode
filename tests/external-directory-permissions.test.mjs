@@ -57,7 +57,7 @@ test('every configured agent preserves the shared boundary, with explore still d
   for (const [id, rules] of agentRules()) {
     validateRules(rules);
     const expected = id === 'explore.md' ? 'deny' : 'ask';
-    for (const boundary of ['/tmp/reference/*', 'C:/Users/rob/reference/*']) {
+    for (const boundary of ['/tmp/reference/*', '/Users/rob/reference/*', 'C:/Users/rob/reference/*']) {
       assert.equal(effect([...config.permissions, ...rules], 'external_directory', boundary), expected, id);
     }
   }

@@ -39,6 +39,7 @@ No installation, credential loading, model download or remote judge is required.
 
 ```sh
 node --require ./evals/failure-reporting/offline.js --test tests/review-delegation.test.mjs
+node --require ./evals/failure-reporting/offline.js --test tests/review-delegation-batches.test.mjs
 npx promptfoo validate config -c evals/review-delegation/promptfooconfig.mjs
 npm run eval:review-delegation:calibrate -- -o .promptfoo/review-delegation-calibration.json
 ```
@@ -53,10 +54,23 @@ and sockets during calibration; its injected transport never contacts a server.
 
 Start an already-installed, tool-capable local model server that does not proxy a
 remote provider. Only credential-free loopback HTTP is accepted; redirects are
-rejected. Model calls use POST `/v1/chat/completions`, temperature 0, one tool call
-per turn and at most ten actions. Each test starts a new message history. Setup,
+rejected. Model calls use POST `/v1/chat/completions`, temperature 0, and request
+single tool calls with `parallel_tool_calls: false`. Servers that still return
+multiple calls are supported: the harness executes them in returned order and
+sends every correlated tool result before the next model request. Each call
+counts toward the ten-action limit. Each test starts a new message history. Setup,
 HTTP and malformed-response errors use Promptfoo's error channel, not a passing
 or failing behavioral score.
+
+Trace entries record the model turn as well as the action order. Calls within a
+response cannot see each other's results until the next model turn. A final
+report citing a result from its own response fails grading, even if it guesses
+the result correctly. Viewer-before-review actions still fail. Empty or malformed
+batches, duplicate call IDs within a response, batches exceeding the remaining
+action budget, and calls after `finish` are explicit protocol errors; calls are
+never silently discarded. Ten actions without a final report remain a behavioral
+failure. The replay grader requires the turn-aware trace format from this harness;
+preserve older output files and run a fresh baseline after upgrading.
 
 ```sh
 REVIEW_DELEGATION_MODEL=YOUR_LOCAL_MODEL npm run eval:review-delegation -- \
