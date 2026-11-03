@@ -19,6 +19,15 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
 
+## Node.js guidance
+
+The [Node.js skill](skills/nodejs/SKILL.md) applies to Node APIs, workers, CLIs,
+libraries, and scripts, including Node packages within mixed monorepos. It loads
+curated references by task and excludes browser-only edits. Source provenance and
+CC-BY-SA-4.0 attribution accompany the adapted reference documents. See the
+[offline and optional live eval commands](evals/nodejs-skill/README.md). Restart
+OpenCode after installing updated skill files so discovery reflects the change.
+
 ## Work intake
 
 Use `/intake <request>` to create a tracker-neutral local work item for a request that must survive the current session. The command classifies the request, records acceptance criteria and an initial route, and writes `work.json`, `request.md`, and `progress.md` under `.agents/work/<work-id>/` in the selected target repository.
