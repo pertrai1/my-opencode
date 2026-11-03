@@ -10,6 +10,35 @@ const repository = fileURLToPath(new URL("../../", import.meta.url));
 const hash = value => createHash("sha256").update(value).digest("hex");
 const sources = ["scenarios.mjs", "tools.mjs", "harness.mjs", "assertion.mjs", "prompt.mjs", "provider.mjs", "promptfooconfig.mjs", "../ooda/provider.mjs", "../../.agents/skills/difit/SKILL.md", "../../.agents/skills/difit-review/SKILL.md"];
 
+function parseAction(call) {
+  if (call.type !== "function") throw new Error("Expected a model function call");
+  if (!["name", "arguments"].every(key => typeof call.function?.[key] === "string")) {
+    throw new Error("Malformed model function call");
+  }
+  return { name: call.function.name, arguments: JSON.parse(call.function.arguments) };
+}
+
+function callId(call) {
+  const id = call?.id;
+  if (typeof id !== "string" || !id.trim()) throw new Error("Expected nonempty tool call IDs");
+  return id;
+}
+
+function parseActions(calls) {
+  if (!Array.isArray(calls) || !calls.length) throw new Error("Expected at least one model tool call");
+  const ids = calls.map(callId);
+  if (new Set(ids).size !== ids.length) throw new Error("Expected unique tool call IDs within a response");
+  return calls.map(parseAction);
+}
+
+function appendObservations(messages, calls, trace) {
+  const entries = trace.slice(-calls.length);
+  calls.forEach((call, index) => {
+    const entry = entries[index];
+    messages.push({ role: "tool", tool_call_id: call.id, content: `${entry.id}: ${entry.observation}` });
+  });
+}
+
 export default class ReviewDelegationProvider {
   constructor(options = {}, dependencies = {}) {
     this.config = options.config ?? {};
@@ -18,7 +47,7 @@ export default class ReviewDelegationProvider {
 
   id() { return "review-delegation-local-model"; }
 
-  async requestAction(endpoint, model, messages) {
+  async requestActions(endpoint, model, messages) {
     const response = await this.transport(endpoint, {
       method: "POST", redirect: "error", signal: AbortSignal.timeout(120_000),
       headers: { "Content-Type": "application/json" },
@@ -27,15 +56,13 @@ export default class ReviewDelegationProvider {
     if (!response.ok) throw new Error(`Local model HTTP ${response.status}`);
     const data = await response.json();
     const message = data.choices?.[0]?.message;
-    if (message?.tool_calls?.length !== 1) throw new Error("Expected exactly one model tool call");
-    const call = message.tool_calls[0];
-    return { message, call, action: { name: call.function.name, arguments: JSON.parse(call.function.arguments) } };
+    const actions = parseActions(message?.tool_calls);
+    return { message, actions };
   }
 
   async callApi(prompt, context) {
     const messages = [
-      { role: "system", content: prompt },
-      { role: "system", content: "This is a simulated repository. Only supplied tools are available; none has external effects. Use one tool call per turn. Finish through finish, citing tool observation IDs. A subagent call runs to completion before returning." },
+      { role: "system", content: `${prompt}\n\nThis is a simulated repository. Only supplied tools are available; none has external effects. Prefer one tool call per turn. Multiple calls execute in listed order; their observations arrive together on the next turn. Finish through finish, citing tool observation IDs you have received. A subagent call runs to completion before returning. For a human-only viewer request, after receiving confirmation that the viewer opened, call finish with status viewer-opened, a brief summary, and evidence containing the opening tool's observation ID. Do not end with a plain-text reply.` },
     ];
     const metadata = { kind: "local-model-simulated-tools", promptSha256: hash(prompt) };
     let previous;
@@ -52,14 +79,11 @@ export default class ReviewDelegationProvider {
       const result = await evaluate(context.vars.scenario, async input => {
         metadata.trace = structuredClone(input.trace);
         if (!previous) messages.push({ role: "user", content: `${input.request}\n\n${input.trace[0].observation}` });
-        else {
-          const entry = input.trace.at(-1);
-          messages.push({ role: "tool", tool_call_id: previous.id, content: `${entry.id}: ${entry.observation}` });
-        }
-        const result = await this.requestAction(endpoint, model, messages);
+        else appendObservations(messages, previous, input.trace);
+        const result = await this.requestActions(endpoint, model, messages);
         messages.push(result.message);
-        previous = result.call;
-        return result.action;
+        previous = result.message.tool_calls;
+        return result.actions;
       });
       delete metadata.trace;
       return { output: result, metadata };
