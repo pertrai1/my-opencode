@@ -306,5 +306,10 @@
     "max_bytes": 51200,
   },
   "formatter": true,
-  "plugins": ["@openchamber/opencode-claude@1.6.0"],
+  "plugins": [
+    "@openchamber/opencode-claude@1.6.0"
+  ],
+  "disabled_providers": [
+    "amazon-bedrock"
+  ],
 }
