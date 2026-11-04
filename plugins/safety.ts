@@ -82,6 +82,17 @@ function sanitizeFilenameComponent(value: string): string {
 
 function redactSensitiveOutput(value: string): string {
   return value
+    // Compare whole keys while retaining suffix protection for prefixed credentials.
+    // Ambiguous names such as not_secret remain sensitive: confidentiality wins.
+    .replace(
+      /((['"]?)(?<![\w-])(?:[a-zA-Z_][\w-]*[_-])?(?:api[_-]?key|secret|token|password|passwd|pwd|client[_-]?secret|access[_-]?token|refresh[_-]?token)\2\s*[:=]\s*)("(?:\\[\s\S]|[^"\\])*"|'[^']*\\'[\s\S]*|'[^']*')/gi,
+      (_match, prefix: string, _keyQuote: string, quoted: string) => {
+        // A backslash before a single quote is format-dependent (literal in POSIX).
+        // The ambiguous branch consumes the remainder rather than exposing a suffix.
+        const quote = quoted.charAt(0);
+        return `${prefix}${quote}${quoted.length > 2 ? REDACTED_VALUE : ""}${quote}`;
+      },
+    )
     .replace(
       /(authorization\s*:\s*(?:bearer|basic)\s+)[^\s"'`]+/gi,
       `$1${REDACTED_VALUE}`,
@@ -688,6 +699,7 @@ export default definePlugin({
       if (event.status !== "completed") return;
       const rawOutput = typeof event.result.content === "string" ? event.result.content : "";
       const retainedOutput = redactSensitiveOutput(rawOutput);
+      event.result = { ...event.result, content: retainedOutput };
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const resolvedTempDir = resolvePath(tempDir);
       if (exceedsCodePointLength(retainedOutput, maxLength)) {

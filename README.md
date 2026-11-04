@@ -12,12 +12,30 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
-- **Permissions** — V2 ordered `permissions` rules allow reads, edits, subagent launches, and normal shell commands; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied, `.env.example` remains readable, and external-directory access uses OpenCode's approval default.
+- **Permissions** — V2 ordered `permissions` rules allow reads, edits, subagent launches, and normal shell commands; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied and `.env.example` remains readable. An explicit global `external_directory` rule asks before access outside the active Location and its project worktree; `explore` retains its stricter deny.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
+
+OpenCode v2 allows external directories by default. This repository's explicit
+rule applies to external paths used by `read`, `edit`, `write`, and `patch`, and
+to external shell working directories and paths inferred by the shell scanner.
+Shell path inference is best effort; this rule is not an operating-system sandbox.
+Later agent rules or other configuration can change the effective policy, and
+saved project approvals can satisfy an `ask`; configured denies remain enforced.
+The wildcard rule uses no machine-specific paths. Restart OpenCode on each
+computer after updating its configuration. See the [v2 permissions documentation](https://opencode.ai/v2/docs/permissions/#directories).
+
+## Node.js guidance
+
+The [Node.js skill](skills/nodejs/SKILL.md) applies to Node APIs, workers, CLIs,
+libraries, and scripts, including Node packages within mixed monorepos. It loads
+curated references by task and excludes browser-only edits. Source provenance and
+CC-BY-SA-4.0 attribution accompany the adapted reference documents. See the
+[offline and optional live eval commands](evals/nodejs-skill/README.md). Restart
+OpenCode after installing updated skill files so discovery reflects the change.
 
 ## Work intake
 

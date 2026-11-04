@@ -140,7 +140,7 @@ test("provider refuses remote endpoints and malformed transport responses", asyn
   const remote = new ReviewDelegationProvider({ config: { model: "fixture", endpoint: "https://example.com" } }, { transport: () => assert.fail("Must not contact remote") });
   assert.match((await remote.callApi("Instructions", { vars: { scenario: "ready" } })).error, /local HTTP endpoint/);
   const malformed = new ReviewDelegationProvider({ config: { model: "fixture" } }, { transport: async () => ({ ok: true, json: async () => ({ choices: [] }) }) });
-  assert.match((await malformed.callApi("Instructions", { vars: { scenario: "ready" } })).error, /exactly one model tool call/);
+  assert.match((await malformed.callApi("Instructions", { vars: { scenario: "ready" } })).error, /at least one model tool call/);
 });
 
 function runCli(t, config) {
