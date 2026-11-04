@@ -321,6 +321,90 @@ test('Safety Plugin - Output Size Truncation', async (t) => {
     fs.rmSync(mockDir, { recursive: true, force: true });
   });
 
+  await t.test('redacts complete quoted credentials in retained artifacts and previews', async (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-quoted-redact-'));
+    const tempDir = path.join(root, 'artifacts');
+    const { plugin } = await createSafetyPlugin({
+      truncation: { maxLength: 80, headLength: 40, tailLength: 40, tempDir },
+    }, root);
+    t.after(async () => {
+      await plugin.dispose();
+      fs.rmSync(root, { recursive: true, force: true });
+    });
+
+    const cases = [
+      ['{"access_token":"CANARY_json_token"}', '{"access_token":"[REDACTED]"}'],
+      ['{"password": "CANARY_json password tail"}', '{"password": "[REDACTED]"}'],
+      ['password="CANARY_shell password tail"', 'password="[REDACTED]"'],
+      ["client_secret='CANARY_single secret tail'", "client_secret='[REDACTED]'"],
+      ['{"password":"CANARY_escaped\\" quote tail"}', '{"password":"[REDACTED]"}'],
+      ['{"refresh_token":"CANARY_backslash\\\\ tail"}', '{"refresh_token":"[REDACTED]"}'],
+      ['{"PASSWORD":"CANARY_case"}', '{"PASSWORD":"[REDACTED]"}'],
+      ['{"access_token": "CANARY_multi\\nline"}', '{"access_token": "[REDACTED]"}'],
+      ['{"password":""}', '{"password":""}'],
+      ['{"password_hint":"public hint", "message":"public text"}', '{"password_hint":"public hint", "message":"public text"}'],
+      ['OPENAI_API_KEY=CANARY_legacy', 'OPENAI_API_KEY=[REDACTED]'],
+    ];
+    for (const [source, expected] of cases) {
+      const padding = '\n' + 'public output '.repeat(20) + '\n';
+      const output = { output: source + padding + source };
+      await plugin['tool.execute.after'](
+        { tool: 'shell', sessionID: 'quoted-redaction', args: {} }, output,
+      );
+      const artifactPath = output.output.match(/Full output saved to (.+?\.txt)\./)?.[1];
+      assert.ok(artifactPath, 'Expected retained output artifact');
+      const retained = fs.readFileSync(artifactPath, 'utf8');
+      assert.strictEqual(retained, expected + padding + expected);
+      if (source !== expected) {
+        assert.ok(!output.output.includes('CANARY_'), 'Preview must not leak credential fragments');
+      }
+    }
+  });
+
+  await t.test('returns sanitized output across size thresholds and mixed assignments', async (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-review-redact-'));
+    const tempDir = path.join(root, 'artifacts');
+    const { plugin } = await createSafetyPlugin({
+      truncation: { maxLength: 80, headLength: 40, tailLength: 40, tempDir },
+    }, root);
+    t.after(async () => {
+      await plugin.dispose();
+      fs.rmSync(root, { recursive: true, force: true });
+    });
+    const cases = [
+      ['password="' + 'CANARY_long '.repeat(30) + '"', 'password="[REDACTED]"'],
+      ['password="CANARY_short"', 'password="[REDACTED]"'],
+      ["password='CANARY_first\\' token='CANARY_second credential tail'", "password='[REDACTED]'"],
+      ["password='CANARY_escaped\\' quote tail'\ntoken=CANARY_next", "password='[REDACTED]'"],
+      ['{"OPENAI_API_KEY":"CANARY_prefixed", "monkeytoken":"public text", "password_hint":"hint"}', '{"OPENAI_API_KEY":"[REDACTED]", "monkeytoken":"public text", "password_hint":"hint"}'],
+      ['{"not_secret":"CANARY_ambiguous"}', '{"not_secret":"[REDACTED]"}'],
+      ['password="CANARY_one" token=CANARY_two', 'password="[REDACTED]" token=[REDACTED]'],
+      ["message='public\\' {\"password\":\"CANARY_swallowed secret tail\"}", "message='public\\' {\"password\":\"[REDACTED]\"}"],
+      ["message='public\\' token='CANARY_swallowed secret tail'", "message='public\\' token='[REDACTED]'"],
+    ];
+    for (const [index, [source, expected]] of cases.entries()) {
+      await t.test(`synthetic case ${index + 1}`, async (caseTest) => {
+        for (const prefix of ['', 'p'.repeat(Math.max(0, 79 - [...expected].length)) + ' ', 'public output '.repeat(25) + '\n']) {
+          await caseTest.test(`prefix length ${prefix.length}`, async () => {
+            const output = { output: prefix + source };
+            await plugin['tool.execute.after'](
+              { tool: 'shell', sessionID: 'review-redaction', args: {} }, output,
+            );
+            assert.ok(!output.output.includes('CANARY_'), 'Returned content must not leak canaries');
+            const artifact = output.output.match(/Full output saved to (.+?\.txt)\./)?.[1];
+            if ([...prefix + expected].length > 80) {
+              assert.ok(artifact, 'Expected oversized sanitized artifact');
+              assert.strictEqual(fs.readFileSync(artifact, 'utf8'), prefix + expected);
+            } else {
+              assert.strictEqual(output.output, prefix + expected);
+              assert.ok(!artifact, 'No artifact needed for sanitized output within limit');
+            }
+          });
+        }
+      });
+    }
+  });
+
   await t.test('redacts sensitive values before saving oversized output artifacts', async () => {
     const tempDirName = path.join(os.tmpdir(), `opencode-redact-${Date.now()}`);
     const { plugin, directory: mockDir } = await createSafetyPlugin({
