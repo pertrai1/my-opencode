@@ -82,6 +82,12 @@ function sanitizeFilenameComponent(value: string): string {
 
 function redactSensitiveOutput(value: string): string {
   return value
+    // Match complete quoted assignments before the legacy whitespace-delimited rule.
+    // This is best-effort redaction of known labels, not general secret detection.
+    .replace(
+      /((?:api[_-]?key|secret|token|password|passwd|pwd|client[_-]?secret|access[_-]?token|refresh[_-]?token)["']?\s*[:=]\s*)("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')/gi,
+      (_match, prefix: string, quoted: string) => `${prefix}${quoted.charAt(0)}${quoted.length > 2 ? REDACTED_VALUE : ""}${quoted.charAt(0)}`,
+    )
     .replace(
       /(authorization\s*:\s*(?:bearer|basic)\s+)[^\s"'`]+/gi,
       `$1${REDACTED_VALUE}`,
