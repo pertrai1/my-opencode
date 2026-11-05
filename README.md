@@ -276,7 +276,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Security
 
-- `plugins/safety.ts` — truncates oversized tool output into retained artifacts, redacts common secrets before retention, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent.
+- `plugins/safety.ts` — redacts common secrets in returned text and retained artifacts, truncates oversized text blocks independently while preserving file blocks and result metadata, aborts repetitive tool loops, and enforces extra read-only guardrails for the `explore` agent. Restart OpenCode after updating the plugin.
 - **MCP pins** — servers launched by `npx` pin exact versions, and the SonarQube image is pinned by digest; `tests/opencode-mcp.test.mjs` enforces this. Local servers inherit OpenCode's environment, so review a release before changing its pin.
 - `plugins/sonarqube-mcp.ts` — enables `sonarqube` only where `sonar-project.properties` sets `sonar.host.url`, and maps that host's locally resolved address into the container with `--add-host`.
 - `skills/security-audit/` — vendored [security-audit](https://github.com/pertrai1/security-audit-skill) skill. Run `/security-audit [scope]` to load it and start a full audit. Full-audit artifacts default to `.agents/docs/security-audits/<repo-name>/run-<N>` in this configuration directory; generated runs are intentionally ignored by Git.

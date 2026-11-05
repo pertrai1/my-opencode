@@ -695,35 +695,50 @@ export default definePlugin({
       }
     });
 
-    await ctx.tool.hook("execute.after", (event) => {
-      if (event.status !== "completed") return;
-      const rawOutput = typeof event.result.content === "string" ? event.result.content : "";
+    // Process text blocks independently so attachments and block order survive.
+    const retainText = (rawOutput: string, sessionID: string): string => {
       const retainedOutput = redactSensitiveOutput(rawOutput);
-      event.result = { ...event.result, content: retainedOutput };
       const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
       const resolvedTempDir = resolvePath(tempDir);
       if (exceedsCodePointLength(retainedOutput, maxLength)) {
         try {
           if (fs.existsSync(resolvedTempDir)) fs.chmodSync(resolvedTempDir, 0o700);
           else fs.mkdirSync(resolvedTempDir, { recursive: true, mode: 0o700 });
-          const fullPath = createOutputArtifact(resolvedTempDir, event.sessionID, retainedOutput);
+          const fullPath = createOutputArtifact(resolvedTempDir, sessionID, retainedOutput);
           if (fullPath) {
             const lengths = getEffectiveTruncationLengths(maxLength, headLength, tailLength);
             const redactionNote = retainedOutput !== rawOutput
               ? " Sensitive values were redacted before retention."
               : "";
             const marker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${lengths.headLength} and last ${lengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
-            event.result = { ...event.result, content: takeFirstCodePoints(retainedOutput, lengths.headLength) + marker + takeLastCodePoints(retainedOutput, lengths.tailLength) };
+            const preview = takeFirstCodePoints(retainedOutput, lengths.headLength) + marker + takeLastCodePoints(retainedOutput, lengths.tailLength);
             pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
+            return preview;
           }
         } catch (error) {
           console.warn("Failed to retain oversized tool output", { error });
-          return;
+          return retainedOutput;
         }
+      }
+      return retainedOutput;
+    };
+
+    await ctx.tool.hook("execute.after", (event) => {
+      if (event.status !== "completed") return;
+      const rawContent = event.result.content;
+      if (typeof rawContent === "string") {
+        event.result = { ...event.result, content: retainText(rawContent, event.sessionID) };
+      } else if (Array.isArray(rawContent)) {
+        event.result = {
+          ...event.result,
+          content: rawContent.map((block) => block.type === "text"
+            ? { ...block, text: retainText(block.text, event.sessionID) }
+            : block),
+        };
       }
       if (!config.doomLoop.enabled || !isTrackedTool(event.tool)) return;
       const serializedArgs = canonicalStringify(event.input);
-      const callHash = crypto.createHash("sha256").update(`${event.tool}:${serializedArgs}:${rawOutput}`).digest("hex");
+      const callHash = crypto.createHash("sha256").update(`${event.tool}:${serializedArgs}:${canonicalStringify(rawContent)}`).digest("hex");
       const buffer = sessionBuffers.get(event.sessionID) ?? [];
       buffer.push(callHash);
       if (buffer.length > config.doomLoop.bufferSize) buffer.shift();
