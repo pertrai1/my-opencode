@@ -119,3 +119,38 @@ test("failed tool events pass through without requiring a result", async t => {
   assert.equal(event.result, undefined);
   assert.equal(event.error.message, "fixture failure");
 });
+
+for (const cleanup of ["size", "age"]) {
+  test(`all current-result artifacts survive ${cleanup} pruning and become eligible on the next result`, async t => {
+    const { after, directory } = await setup(t, {
+      truncation: { maxLength: 40, headLength: 20, tailLength: 20, maxTempDirSizeMB: cleanup === "size" ? 0.001 : 100, retentionHours: 0.001 },
+    });
+    if (cleanup === "age") {
+      const now = Date.now();
+      t.mock.method(Date, "now", () => now + 60_000);
+    }
+    const stale = path.join(directory, "opencode-full-out-previous.txt");
+    const unrelated = path.join(directory, "keep.txt");
+    fs.writeFileSync(stale, "previous output");
+    fs.writeFileSync(unrelated, "unrelated file");
+    const raw = ['password="synthetic first"\n' + "a".repeat(800), 'token="synthetic second"\n' + "b".repeat(800)];
+    const blocks = raw.map(text);
+    blocks.splice(1, 0, file());
+    const event = completed(blocks);
+    await after(event);
+    const artifacts = event.result.content.filter(block => block.type === "text").map(block => {
+      const match = block.text.match(/Full output saved to (.+?\.txt)\./);
+      assert.ok(match, "each preview links to its own artifact");
+      return match[1];
+    });
+    assert.equal(new Set(artifacts).size, 2);
+    for (const [index, artifact] of artifacts.entries()) {
+      assert.equal(fs.readFileSync(artifact, "utf8"), raw[index].replace(/synthetic (first|second)/, "[REDACTED]"));
+      assert.equal(fs.statSync(artifact).mode & 0o777, 0o600);
+    }
+    assert.equal(fs.existsSync(stale), false, "unprotected artifacts are still pruned");
+    assert.equal(fs.readFileSync(unrelated, "utf8"), "unrelated file");
+    await after(completed([text("next result\n".repeat(100))]));
+    for (const artifact of artifacts) assert.equal(fs.existsSync(artifact), false, "protection is scoped to one result");
+  });
+}

@@ -321,7 +321,7 @@ function pruneTempDir(
   dir: string,
   retentionHours: number,
   maxMB: number,
-  protectedPath?: string,
+  protectedPaths: ReadonlySet<string> = new Set(),
 ): void {
   if (!fs.existsSync(dir)) {
     return;
@@ -338,7 +338,7 @@ function pruneTempDir(
 
     // 1. Prune by age (older than retentionHours)
     for (const info of artifactFiles) {
-      if (info.path === protectedPath) {
+      if (protectedPaths.has(info.path)) {
         continue;
       }
       const age = now - info.stat.mtimeMs;
@@ -358,7 +358,7 @@ function pruneTempDir(
       .filter((info) =>
         info.name.startsWith(ARTIFACT_PREFIX)
         && info.name.endsWith(ARTIFACT_SUFFIX)
-        && info.path !== protectedPath
+        && !protectedPaths.has(info.path)
       )
       .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs); // oldest first
 
@@ -696,9 +696,9 @@ export default definePlugin({
     });
 
     // Process text blocks independently so attachments and block order survive.
-    const retainText = (rawOutput: string, sessionID: string): string => {
+    const retainText = (rawOutput: string, sessionID: string, artifacts: Set<string>): string => {
       const retainedOutput = redactSensitiveOutput(rawOutput);
-      const { maxLength, headLength, tailLength, tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
+      const { maxLength, headLength, tailLength, tempDir } = config.truncation;
       const resolvedTempDir = resolvePath(tempDir);
       if (exceedsCodePointLength(retainedOutput, maxLength)) {
         try {
@@ -712,7 +712,7 @@ export default definePlugin({
               : "";
             const marker = `\n[WARNING: Output truncated at ${maxLength} characters. Showing first ${lengths.headLength} and last ${lengths.tailLength} characters. Full output saved to ${fullPath}.${redactionNote}]\n`;
             const preview = takeFirstCodePoints(retainedOutput, lengths.headLength) + marker + takeLastCodePoints(retainedOutput, lengths.tailLength);
-            pruneTempDir(resolvedTempDir, retentionHours, maxTempDirSizeMB, fullPath);
+            artifacts.add(fullPath);
             return preview;
           }
         } catch (error) {
@@ -726,15 +726,21 @@ export default definePlugin({
     await ctx.tool.hook("execute.after", (event) => {
       if (event.status !== "completed") return;
       const rawContent = event.result.content;
+      const artifacts = new Set<string>();
       if (typeof rawContent === "string") {
-        event.result = { ...event.result, content: retainText(rawContent, event.sessionID) };
+        event.result = { ...event.result, content: retainText(rawContent, event.sessionID, artifacts) };
       } else if (Array.isArray(rawContent)) {
         event.result = {
           ...event.result,
           content: rawContent.map((block) => block.type === "text"
-            ? { ...block, text: retainText(block.text, event.sessionID) }
+            ? { ...block, text: retainText(block.text, event.sessionID, artifacts) }
             : block),
         };
+      }
+      // Cleanup once, protecting every artifact referenced by this result.
+      if (artifacts.size > 0) {
+        const { tempDir, retentionHours, maxTempDirSizeMB } = config.truncation;
+        pruneTempDir(resolvePath(tempDir), retentionHours, maxTempDirSizeMB, artifacts);
       }
       if (!config.doomLoop.enabled || !isTrackedTool(event.tool)) return;
       const serializedArgs = canonicalStringify(event.input);
