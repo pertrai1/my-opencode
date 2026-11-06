@@ -27,16 +27,40 @@ async function fixtureRoot(fixture, variables) {
   return root;
 }
 
-async function api(method, path, body) {
+async function api(method, path, body, { signal, timeout = 240_000 } = {}) {
+  signal?.throwIfAborted();
   const args = ["api", method, path];
   if (body) args.push("--data", JSON.stringify(body));
 
-  const { stdout } = await run("opencode", args, {
-    timeout: 240_000,
+  const command = run("opencode", args, {
+    signal,
+    timeout,
+    killSignal: "SIGKILL",
     maxBuffer: 16 * 1024 * 1024,
+  });
+  const { stdout } = await command.catch((error) => {
+    // execFile's AbortSignal path uses SIGTERM even with killSignal set.
+    // Stop this CLI child if it ignores that signal; never kill the server.
+    if (signal?.aborted) command.child.kill("SIGKILL");
+    throw error;
   });
 
   return stdout.trim() ? JSON.parse(stdout) : null;
+}
+
+async function interruptSession(sessionId, timeout) {
+  if (!sessionId) return { status: "not-attempted", reason: "No session ID available" };
+  try {
+    // Cleanup must not inherit the cancelled request's signal.
+    const result = await api("post", `/api/session/${encodeURIComponent(sessionId)}/interrupt`,
+      undefined, { timeout });
+    if (typeof result?.interrupted !== "boolean") {
+      throw new Error("Interrupt response missing interrupted boolean");
+    }
+    return { status: result.interrupted ? "interrupted" : "idle" };
+  } catch (error) {
+    return { status: "unconfirmed", error: error.message };
+  }
 }
 
 export default class LiveProvider {
@@ -46,6 +70,8 @@ export default class LiveProvider {
       id: "angular-skill-live",
       title: "Angular skill eval",
       traceInputTools: ["skill"],
+      timeoutMs: 240_000,
+      interruptTimeoutMs: 5_000,
       ...options,
     };
   }
@@ -54,10 +80,12 @@ export default class LiveProvider {
     return this.options.id;
   }
 
-  async callApi(prompt, context) {
+  async callApi(prompt, context, { abortSignal } = {}) {
     let sessionId;
+    const request = { signal: abortSignal, timeout: this.options.timeoutMs };
 
     try {
+      abortSignal?.throwIfAborted();
       const root = await fixtureRoot(context.vars.fixture, this.options.fixtureVariables);
 
       const created = await api("post", "/api/session", {
@@ -69,19 +97,20 @@ export default class LiveProvider {
           id: "gpt-6-astra",
           variant: "high",
         },
-      });
+      }, request);
 
       sessionId = created?.data?.id;
       if (!sessionId) throw new Error("Session creation returned no ID");
 
       await api("post", `/api/session/${sessionId}/prompt`, {
         text: prompt,
-      });
-      await api("post", `/api/experimental/session/${sessionId}/wait`);
+      }, request);
+      await api("post", `/api/experimental/session/${sessionId}/wait`, undefined, request);
 
       const response = await api(
         "get",
         `/api/session/${sessionId}/message?order=asc&limit=100`,
+        undefined, request,
       );
       const messages = response?.data;
       if (!Array.isArray(messages) || messages.length >= 100) {
@@ -115,9 +144,10 @@ export default class LiveProvider {
         metadata: { sessionId },
       };
     } catch (error) {
+      const cleanup = await interruptSession(sessionId, this.options.interruptTimeoutMs);
       return {
-        error: error.message,
-        metadata: { sessionId },
+        error: error instanceof Error ? error.message : String(error),
+        metadata: { sessionId, cleanup },
       };
     }
   }

@@ -45,3 +45,22 @@ Neither demonstrates current live agent behavior.
 
 The provider uses Promptfoo's documented
 [`context.vars` and provider error interface](https://www.promptfoo.dev/docs/providers/custom-api/).
+
+## Cancellation and cleanup limits
+
+The shared live provider (also used by the Node.js trace eval) honors Promptfoo's
+request `abortSignal`. Each CLI call has a four-minute timeout. After any failure
+with a known session ID, it attempts one session-specific interrupt with a separate
+five-second timeout. The original error and session ID remain in the result;
+`metadata.cleanup.status` reports `interrupted`, `idle` (the server reported no
+active execution), `unconfirmed` (interrupt failed or returned an invalid response),
+or `not-attempted` (no session ID was received). Successful runs do not interrupt.
+Sessions remain available for diagnosis; the shared server is never stopped.
+
+These are per-call limits, not a total eval deadline. CLI termination alone does
+not stop server work. Interrupt is best effort: a lost session-creation response,
+a late prompt arriving after interrupt, an unreachable server, or abrupt process
+termination can leave work running. An interrupt response describes execution
+owned by the responding OpenCode process; it is not proof that all external work
+or billing has stopped. When cleanup is unconfirmed, inspect the retained session
+before rerunning. No process-wide signal handlers or automatic retries are added.
