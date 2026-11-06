@@ -22,26 +22,53 @@ const { appendFileSync } = require("node:fs");
 const [, method, path, , data] = process.argv.slice(2);
 const body = data ? JSON.parse(data) : undefined;
 appendFileSync(process.env.ANGULAR_EVAL_TEST_LOG, JSON.stringify({ method, path, body }) + "\\n");
+const mode = process.env.ANGULAR_EVAL_TEST_MODE;
+const stage = path.endsWith("/interrupt") ? "interrupt"
+  : path.endsWith("/prompt") ? "prompt"
+  : path.endsWith("/wait") ? "wait"
+  : method === "get" ? "trace" : "create";
+if (mode?.includes("hang-" + stage)) {
+  process.on("SIGTERM", () => {});
+  setInterval(() => {}, 1000);
+} else if (mode?.includes("fail-" + stage)) {
+  console.error("synthetic " + stage + " failure");
+  process.exit(7);
+} else if (mode?.includes("malformed-" + stage)) {
+  console.log("not-json");
+} else {
 let response = {};
-if (path === "/api/session") response = { data: { id: "fixture-session" } };
+if (stage === "interrupt") response = { interrupted: !mode?.includes("idle") };
+if (path === "/api/session") response = { data: { id: mode === "missing-id" ? undefined : "fixture-session" } };
+if (mode?.includes("missing-boolean") && stage === "interrupt") response = {};
 if (method === "get") response = { data: [
   { type: "user", text: ${JSON.stringify(prompt)} },
   { type: "assistant", content: [
     { type: "tool", name: "skill", state: { input: { id: "angular" }, status: "completed" } }
   ] },
-  { type: "idle", outcome: "succeeded" }
+  { type: "idle", outcome: mode === "failed-turn" ? "failed" : "succeeded" }
 ] };
 console.log(JSON.stringify(response));
+}
 `, { mode: 0o755 });
 
   return {
     directory, angular, plainJs,
-    call(selected = "angular", roots = {}) {
+    call(selected = "angular", roots = {}, lifecycle = {}) {
       const result = spawnSync(process.execPath, ["--input-type=module", "--eval", `
-        import LiveProvider from ${JSON.stringify(providerUrl)};
-        const result = await new LiveProvider().callApi(${JSON.stringify(prompt)}, {
+        import LiveProvider from ${JSON.stringify(lifecycle.nodeTrace
+          ? new URL("../evals/nodejs-skill/trace-provider.mjs", import.meta.url).href : providerUrl)};
+        import { readFileSync } from "node:fs";
+        const lifecycle = ${JSON.stringify(lifecycle)};
+        const controller = new AbortController();
+        if (lifecycle.abort === "before") controller.abort(new Error("synthetic cancellation"));
+        const poll = setInterval(() => {
+          if (lifecycle.abort && readFileSync(process.env.ANGULAR_EVAL_TEST_LOG, "utf8")
+            .includes(lifecycle.abort)) controller.abort(new Error("synthetic cancellation"));
+        }, 5);
+        const result = await new LiveProvider(lifecycle.options).callApi(${JSON.stringify(prompt)}, {
           vars: { fixture: ${JSON.stringify(selected)} }
-        });
+        }, { abortSignal: controller.signal });
+        clearInterval(poll);
         console.log(JSON.stringify(result));
       `], {
         cwd: directory,
@@ -50,6 +77,7 @@ console.log(JSON.stringify(response));
         env: {
           PATH: [bin, dirname(process.execPath), process.env.PATH].join(delimiter),
           ANGULAR_EVAL_TEST_LOG: log,
+          ANGULAR_EVAL_TEST_MODE: lifecycle.mode,
           ...roots,
         },
       });
@@ -150,3 +178,90 @@ for (const selected of ["unknown", "toString", "__proto__"]) {
     }), new RegExp(`Unknown eval fixture: ${selected}`));
   });
 }
+
+for (const stage of ["prompt", "wait", "trace"]) {
+  test(`cancellation during ${stage} interrupts only the created session`, (t) => {
+    const setup = fixture(t);
+    const suffix = stage === "trace" ? "/message?" : `/${stage}`;
+    const { response, calls } = setup.call("angular", {
+      ANGULAR_SKILL_ANGULAR_ROOT: setup.angular,
+    }, { mode: `hang-${stage}`, abort: suffix });
+    assert.match(response.error, /aborted/);
+    assert.equal(response.metadata.sessionId, "fixture-session");
+    assert.deepEqual(response.metadata.cleanup, { status: "interrupted" });
+    assert.equal(calls.at(-1).path, "/api/session/fixture-session/interrupt");
+    assert.equal(calls.filter(call => call.path.endsWith("/interrupt")).length, 1);
+    assert.equal(response.output, undefined);
+  });
+}
+
+test("already cancelled requests make no CLI calls", (t) => {
+  const setup = fixture(t);
+  const result = setup.call("angular", {}, { abort: "before" });
+  assertSetupError(result, /synthetic cancellation/);
+  assert.equal(result.response.metadata.cleanup.status, "not-attempted");
+});
+
+for (const mode of ["fail-create", "malformed-create", "hang-create", "missing-id"]) {
+  test(`${mode} cannot interrupt an unknown session`, (t) => {
+    const setup = fixture(t);
+    const { response, calls } = setup.call("angular", {
+      ANGULAR_SKILL_ANGULAR_ROOT: setup.angular,
+    }, { mode, options: { timeoutMs: 1000 } });
+    assert.ok(response.error);
+    assert.equal(response.metadata.cleanup.status, "not-attempted");
+    assert.deepEqual(calls.map(call => call.path), ["/api/session"]);
+  });
+}
+
+for (const [mode, status] of [
+  ["hang-wait", "interrupted"],
+  ["fail-prompt", "interrupted"],
+  ["fail-wait idle", "idle"],
+  ["malformed-trace", "interrupted"],
+  ["failed-turn", "interrupted"],
+  ["fail-wait missing-boolean", "unconfirmed"],
+  ["fail-wait fail-interrupt", "unconfirmed"],
+  ["fail-wait malformed-interrupt", "unconfirmed"],
+  ["fail-wait hang-interrupt", "unconfirmed"],
+]) {
+  test(`${mode} preserves the failure and reports ${status} cleanup`, (t) => {
+    const setup = fixture(t);
+    const started = Date.now();
+    const { response, calls } = setup.call("angular", {
+      ANGULAR_SKILL_ANGULAR_ROOT: setup.angular,
+    }, { mode, options: { timeoutMs: 1000, interruptTimeoutMs: 1000 } });
+    assert.ok(response.error);
+    if (mode.startsWith("fail-wait")) assert.match(response.error, /synthetic wait failure/);
+    assert.equal(response.output, undefined);
+    assert.equal(response.metadata.sessionId, "fixture-session");
+    assert.equal(response.metadata.cleanup.status, status);
+    if (status === "unconfirmed") assert.ok(response.metadata.cleanup.error);
+    assert.equal(calls.at(-1).path, "/api/session/fixture-session/interrupt");
+    assert.equal(calls.at(-1).method, "post");
+    assert.ok(Date.now() - started < 8000, "hung CLI calls must be bounded");
+    assert.ok(calls.every(call => call.method !== "delete"));
+  });
+}
+
+test("Node trace provider inherits request cancellation and session cleanup", (t) => {
+  const setup = fixture(t);
+  const { response, calls } = setup.call("node", {
+    NODEJS_SKILL_NODE_ROOT: setup.plainJs,
+  }, { mode: "hang-wait", abort: "/wait", nodeTrace: true });
+  assert.match(response.error, /aborted/);
+  assert.deepEqual(response.metadata.cleanup, { status: "interrupted" });
+  assert.equal(calls.find(call => call.path === "/api/session").body.title, "Node.js skill eval");
+  assert.equal(calls.at(-1).path, "/api/session/fixture-session/interrupt");
+});
+
+test("cancellation during creation reports unknown session without further calls", (t) => {
+  const setup = fixture(t);
+  const { response, calls } = setup.call("angular", {
+    ANGULAR_SKILL_ANGULAR_ROOT: setup.angular,
+  }, { mode: "hang-create", abort: "/api/session" });
+  assert.match(response.error, /aborted/);
+  assert.equal(response.metadata.cleanup.status, "not-attempted");
+  assert.equal(response.metadata.sessionId, undefined);
+  assert.deepEqual(calls.map(call => call.path), ["/api/session"]);
+});
