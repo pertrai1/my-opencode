@@ -19,16 +19,19 @@ function fixture(t) {
   writeFileSync(log, "");
   writeFileSync(join(bin, "opencode"), `#!/usr/bin/env node
 const { appendFileSync } = require("node:fs");
+const { spawn } = require("node:child_process");
 const [, method, path, , data] = process.argv.slice(2);
 const body = data ? JSON.parse(data) : undefined;
-appendFileSync(process.env.ANGULAR_EVAL_TEST_LOG, JSON.stringify({ method, path, body }) + "\\n");
 const mode = process.env.ANGULAR_EVAL_TEST_MODE;
 const stage = path.endsWith("/interrupt") ? "interrupt"
   : path.endsWith("/prompt") ? "prompt"
   : path.endsWith("/wait") ? "wait"
   : method === "get" ? "trace" : "create";
-if (mode?.includes("hang-" + stage)) {
-  process.on("SIGTERM", () => {});
+const hanging = mode?.includes("hang-" + stage);
+if (hanging) process.on("SIGTERM", () => {});
+// Publishing the PID also signals that the stubborn child is ready.
+appendFileSync(process.env.ANGULAR_EVAL_TEST_LOG, JSON.stringify({ method, path, body, pid: process.pid }) + "\\n");
+if (hanging) {
   setInterval(() => {}, 1000);
 } else if (mode?.includes("fail-" + stage)) {
   console.error("synthetic " + stage + " failure");
@@ -47,6 +50,19 @@ if (method === "get") response = { data: [
   ] },
   { type: "idle", outcome: mode === "failed-turn" ? "failed" : "succeeded" }
 ] };
+if (mode === "late-trace" && stage === "trace") {
+  // Keep output open until the caller observes this CLI's exit and aborts.
+  spawn(process.execPath, ["-e", \`
+    const { existsSync } = require("node:fs");
+    const timeout = setTimeout(() => process.exit(2), 5000);
+    const poll = setInterval(() => {
+      if (existsSync(process.env.ANGULAR_EVAL_TEST_LOG + ".release")) {
+        clearInterval(poll);
+        clearTimeout(timeout);
+      }
+    }, 5);
+  \`], { stdio: ["ignore", process.stdout, process.stderr] }).unref();
+}
 console.log(JSON.stringify(response));
 }
 `, { mode: 0o755 });
@@ -57,13 +73,27 @@ console.log(JSON.stringify(response));
       const result = spawnSync(process.execPath, ["--input-type=module", "--eval", `
         import LiveProvider from ${JSON.stringify(lifecycle.nodeTrace
           ? new URL("../evals/nodejs-skill/trace-provider.mjs", import.meta.url).href : providerUrl)};
-        import { readFileSync } from "node:fs";
+        import { readFileSync, writeFileSync } from "node:fs";
         const lifecycle = ${JSON.stringify(lifecycle)};
         const controller = new AbortController();
         if (lifecycle.abort === "before") controller.abort(new Error("synthetic cancellation"));
         const poll = setInterval(() => {
-          if (lifecycle.abort && readFileSync(process.env.ANGULAR_EVAL_TEST_LOG, "utf8")
-            .includes(lifecycle.abort)) controller.abort(new Error("synthetic cancellation"));
+          const log = readFileSync(process.env.ANGULAR_EVAL_TEST_LOG, "utf8");
+          if (lifecycle.abort && log.includes(lifecycle.abort)) {
+            controller.abort(new Error("synthetic cancellation"));
+          }
+          if (lifecycle.mode === "late-trace" && !controller.signal.aborted) {
+            const trace = log.split("\\n").filter(Boolean).map(JSON.parse)
+              .find(call => call.method === "get");
+            if (!trace) return;
+            try {
+              process.kill(trace.pid, 0);
+            } catch (error) {
+              if (error.code !== "ESRCH") throw error;
+              controller.abort(new Error("cancellation after trace exit"));
+              writeFileSync(process.env.ANGULAR_EVAL_TEST_LOG + ".release", "");
+            }
+          }
         }, 5);
         const result = await new LiveProvider(lifecycle.options).callApi(${JSON.stringify(prompt)}, {
           vars: { fixture: ${JSON.stringify(selected)} }
@@ -192,8 +222,24 @@ for (const stage of ["prompt", "wait", "trace"]) {
     assert.equal(calls.at(-1).path, "/api/session/fixture-session/interrupt");
     assert.equal(calls.filter(call => call.path.endsWith("/interrupt")).length, 1);
     assert.equal(response.output, undefined);
+    const cancelled = calls.find(call => call.path.includes(suffix));
+    assert.throws(() => process.kill(cancelled.pid, 0), { code: "ESRCH" },
+      "the ready SIGTERM-resistant CLI must have exited after cancellation");
   });
 }
+
+test("cancellation after trace CLI exit still fails and interrupts the session", (t) => {
+  const setup = fixture(t);
+  const { response, calls } = setup.call("angular", {
+    ANGULAR_SKILL_ANGULAR_ROOT: setup.angular,
+  }, { mode: "late-trace" });
+  assert.equal(response.error, "cancellation after trace exit");
+  assert.equal(response.output, undefined);
+  assert.equal(response.metadata.sessionId, "fixture-session");
+  assert.deepEqual(response.metadata.cleanup, { status: "interrupted" });
+  assert.equal(calls.filter(call => call.path.endsWith("/interrupt")).length, 1);
+  assert.equal(calls.at(-1).path, "/api/session/fixture-session/interrupt");
+});
 
 test("already cancelled requests make no CLI calls", (t) => {
   const setup = fixture(t);

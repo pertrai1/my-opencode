@@ -112,6 +112,8 @@ export default class LiveProvider {
         `/api/session/${sessionId}/message?order=asc&limit=100`,
         undefined, request,
       );
+      // The CLI can exit before its output closes and stop listening for abort.
+      abortSignal?.throwIfAborted();
       const messages = response?.data;
       if (!Array.isArray(messages) || messages.length >= 100) {
         throw new Error("Message trace missing or possibly truncated");
