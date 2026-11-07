@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,8 +47,8 @@ test("verification guidance does not grant restricted reviewers shell execution"
   }
 });
 
-function materialize(t, language) {
-  const target = mkdtempSync(join(tmpdir(), `verification-${language}-`));
+function materialize(t, language, directory = tmpdir()) {
+  const target = realpathSync(mkdtempSync(join(directory, `verification-${language}-`)));
   t.after(() => rmSync(target, { recursive: true, force: true }));
   const source = join(repository, "evals/project-verification", language);
   for (const file of readdirSync(source)) {
@@ -68,6 +68,18 @@ function run(command, args, cwd) {
   assert.equal(result.signal, null, result.stderr);
   return { exit: result.status, output: result.stdout + result.stderr };
 }
+
+test("materialized target matches child cwd through a symlinked temporary parent", t => {
+  const directory = mkdtempSync(join(tmpdir(), "verification-symlink-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const alias = join(directory, "alias");
+  symlinkSync(directory, alias, process.platform === "win32" ? "junction" : "dir");
+  const target = materialize(t, "node", alias);
+  const result = run(process.execPath, ["--eval", 'console.log(`cwd: ${process.cwd()}`)'], target);
+  assert.equal(result.exit, 0, result.output);
+  const actualCwd = result.output.match(/^cwd: (.+)$/m)?.[1];
+  assert.equal(actualCwd, target, "fixture identity must match the actual subprocess working directory");
+});
 
 // These are executed fixture checks, not agent runs or a semantic report grader.
 for (const scenario of [
