@@ -3,6 +3,9 @@
 This document defines the `/verify` report format and shared evidence requirements.
 OpenSpec change-local reports use the separate contract in
 [`agents/change-verifier.md`](../../../agents/change-verifier.md).
+Both use the globally loaded [verification evidence protocol](../../../docs/agents/verification-evidence.md)
+for target selection, command evidence, validation, and human decisions. Preserve
+the report formats and status vocabulary here; do not create a duplicate report.
 
 ---
 

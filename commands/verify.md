@@ -18,8 +18,15 @@ Verify completed work against the canonical rubric and source of truth. Saves a 
 
 ### 1. Load Guidance and Resolve Source
 
-Read `.agents/docs/verification/README.md` for source precedence, the seven-section
-report format, evidence statuses, disposition rules, and artifact metadata.
+Read `~/.config/opencode/.agents/docs/verification/README.md` for source
+precedence, the seven-section report format, evidence statuses, disposition rules,
+and artifact metadata. When working on this configuration checkout, its local
+`.agents/docs/verification/README.md` is the same canonical source. Also apply
+`~/.config/opencode/docs/agents/verification-evidence.md`. Do not require a target
+project to contain these guidance files; if the installed guidance is unavailable,
+report the missing path rather than inventing a rubric. Applicable target-specific
+instructions still take precedence. Run checks and save the report in the selected
+target repository, not the configuration checkout.
 Resolve the source using that guidance; ask if none is available unless
 `--core-only` was requested.
 

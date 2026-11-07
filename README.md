@@ -365,6 +365,28 @@ The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
 
+### Verification across target projects
+
+The [shared evidence protocol](docs/agents/verification-evidence.md) is loaded by
+the global `opencode.jsonc` instructions in every target project, including
+ordinary lean/build work, direct `/apply`, and OpenSpec delivery. It adds claim,
+command/output, limitation, and human-decision evidence to the existing handoffs
+and verification reports. Target instructions and toolchains select the checks;
+projects do not need this repository's npm scripts, OpenSpec, or copied templates.
+Small non-behavioral tasks keep their lightweight route.
+
+Verification checks conformance to requirements; validation checks that the
+behavior solves the intended problem. The existing TDD test-quality gate and
+specialist reviews challenge both with meaningful negative cases. Human review
+focuses on consequential decisions, assumptions, changed defaults, and gaps using
+the existing risk rubric. Restricted roles report unsupported commands or contract
+layouts instead of weakening permissions or claiming a pass.
+
+Install the updated configuration and `docs/agents` files together, then restart
+OpenCode. No target-repository file is automatically changed. See the
+[offline scenarios and verification limits](evals/project-verification/README.md);
+deterministic checks do not prove live agent compliance.
+
 ## Replicating this setup
 
 Install the two AGENTS-required skills on each computer with the

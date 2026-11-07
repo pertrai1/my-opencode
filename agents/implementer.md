@@ -232,6 +232,11 @@ Return exactly these sections:
 
 ## Return rules
 
+- Apply `~/.config/opencode/docs/agents/verification-evidence.md` within these
+  sections: include target/cwd, observed exit and relevant output for each named
+  check; mark blocked or unrun checks explicitly. In **Intent Summary** name
+  material decisions and changed defaults; in **Disagreements / Open Issues**
+  preserve assumptions, evidence limits, and any required human decision.
 - Under **Intent Summary**, briefly state the key implementation choices only.
 - Under **Reused Utilities / Dependencies Checked**, name any existing helpers, modules, or downstream surfaces you inspected or reused.
 - If blocked, include the exact test, contract, or spec disagreement and stop without modifying protected files.

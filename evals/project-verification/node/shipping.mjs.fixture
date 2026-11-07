@@ -1,0 +1,4 @@
+export function total(subtotal, shipping) {
+  if (subtotal < 0 || shipping < 0) throw new RangeError("negative amount");
+  return subtotal;
+}

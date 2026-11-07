@@ -1,0 +1,4 @@
+def total(subtotal, shipping):
+    if subtotal < 0 or shipping < 0:
+        raise ValueError("negative amount")
+    return subtotal

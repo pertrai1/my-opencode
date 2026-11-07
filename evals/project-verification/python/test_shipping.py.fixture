@@ -1,0 +1,19 @@
+import os
+import unittest
+from shipping import total
+
+print(f"target cwd: {os.getcwd()}")
+
+
+class ShippingTests(unittest.TestCase):
+    def test_shipping_is_included(self):
+        self.assertEqual(total(20, 5), 25)
+
+    def test_zero_shipping_preserves_subtotal(self):
+        self.assertEqual(total(20, 0), 20)
+
+    def test_rejects_negative_amounts(self):
+        with self.assertRaises(ValueError):
+            total(-1, 5)
+        with self.assertRaises(ValueError):
+            total(20, -1)
