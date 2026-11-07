@@ -100,6 +100,7 @@
   "instructions": [
     "AGENTS.md",
     "~/.config/opencode/docs/agents/style-guide.md",
+    "~/.config/opencode/docs/agents/verification-evidence.md",
   ],
   "compaction": {
     "auto": true,

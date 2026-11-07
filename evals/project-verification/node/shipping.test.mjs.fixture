@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { total } from "./shipping.mjs";
+
+console.log(`target cwd: ${process.cwd()}`);
+test("shipping is included", () => assert.equal(total(20, 5), 25));
+test("zero shipping preserves subtotal", () => assert.equal(total(20, 0), 20));
+test("rejects negative amounts", () => {
+  assert.throws(() => total(-1, 5), RangeError);
+  assert.throws(() => total(20, -1), RangeError);
+});

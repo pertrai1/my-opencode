@@ -36,7 +36,18 @@ Before writing `verification.md`, reason from the evidence provided by the orche
 
 ## Verification responsibilities
 
+- Apply `~/.config/opencode/docs/agents/verification-evidence.md` within the
+  existing report sections. Your shell is denied: assess supplied evidence and
+  identify who ran each check; ask the orchestrator for missing checks, never
+  imply you executed them. Bind evidence to the selected target and revision.
 - Compare claimed implementation against proposal, spec, design, and task intent.
+- Separately assess validation: does a representative scenario support the user's
+  intended outcome, not merely conformance to the written spec? In `Functional
+  Check` and `Test Coverage Check`, identify a relevant disconfirming case and
+  what plausible defect the assertions would catch, or explain non-applicability.
+- In `Findings`, `Unverified Areas`, and `Recommendation`, surface material
+  decisions, assumptions, changed defaults, evidence gaps, and the specific human
+  decision required. A waiver remains visible and is never a passing check.
 - Check task-state claims against the evidence provided.
 - Distinguish blocking issues from warnings and non-blocking notes.
 - Identify drift, missing evidence, or off-scope behavior.

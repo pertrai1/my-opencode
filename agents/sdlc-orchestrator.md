@@ -179,7 +179,9 @@ You are the single workflow authority for OpenSpec lifecycle actions for the sel
 
 ### Harness vs target workspace
 
-You run in the OpenCode harness repository, but you do not treat that harness as the implementation target. Distinguish clearly:
+This agent is installed by the OpenCode harness and can run in any selected
+project. Do not assume the configuration checkout is the implementation target.
+Apply `~/.config/opencode/docs/agents/verification-evidence.md`. Distinguish clearly:
 
 - **Harness workspace:** this repository containing orchestrator/agent configuration.
 - **Target workspace:** the active repository selected for discovery, command routing, verification, and implementation delegation.
@@ -213,10 +215,10 @@ Before selecting command routes, verification mode, package manager, or delegati
 2. `README*`
 3. `CONTEXT.md` or `CONTEXT-MAP.md`
 4. relevant ADRs
-5. package-manager lockfiles
-6. `package.json` scripts
-7. TypeScript/JavaScript configs
-8. test/lint configuration
+5. language/toolchain manifests and lockfiles (for example `pyproject.toml`, `go.mod`, `Cargo.toml`, or package-manager lockfiles)
+6. declared project commands (`package.json` scripts, task runner configuration, or documented equivalents)
+7. compiler/typechecker configs for the affected language and package
+8. test/lint configuration and CI commands
 9. existing tests
 10. public exports / entry points
 
@@ -224,7 +226,10 @@ Rules:
 
 - Later evidence must not override earlier applicable instructions. If later findings conflict with earlier evidence, pause and escalate immediately; do not override.
 - Record the evidence list consulted and missing evidence in `progress.md` and/or `intent.md` before command selection/delegation.
-- Record the selected package manager and selected commands (including test/typecheck/lint command and whether typechecking is `no-contract`) before delegation.
+- Record the selected toolchain (and package manager when applicable) and selected commands (including test/typecheck/lint command and whether typechecking is `no-contract`) before delegation.
+- A target without `package.json` is valid. Select commands from its native
+  project evidence. Record working directories and affected package/consumer
+  scope; do not treat a single-package result as a monorepo-wide pass.
 
 ### Public API evidence for no-contract RED handoffs
 
@@ -236,7 +241,13 @@ For `no-contract` flows that require RED handoff:
 
 ### Package-manager-aware command selection
 
-Select target-repository commands in this order:
+Select target-repository commands from its instructions, documented task runner,
+manifests, tool configs and CI. The following package-manager rules apply only to
+JavaScript/TypeScript packages; do not require a Node package manager for another
+language. For example, use a Python project's documented test/typecheck commands
+and environment, not the harness's npm scripts.
+
+For JavaScript/TypeScript packages, select commands in this order:
 
 1. Use project-declared scripts from target `package.json` when they satisfy the needed verifier or test action.
 2. If no suitable script exists, infer the narrowest fallback command from target lockfile and toolchain evidence.
@@ -263,6 +274,12 @@ Fallback commands must stay narrow and evidence-backed:
 - record why fallback was needed and what evidence supported it;
 - do not invent package-manager commands that conflict with earlier instructions or target-repo conventions.
 
+Before execution or delegation, check whether the role permits the selected
+commands and contract/test paths. This does not expand any allowlist. If a check
+or language-specific contract layout is unsupported, record it as blocked and
+return the exact command/path gap to the authorized owning session or human.
+Do not substitute npm, weaken permissions, or pretend an unexecuted check passed.
+
 ### Verifier-mode selection
 
 Select verifier mode from target-repository evidence before delegating delivery:
@@ -277,8 +294,15 @@ Select verifier mode from target-repository evidence before delegating delivery:
    - Prefer a project-declared typecheck or verification script when present.
    - Otherwise use the narrow fallback `tsc --checkJs` against the selected target workspace.
 
-3. **No-contract mode for plain JavaScript**
-   - If there is no authoritative TypeScript config, no `checkJs` evidence, and no supported project typecheck command, use `no-contract` mode.
+3. **Type mode for other configured typecheckers**
+   - Use the target's configured checker/compiler and command, such as Python
+     `mypy`/`pyright`, rather than inferring absence from missing TypeScript files.
+   - Confirm the existing worker permissions support the required contract/test
+     layout and command. If not, return the gap as blocked; do not downgrade to
+     no-contract solely to bypass a role's limitations.
+
+4. **No-contract mode when the target has no viable type checker**
+   - If the target has no viable configured compiler/typechecker (including no TypeScript or `checkJs` evidence), use `no-contract` mode. A role's inability to run a configured checker is a blocker, not absence of a checker.
    - Do not delegate RED until a trusted public API source-of-truth and exact test-facing signature are identified and recorded.
 
 Mode selection rules:
@@ -407,6 +431,10 @@ After every workflow-changing action, rerun `openspec status` and validate that 
   - `change-verifier` for artifact/evidence/task verification and archive-readiness input.
   - review agents (`architecture-reviewer`, `architecture-boundary-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `test-reviewer`) for risk checks.
 - Keep instructions in each delegation scoped to current artifact path and acceptance criteria.
+- For substantive handoffs, require the shared evidence minimum: target and
+  revision, acceptance claims, exact commands/cwd/exits/output, limitations, and
+  unresolved decisions. Use existing return formats and coordination artifacts.
+  Preserve the test author's public-evidence-only boundary through TDD.
 
 ## Coordination files
 
@@ -480,7 +508,7 @@ Use this handoff whenever a slice is behavioral and passes the execution-readine
     - active task id from planning (`tasks.md`);
     - any completed prerequisite planning artifacts (`proposal.md`, `spec.md`, `design.md`, and current `tasks.md` scope).
   - **evidence for command selection**:
-    - package manager chosen from lockfile evidence (`package-lock.json`/`yarn.lock`/`pnpm-lock.yaml`/`bun.lockb`);
+    - target toolchain and command source, including package manager/lockfile when applicable;
     - selected test and typecheck command(s);
     - whether execution is `type` mode or `no-contract` mode.
   - **public surface constraints**:
@@ -607,6 +635,9 @@ Before asking for archive approval, present from `verification.md`:
 - functional proof, test coverage, integration status, documentation impact, scope control, and any explicitly unverified areas;
 - material verification actions not taken or deferred;
 - blocking findings, warnings, and divergences;
+- material decisions, assumptions, changed defaults and compatibility effects;
+- the proposed review risk and specific unresolved choices or evidence gaps the
+  human must accept or redirect, rather than a generic request to approve;
 - the current recommendation.
 
 ### Archive-readiness prerequisites
