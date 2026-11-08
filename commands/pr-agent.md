@@ -32,6 +32,9 @@ node ~/.config/opencode/scripts/pr-agent.mjs check
 ```
 
 This only calls `pr-agent --help`; it never installs or contacts a model.
+Before an `ask` run, the helper also checks `pr-agent --version`: literal
+questions require version 0.45.0 or newer. An older or unrecognized version stops
+before capturing the diff; ask before upgrading it.
 
 - For `missing`, use the question tool: **Install with uv (Recommended)**,
   **Show installation instructions**, or **Cancel**. Wait for explicit approval.

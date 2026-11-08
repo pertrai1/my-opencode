@@ -171,7 +171,7 @@ test("combined tools share one private diff and leave review candidates unapprov
   assert.equal(readFileSync(join(result.directory, "changes.diff"), "utf8"), patch);
   assert.deepEqual(JSON.parse(readFileSync(join(result.directory, "comments.json"), "utf8")), []);
   assert.equal(JSON.parse(readFileSync(join(result.directory, "candidates.json"), "utf8")).comments.length, 1);
-  assert.ok(calls[3][1].includes("What breaks?"));
+  assert.ok(calls[3][1].includes("__pr_agent_encoded_text__:What%20breaks%3F"));
   assert.doesNotMatch(JSON.stringify(result), /sensitive runtime logs/);
 });
 

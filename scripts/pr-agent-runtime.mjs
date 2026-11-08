@@ -11,11 +11,20 @@ const allowedActions = ["review", "describe", "improve", "ask"];
 const digest = text => createHash("sha256").update(text).digest("hex");
 const save = (directory, name, data) => writeFileSync(join(directory, name), typeof data === "string" ? data : `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
 
-export function checkPrerequisites(execute = runProcess) {
+export function checkPrerequisites(execute = runProcess, { actions = [] } = {}) {
   const result = execute("pr-agent", ["--help"], { timeout: 20_000 });
   if (result.error?.code === "ENOENT") return { status: "missing" };
   if (!processSucceeded(result)) return { status: "failed", message: "PR-Agent help failed; inspect installation without exposing credentials." };
-  return capabilities(result.stdout ?? "");
+  const found = capabilities(result.stdout ?? "");
+  return found.status === "ready" && actions.includes("ask") ? askCapabilities(execute) : found;
+}
+
+function askCapabilities(execute) {
+  const result = execute("pr-agent", ["--version"], { timeout: 20_000 });
+  const version = result.stdout?.trim().match(/^pr-agent (\d+)\.(\d+)\.(\d+)$/);
+  if (!processSucceeded(result) || !version) return { status: "incompatible", message: "Ask requires a verified PR-Agent version supporting literal questions (0.45.0 or newer)." };
+  const [, major, minor] = version.map(Number);
+  return major > 0 || minor >= 45 ? { status: "ready" } : { status: "incompatible", message: "Ask requires PR-Agent 0.45.0 or newer to preserve literal questions." };
 }
 
 function capabilities(help) {
@@ -36,7 +45,8 @@ export function validateRequest({ actions: requested = ["review"], question = ""
 
 function localEnvironment(env) {
   // Preserve model credentials, but disable extra delivery and remote config discovery.
-  return { ...env, PUSH_OUTPUTS__ENABLE: "false", "PUSH_OUTPUTS.ENABLE": "false",
+  const local = Object.fromEntries(Object.entries(env).filter(([key]) => !/^(?:DYNACONF_)?PUSH_OUTPUTS(?:$|__|\.)/i.test(key)));
+  return { ...local, PUSH_OUTPUTS__ENABLE: "false", "PUSH_OUTPUTS.ENABLE": "false",
     PR_AGENT_EXTRA_CONFIG_URL: "", CONFIG__PROPAGATE_TOOL_ERRORS: "true",
     "CONFIG.PROPAGATE_TOOL_ERRORS": "true", CONFIG__PUBLISH_OUTPUT_PROGRESS: "false" };
 }
@@ -45,7 +55,7 @@ function toolArguments(action, request, directory) {
   const args = ["--diff-file", join(directory, "changes.diff"), "--output", join(directory, `${action}.md`)];
   if (action === "review") args.push("--json-output", join(directory, "review.json"));
   args.push(action);
-  if (action === "ask") args.push(request.question);
+  if (action === "ask") args.push(`__pr_agent_encoded_text__:${encodeURIComponent(request.question)}`);
   if (request.focus?.trim()) {
     const section = { review: "pr_reviewer", describe: "pr_description", improve: "pr_code_suggestions", ask: "pr_questions" }[action];
     args.push(`--${section}.extra_instructions=${JSON.stringify(request.focus)}`);

@@ -22,7 +22,7 @@ export function main(argv = process.argv.slice(2)) {
   if (operation !== "run") throw new Error("Usage: pr-agent.mjs check | run [review,describe,improve,ask] [options] | view <directory> [--npx]");
   const request = { ...values, actions: (target ?? "review").split(",") };
   validateRequest(request);
-  const prerequisites = checkPrerequisites();
+  const prerequisites = checkPrerequisites(undefined, request);
   if (prerequisites.status !== "ready") {
     process.stdout.write(`${JSON.stringify(prerequisites)}\n`);
     return 1;

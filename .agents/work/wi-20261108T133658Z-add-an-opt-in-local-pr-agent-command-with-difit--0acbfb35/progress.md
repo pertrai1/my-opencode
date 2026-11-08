@@ -1,7 +1,7 @@
 # Progress: wi-20261108T133658Z-add-an-opt-in-local-pr-agent-command-with-difit--0acbfb35
 
 Updated: 2026-11-08
-Execution state: implementation complete; PR opened for human review
+Execution state: addressing PR #103 review feedback; final review and merge remain human-owned
 
 ## Acceptance criteria
 
@@ -60,4 +60,49 @@ Execution state: implementation complete; PR opened for human review
 
 ## Next action
 
-Human: validate a representative non-sensitive `/pr-agent` review in Difit and review PR #103 before merge. Implementation/publishing request complete; no merge authorized.
+Push the verified follow-up to the existing PR after confirming its remote head,
+then inspect exact-head CI. No merge authorized.
+
+## PR #103 review follow-up
+
+Starting revision: 37ec01ae9c0ce8d491f31b8d5b1984a61c9ed0d4. The original
+implementation and both CI runs passed. CodeRabbit then reported seven threads
+covering six behaviors. Continue this work item and PR; do not create a duplicate.
+
+- [x] Reproduce snapshot failures on Node 22.23.4: explicitly empty scope,
+  unsupported rename-side paths, late 16 MiB rejection, and unborn HEAD.
+  Five focused tests initially produced four failures and one passing control.
+- [x] Verify PR-Agent 0.50.0 and Dynaconf 3.3.5 behavior offline with synthetic
+  settings: inherited whole-section/case-variant output sinks override forced
+  aliases; option-looking ask text can mutate settings or lose its prefix.
+  Bare `key=value` is unchanged. JSON quoting is not the supported text decoder.
+- [x] Apply minimal fixes and nine regression tests for all six behaviors,
+  including valid-path controls and an unborn-to-committed HEAD race.
+- [x] Run focused/full checks, inspect final diff, and recheck current PR head.
+- [ ] Push the verified follow-up to the existing PR and check exact-head CI.
+
+Follow-up verification on Node 22.23.4 / npm 10.9.9:
+
+- Passed `npm run verify:toolchain`, `npm run verify:workflow-actions`,
+  `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+- Passed `npm test`: 524 tests, no failures or skips. The first full run had
+  522 passes and two unrelated toolchain-output assertion failures because this
+  executor adds an experimental HTTP proxy warning to subprocess stderr. The
+  rerun suppressed only warning code `UNDICI-EHPA` through Node's
+  `--disable-warning` flag; it retained the executor's proxy configuration.
+- Passed six actual modified-wrapper argv/environment cases through pinned
+  PR-Agent v0.50.0 `update_settings_from_args` / `decode_user_text_args` and
+  Dynaconf 3.3.5, with synthetic settings and no network/model calls. Questions
+  round-trip exactly, output sinks stay false, and model/focus settings survive.
+- Verified upstream v0.44.0 advertises the existing local-mode flags but lacks
+  encoded-text support; v0.45.0 has the decoder. Ask-only preflight now checks
+  version 0.45.0 or newer before capturing a diff. Other actions retain the
+  existing capability checks.
+- The standalone `.mjs` helpers remain outside the existing TypeScript scope;
+  runtime tests and ESLint cover them. The targeted independent diff review
+  found no additional defects. This is not a comprehensive security audit.
+
+The cloud checkout is isolated from the original Mac worktree. No model calls,
+webhook transmission, live Difit session, or interactive installation flow ran.
+Code graph and CodeScene tools are unavailable in this executor; their required
+checks are blocked, not passing. Follow-up verification will state this limit.

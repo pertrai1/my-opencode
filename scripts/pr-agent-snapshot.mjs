@@ -2,6 +2,12 @@ import { lstatSync } from "node:fs";
 import { join } from "node:path";
 import { checkedOutput, runProcess } from "./pr-agent-process.mjs";
 
+const maxPatchBytes = 16 * 1024 * 1024;
+
+function checkPatchSize(bytes) {
+  if (bytes > maxPatchBytes) throw new Error("Selected snapshot exceeds the 16 MiB limit; choose a narrower scope.");
+}
+
 export function safePath(path) {
   if (typeof path !== "string" || path.length === 0) return false;
   return relativePath(path) && printablePath(path);
@@ -21,11 +27,12 @@ function sensitivePath(path) {
 
 function headerPath(chunk, marker) {
   const value = chunk.match(new RegExp(`^${marker} (.+)$`, "m"))?.[1];
-  if (!value || value === "/dev/null") return null;
+  if (value === "/dev/null") return null;
+  if (!value) return undefined;
   const decoded = decodePath(value);
-  if (!decoded) return null;
+  if (!decoded) return undefined;
   const path = decoded.replace(/^[ab]\//, "");
-  return safePath(path) ? path : null;
+  return safePath(path) ? path : undefined;
 }
 
 function decodePath(value) {
@@ -42,11 +49,11 @@ export function patchFiles(patch) {
 }
 
 function filterPatch(patch) {
-  if (Buffer.byteLength(patch) > 16 * 1024 * 1024) throw new Error("Selected snapshot exceeds the 16 MiB limit; choose a narrower scope.");
+  checkPatchSize(Buffer.byteLength(patch));
   const excludedFiles = [];
   const chunks = patchFiles(patch).filter(({ oldPath, newPath }) => {
     const paths = [oldPath, newPath].filter(Boolean);
-    if (!paths.length || paths.some(sensitivePath)) {
+    if (oldPath === undefined || newPath === undefined || !paths.length || paths.some(sensitivePath)) {
       excludedFiles.push(...(paths.length ? paths : ["binary, metadata-only, or unsupported path"]));
       return false;
     }
@@ -67,29 +74,48 @@ function eligibleUntracked(root, path) {
   return safePath(path) && !sensitivePath(path) && lstatSync(join(root, path)).isFile();
 }
 
-function untrackedPatch(root, git, execute) {
-  return untrackedFiles(git).filter(path => eligibleUntracked(root, path)).map(path =>
-    checkedOutput("git", ["-c", "core.quotePath=false", "diff", ...diffOptions, "--no-index", "--", "/dev/null", path], { cwd: root, execute, statuses: [0, 1] })).join("");
+function untrackedPatch(root, git, execute, tracked) {
+  const chunks = [tracked];
+  let bytes = Buffer.byteLength(tracked);
+  checkPatchSize(bytes);
+  for (const path of untrackedFiles(git)) {
+    if (!eligibleUntracked(root, path)) continue;
+    const chunk = checkedOutput("git", ["-c", "core.quotePath=false", "diff", ...diffOptions, "--no-index", "--", "/dev/null", path], { cwd: root, execute, statuses: [0, 1] });
+    bytes += Buffer.byteLength(chunk);
+    checkPatchSize(bytes);
+    chunks.push(chunk);
+  }
+  return chunks.join("");
+}
+
+function currentHead(git) {
+  const head = git(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], { statuses: [0, 1] }).trim();
+  if (head) return head;
+  const ref = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
+  if (git(["rev-parse", "--verify", "--quiet", ref], { statuses: [0, 1] }).trim()) throw new Error("HEAD does not resolve to a commit.");
+  return null;
 }
 
 function workingSnapshot(options, root, git, execute) {
-  const head = git(["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+  const head = currentHead(git);
+  const base = head ?? git(["hash-object", "-t", "tree", "--stdin"], { input: "" }).trim();
   const collect = () => {
-    const diff = git(["diff", ...diffOptions, ...(options.scope === "staged" ? ["--cached"] : []), head, "--"]);
-    return options.scope === "staged" ? diff : diff + untrackedPatch(root, git, execute);
+    const diff = git(["diff", ...diffOptions, ...(options.scope === "staged" ? ["--cached"] : []), base, "--"]);
+    checkPatchSize(Buffer.byteLength(diff));
+    return options.scope === "staged" ? diff : untrackedPatch(root, git, execute, diff);
   };
   const patch = collect();
-  if (patch !== collect() || git(["rev-parse", "HEAD"]).trim() !== head) throw new Error("Working snapshot changed during capture; retry.");
+  if (patch !== collect() || currentHead(git) !== head) throw new Error("Working snapshot changed during capture; retry.");
   const excluded = options.scope === "staged" ? [] : untrackedFiles(git).filter(sensitivePath);
   return { patch, head, scope: options.scope ?? "working", excludedFiles: excluded };
 }
 
 function localSnapshot(options, cwd, execute) {
-  const git = args => checkedOutput("git", ["-c", "core.quotePath=false", ...args], { cwd, execute });
+  const git = (args, options = {}) => checkedOutput("git", ["-c", "core.quotePath=false", ...args], { cwd, execute, ...options });
   const root = git(["rev-parse", "--show-toplevel"]).trim();
   if (root !== cwd) return localSnapshot(options, root, execute);
-  const head = git(["rev-parse", "--verify", "HEAD^{commit}"]).trim();
   if (options.base) {
+    const head = git(["rev-parse", "--verify", "HEAD^{commit}"]).trim();
     const base = git(["rev-parse", "--verify", "--end-of-options", `${options.base}^{commit}`]).trim();
     const mergeBase = git(["merge-base", base, head]).trim();
     return { patch: git(["diff", ...diffOptions, mergeBase, head, "--"]), head, base, mergeBase, scope: "branch" };
@@ -110,6 +136,7 @@ function prSnapshot(pr, cwd, execute) {
 }
 
 export function captureSnapshot(options = {}, { cwd = process.cwd(), execute = runProcess } = {}) {
+  if (["base", "pr", "scope"].some(key => options[key] === "")) throw new Error("Scope options must not be empty.");
   if ([options.base, options.pr, options.scope].filter(Boolean).length > 1) throw new Error("Choose one scope: --scope, --base, or --pr.");
   if (options.scope && !["working", "staged"].includes(options.scope)) throw new Error("Unknown scope; use working or staged.");
   const snapshot = options.pr ? prSnapshot(options.pr, cwd, execute) : localSnapshot(options, cwd, execute);
