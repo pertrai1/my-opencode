@@ -101,6 +101,25 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 - `agents/test-reviewer.md` — reviews diffs for missing or weak test coverage.
 - `agents/frontend-a11y-reviewer.md` — applies WCAG 2.2 AA accessibility review to browser-facing diffs.
 - `commands/code-review.md` — run a code review workflow against current changes.
+- `commands/pr-agent.md` — opt-in lightweight PR-Agent analysis, with validated
+  review findings displayed locally in Difit. Defaults to `review`; also supports
+  `describe`, `improve`, `ask`, comma-separated actions, and focus instructions.
+  Examples: `/pr-agent`, `/pr-agent review --scope staged`,
+  `/pr-agent review --base main focus on error handling`,
+  `/pr-agent ask "What could break?"`, or `/pr-agent review,describe,improve`.
+  Default scope includes staged, unstaged, and eligible untracked text; `--base`
+  reviews committed HEAD against its merge base, and `--pr <GitHub URL>` reads
+  the hosted PR diff using `gh`. Missing tools prompt for installation approval.
+  Model credentials are configured separately from OpenCode provider sign-in.
+  The helper runs against a saved patch in private temporary storage, disables
+  external output sinks, and never applies changes or publishes GitHub comments.
+  A hosted model still receives diff content. Known secret-file names, binary
+  files, metadata-only changes, symlinks among untracked files, and unsupported
+  path encodings are excluded; this is not a comprehensive secret scanner.
+  Outputs are patch-only Markdown, plus review JSON/candidates and an initially
+  empty `comments.json` that the agent fills after checking findings. Logs and
+  patches remain in the returned temporary directory; treat them as sensitive
+  and remove them when no longer needed. Existing `/code-review` is unchanged.
 - **Review reasoning** — specialist reviewers use their configured OpenAI models at `#xhigh` reasoning effort.
 - `scripts/recommend-reviewers.mjs` — uses TypeSafe judgments over changed-file metadata to select read-only specialist reviewers for `/code-review`, including security and accessibility reviews. It falls back to the command's manual rules if `TYPESAFE_API_KEY` is unavailable.
 - [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review.
