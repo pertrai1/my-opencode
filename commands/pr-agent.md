@@ -81,6 +81,11 @@ model provider still receives the diff; this is local output, not necessarily
 offline inference. Ask before proceeding if the repository prohibits that
 transmission.
 
+Snapshot command output must be valid UTF-8, including filenames and file
+content. Unsupported bytes stop capture instead of silently replacing characters
+and potentially confusing comment paths. Choose a narrower eligible scope after
+this failure; do not treat a failed capture as a clean review.
+
 Inspect `result.json` and each action's Markdown in the returned directory. On
 failure, report failed and unrun actions; inspect private logs only as needed and
 redact credentials. Never turn missing/malformed output into “no findings.”

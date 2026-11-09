@@ -3,6 +3,15 @@ import { join } from "node:path";
 import { checkedOutput, runProcess } from "./pr-agent-process.mjs";
 
 const maxPatchBytes = 16 * 1024 * 1024;
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+function snapshotOutput(command, args, options) {
+  // Decode bytes strictly so distinct filenames cannot collapse into the same path.
+  const output = checkedOutput(command, args, { ...options, encoding: null });
+  try { return typeof output === "string" ? output : utf8.decode(output); } catch {
+    throw new Error(`${command} returned non-UTF-8 snapshot data; choose a scope with UTF-8 filenames and text.`);
+  }
+}
 
 function checkPatchSize(bytes) {
   if (bytes > maxPatchBytes) throw new Error("Selected snapshot exceeds the 16 MiB limit; choose a narrower scope.");
@@ -80,7 +89,7 @@ function untrackedPatch(root, git, execute, tracked) {
   checkPatchSize(bytes);
   for (const path of untrackedFiles(git)) {
     if (!eligibleUntracked(root, path)) continue;
-    const chunk = checkedOutput("git", ["-c", "core.quotePath=false", "diff", ...diffOptions, "--no-index", "--", "/dev/null", path], { cwd: root, execute, statuses: [0, 1] });
+    const chunk = snapshotOutput("git", ["-c", "core.quotePath=false", "diff", ...diffOptions, "--no-index", "--", "/dev/null", path], { cwd: root, execute, statuses: [0, 1] });
     bytes += Buffer.byteLength(chunk);
     checkPatchSize(bytes);
     chunks.push(chunk);
@@ -111,7 +120,7 @@ function workingSnapshot(options, root, git, execute) {
 }
 
 function localSnapshot(options, cwd, execute) {
-  const git = (args, options = {}) => checkedOutput("git", ["-c", "core.quotePath=false", ...args], { cwd, execute, ...options });
+  const git = (args, options = {}) => snapshotOutput("git", ["-c", "core.quotePath=false", ...args], { cwd, execute, ...options });
   const root = git(["rev-parse", "--show-toplevel"]).trim();
   if (root !== cwd) return localSnapshot(options, root, execute);
   if (options.base) {
@@ -125,7 +134,7 @@ function localSnapshot(options, cwd, execute) {
 
 function prSnapshot(pr, cwd, execute) {
   if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/[1-9]\d*\/?$/.test(pr)) throw new Error("PR scope requires a github.com pull request URL.");
-  const gh = args => checkedOutput("gh", ["pr", ...args], { cwd, execute });
+  const gh = args => snapshotOutput("gh", ["pr", ...args], { cwd, execute });
   const revisions = () => JSON.parse(gh(["view", pr, "--json", "baseRefOid,headRefOid"]));
   const before = revisions();
   const patch = gh(["diff", pr, "--color", "never"]);

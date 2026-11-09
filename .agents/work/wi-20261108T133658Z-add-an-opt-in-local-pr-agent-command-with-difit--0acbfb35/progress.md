@@ -60,8 +60,8 @@ Execution state: addressing PR #103 review feedback; final review and merge rema
 
 ## Next action
 
-Implement the three validated Copilot isolation fixes below, then independently
-review and publish to the existing PR after final verification. No merge authorized.
+Address the validated non-UTF-8 snapshot follow-up below; final review and
+merging remain human-owned.
 
 ## PR #103 review follow-up
 
@@ -119,7 +119,8 @@ requested all three reviewed fixes. Continue this PR and work item only.
 - [x] Reject temporary storage inside any Git ancestor, including symlinks/worktrees.
 - [x] Add failing boundary regressions, implement and validate upstream compatibility.
 - [x] Independent review and full repository checks.
-- [ ] Publish and verify exact-head CI.
+- [x] Published 345848cb4f643cf4c769359106135055109c4832; both exact-head
+  CI runs 42623865381 (push) and 42623873759 (PR) passed.
 
 Code graph and CodeScene tools remain unavailable in this executor. Their checks
 are blocked, not passing. Ordinary tests use only synthetic data and fake model
@@ -151,5 +152,44 @@ Follow-up verification (Node 22.23.3 / npm 10.9.9):
   runtime tests and ESLint cover them. No full installed PR-Agent/model or live
   Difit run was performed. CodeScene and code graph checks remain unavailable.
 
-Next action: confirm remote head, publish this isolated follow-up, then verify
-both CI events against the new head. Final PR review and merging remain human-owned.
+Next action: inspect the pending automated re-review result when available.
+Final PR review and merging remain human-owned.
+
+Publication evidence: remote ref and fetched tree match the verified local tree
+dda360b060953b5b1454b471b1dedc6fac2377b9. The branch update was non-forced with
+an expected-head lease. No review replies, manual resolutions, merge, release,
+deployment, or repository-setting changes were made. CodeRabbit completed its re-review with the filename-encoding finding below.
+The prior CI evidence is now included with this implementation follow-up.
+
+## Filename encoding follow-up (2026-11-09)
+
+Starting revision: 345848cb4f643cf4c769359106135055109c4832. CodeRabbit comment
+4513203867 identified a valid loss-of-identity issue. Real Git output for tracked
+filenames containing distinct FE and FF bytes decoded to the same file-�.js path.
+Continue the existing PR under repository feedback authorization.
+
+- [x] Reproduce actual filename collision and add regressions (initially 4 failures
+  plus one valid-Unicode passing control).
+- [x] Request raw Git/gh snapshot output and strictly decode UTF-8 before parsing.
+  Preserve literal U+FFFD and leading U+FEFF filenames.
+- [x] Independent review and full verification.
+- [ ] Publish with expected-head lease and verify exact-head CI.
+
+This intentionally rejects non-UTF-8 content anywhere in snapshot command output,
+not just filenames. It does not recover bytes already replaced by a hosting
+service. Ordinary PR-Agent and viewer subprocess behavior is unchanged.
+CodeScene and code graph tools remain unavailable.
+
+Next action: independently review the focused fix and run all repository checks.
+
+Encoding verification (Node 22.23.3 / npm 10.9.9):
+
+- Full `npm run ubs` passed: toolchain, TypeScript, ESLint, Markdown, workflow pins
+  and 535 tests, no failures/skips. `git diff --check` passed.
+- Independent review found no actionable defects and reran all 36 focused
+  PR-Agent tests successfully, including six real-Git/byte-boundary regressions.
+- No model calls, live viewer, or real hosted private diff used. The existing
+  `.mjs` TypeScript exclusion and unavailable CodeScene/graph checks still apply.
+
+Next action: publish the tested tree to the unchanged PR branch using an
+expected-head lease, then check both exact-head CI events.

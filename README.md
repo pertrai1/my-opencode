@@ -119,6 +119,8 @@ Command-level model selections are separate: `/code-review` configures `openai/g
   A hosted model still receives diff content. Known secret-file names, binary
   files, metadata-only changes, symlinks among untracked files, and unsupported
   path encodings are excluded; this is not a comprehensive secret scanner.
+  Non-UTF-8 bytes in snapshot command output, including filenames or file content,
+  stop capture rather than silently changing the saved patch or comment paths.
   Outputs are patch-only Markdown, plus review JSON/candidates and an initially
   empty `comments.json` that the agent fills after checking findings. Logs and
   patches remain in the returned temporary directory; treat them as sensitive
