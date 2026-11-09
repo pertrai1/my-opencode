@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "wi-20261108T133658Z-add-an-opt-in-local-pr-agent-command-with-difit--0acbfb35",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Add an opt-in local PR-Agent command with Difit review output and installation approval; open a PR",
+  "type": "feature",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "medium",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Default to review; support describe, improve, ask, combinations and explicit scopes",
+    "Missing or incompatible PR-Agent prompts for approval before installation or upgrade",
+    "Local-only output with exact-snapshot Difit review comments; no automatic code edits or GitHub publishing",
+    "Focused regression tests and repository verification recorded before opening a PR"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-08T13:36:58.603Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}
