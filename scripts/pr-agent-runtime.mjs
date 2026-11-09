@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, realpathSync, rmdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { checkedOutput, processSucceeded, runProcess } from "./pr-agent-process.mjs";
 import { reviewCandidates, validComment } from "./pr-agent-comments.mjs";
 
@@ -44,11 +44,24 @@ export function validateRequest({ actions: requested = ["review"], question = ""
 }
 
 function localEnvironment(env) {
-  // Preserve model credentials, but disable extra delivery and remote config discovery.
-  const local = Object.fromEntries(Object.entries(env).filter(([key]) => !/^(?:DYNACONF_)?PUSH_OUTPUTS(?:$|__|\.)/i.test(key)));
+  // Preserve model/provider settings; remove conflicting aliases before appending guards.
+  const local = Object.fromEntries(Object.entries(env).filter(([key]) => !unsafeSetting(key)));
   return { ...local, PUSH_OUTPUTS__ENABLE: "false", "PUSH_OUTPUTS.ENABLE": "false",
+    ARTIFACTS__ENABLE: "false", "ARTIFACTS.ENABLE": "false",
+    // False replaces inherited lists even when older PR-Agent enables Dynaconf merging.
+    // Empty lists can merge instead, and CLI overrides do not affect global callbacks.
+    LITELLM__SUCCESS_CALLBACK: "false", LITELLM__FAILURE_CALLBACK: "false",
+    LITELLM__SERVICE_CALLBACK: "false", LITELLM__ENABLE_CALLBACKS: "false",
+    LITELLM__TURN_OFF_MESSAGE_LOGGING: "true",
     PR_AGENT_EXTRA_CONFIG_URL: "", CONFIG__PROPAGATE_TOOL_ERRORS: "true",
     "CONFIG.PROPAGATE_TOOL_ERRORS": "true", CONFIG__PUBLISH_OUTPUT_PROGRESS: "false" };
+}
+
+function unsafeSetting(key) {
+  const name = key.replace(/^DYNACONF_/i, "");
+  return /^(?:PUSH_OUTPUTS|ARTIFACTS)(?:$|__|\.)/i.test(name)
+    || /^(?:PR_AGENT_)?ARTIFACT_(?:PATH|INSTRUCTIONS)$/i.test(name)
+    || /^LITELLM(?:__|\.)(?:SUCCESS_CALLBACK|FAILURE_CALLBACK|SERVICE_CALLBACK|ENABLE_CALLBACKS|TURN_OFF_MESSAGE_LOGGING)(?:$|__|\.)/i.test(name);
 }
 
 function toolArguments(action, request, directory) {
@@ -83,9 +96,34 @@ function saveReviewCandidates(directory) {
   save(directory, "candidates.json", reviewCandidates(payload, readFileSync(join(directory, "changes.diff"), "utf8")));
 }
 
+function outsideRepository(path) {
+  const canonical = realpathSync(path);
+  for (let current = canonical; ; current = dirname(current)) {
+    try {
+      lstatSync(join(current, ".git"));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      if (dirname(current) === current) return canonical;
+      continue;
+    }
+    throw new Error("PR-Agent temporary storage must be outside every Git checkout; select a different TMPDIR.");
+  }
+}
+
+function privateDirectory(tempRoot) {
+  const directory = mkdtempSync(join(outsideRepository(tempRoot), "opencode-pr-agent-"));
+  try {
+    outsideRepository(directory);
+    chmodSync(directory, 0o700);
+    return directory;
+  } catch (error) {
+    rmdirSync(directory);
+    throw error;
+  }
+}
+
 function prepareRun(snapshot, tempRoot) {
-  const directory = mkdtempSync(join(tempRoot, "opencode-pr-agent-"));
-  chmodSync(directory, 0o700);
+  const directory = privateDirectory(tempRoot);
   const { patch, ...scope } = snapshot;
   save(directory, "changes.diff", patch);
   save(directory, "snapshot.json", { ...scope, sha256: digest(patch) });

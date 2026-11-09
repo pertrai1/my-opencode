@@ -112,7 +112,10 @@ Command-level model selections are separate: `/code-review` configures `openai/g
   the hosted PR diff using `gh`. Missing tools prompt for installation approval.
   Model credentials are configured separately from OpenCode provider sign-in.
   The helper runs against a saved patch in private temporary storage, disables
-  external output sinks, and never applies changes or publishes GitHub comments.
+  external output sinks, inherited artifact ingestion, and LiteLLM callbacks and
+  message logging. It never applies changes or publishes GitHub comments.
+  Temporary storage must resolve outside every Git checkout; a repository-local
+  `TMPDIR` is rejected before writing the patch or launching PR-Agent.
   A hosted model still receives diff content. Known secret-file names, binary
   files, metadata-only changes, symlinks among untracked files, and unsupported
   path encodings are excluded; this is not a comprehensive secret scanner.

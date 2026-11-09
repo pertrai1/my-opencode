@@ -1,6 +1,6 @@
 # Progress: wi-20261108T133658Z-add-an-opt-in-local-pr-agent-command-with-difit--0acbfb35
 
-Updated: 2026-11-08
+Updated: 2026-11-09
 Execution state: addressing PR #103 review feedback; final review and merge remain human-owned
 
 ## Acceptance criteria
@@ -60,8 +60,8 @@ Execution state: addressing PR #103 review feedback; final review and merge rema
 
 ## Next action
 
-Push the verified follow-up to the existing PR after confirming its remote head,
-then inspect exact-head CI. No merge authorized.
+Implement the three validated Copilot isolation fixes below, then independently
+review and publish to the existing PR after final verification. No merge authorized.
 
 ## PR #103 review follow-up
 
@@ -79,7 +79,8 @@ covering six behaviors. Continue this work item and PR; do not create a duplicat
 - [x] Apply minimal fixes and nine regression tests for all six behaviors,
   including valid-path controls and an unborn-to-committed HEAD race.
 - [x] Run focused/full checks, inspect final diff, and recheck current PR head.
-- [ ] Push the verified follow-up to the existing PR and check exact-head CI.
+- [x] Published 066a253e4542f076db8781bfb8424aa2801833e5; both exact-head CI
+  runs 42489888356 and 42489892071 passed on 2026-11-08.
 
 Follow-up verification on Node 22.23.4 / npm 10.9.9:
 
@@ -106,3 +107,49 @@ The cloud checkout is isolated from the original Mac worktree. No model calls,
 webhook transmission, live Difit session, or interactive installation flow ran.
 Code graph and CodeScene tools are unavailable in this executor; their required
 checks are blocked, not passing. Follow-up verification will state this limit.
+
+## Copilot isolation follow-up (2026-11-09)
+
+Starting revision: 066a253e4542f076db8781bfb8424aa2801833e5. User explicitly
+requested all three reviewed fixes. Continue this PR and work item only.
+
+- [x] Reconfirm unchanged remote head, clean checkout and latest three findings.
+- [x] Prevent inherited artifact ingestion while preserving model configuration.
+- [x] Disable LiteLLM callbacks and prompt logging despite inherited settings.
+- [x] Reject temporary storage inside any Git ancestor, including symlinks/worktrees.
+- [x] Add failing boundary regressions, implement and validate upstream compatibility.
+- [x] Independent review and full repository checks.
+- [ ] Publish and verify exact-head CI.
+
+Code graph and CodeScene tools remain unavailable in this executor. Their checks
+are blocked, not passing. Ordinary tests use only synthetic data and fake model
+responses; no paid model calls or external telemetry are part of verification.
+
+Follow-up verification (Node 22.23.3 / npm 10.9.9):
+
+- Five new regression tests cover all four actions, artifact variables and alias
+  families, callback guards with preserved model/provider sections, Git directory
+  and worktree-file ancestors, symlink destinations, and inherited TMPDIR.
+- RED: four initial isolation tests failed against the original runtime; the
+  callback regression separately failed against the original runtime.
+- GREEN: focused suites passed 30/30. Full `npm run ubs` passed, including
+  toolchain, TypeScript, ESLint, Markdown, workflow-action pins and 529 tests,
+  with no failures or skips. `git diff --check` passed.
+- This executor places a Git marker in its default temporary root, so the new
+  guard correctly rejected it. Verification used a separately approved temporary
+  directory outside Git ancestry. Only the executor-specific UNDICI-EHPA warning
+  was suppressed; proxy configuration was retained.
+- Independent review found no actionable defects. Captured child environments
+  from the actual modified wrapper passed 96 upstream compatibility cases using
+  real Dynaconf 3.2.13 and 3.3.5 and extracted PR-Agent v0.45/v0.50 callback and
+  artifact functions. No artifact reads or callback registrations occurred;
+  message suppression and unrelated provider settings were preserved.
+- Boolean false callback overrides are deliberate: empty lists can merge with
+  inherited lists in older PR-Agent, and CLI overrides do not control v0.50
+  global callback settings. Model/provider configuration remains unchanged.
+- The existing TypeScript configuration excludes standalone `.mjs` helpers;
+  runtime tests and ESLint cover them. No full installed PR-Agent/model or live
+  Difit run was performed. CodeScene and code graph checks remain unavailable.
+
+Next action: confirm remote head, publish this isolated follow-up, then verify
+both CI events against the new head. Final PR review and merging remain human-owned.

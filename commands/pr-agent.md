@@ -71,10 +71,15 @@ node ~/.config/opencode/scripts/pr-agent.mjs run review,describe,improve
 
 The helper captures one patch and records its revisions/time/hash in a private
 temporary directory. All actions reuse that patch, running outside the target
-checkout in plain-diff mode, with external output sinks disabled. PR-Agent gets
-patch-only context, not automatic working-tree enrichment. The configured model
-provider still receives the diff; this is local output, not necessarily offline
-inference. Ask before proceeding if the repository prohibits that transmission.
+checkout in plain-diff mode, with external output sinks, inherited artifact
+ingestion, and LiteLLM callbacks/message logging disabled. Model/provider
+configuration is retained. PR-Agent gets patch-only context, not automatic
+working-tree enrichment. The helper rejects temporary storage inside any Git
+checkout, including worktrees and symlinked paths. If `TMPDIR` points there,
+select a temporary directory outside all checkouts and retry. The configured
+model provider still receives the diff; this is local output, not necessarily
+offline inference. Ask before proceeding if the repository prohibits that
+transmission.
 
 Inspect `result.json` and each action's Markdown in the returned directory. On
 failure, report failed and unrun actions; inspect private logs only as needed and
