@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "wi-20261110T140453Z-fix-live-eval-fixture-selection-using-the-v2-ses-fd83d38e",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Fix live eval fixture selection using the v2 session location contract",
+  "type": "defect",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "low",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Angular and Node trace session requests preserve selected directory through the actual protocol decoder"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-10T14:04:53.752Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}

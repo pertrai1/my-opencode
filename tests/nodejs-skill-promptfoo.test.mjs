@@ -27,7 +27,7 @@ const body = data ? JSON.parse(data) : {};
 const scenarios = ${JSON.stringify(scenarios)};
 let result = {};
 if (path === "/api/session") {
-  const id = body.root === ${JSON.stringify(node)} ? "node" : "browser";
+  const id = body.location?.directory === ${JSON.stringify(node)} ? "node" : "browser";
   appendFileSync(${JSON.stringify(log)}, JSON.stringify({ id }) + "\\n");
   result = { data: { id } };
 }

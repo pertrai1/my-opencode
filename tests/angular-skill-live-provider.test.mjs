@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { makeSessionGroup } from "@opencode/protocol/groups/session";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import test from "node:test";
 
 const prompt = "Explain the root component. Do not modify files.";
 const providerUrl = new URL("../evals/angular-skill/live-provider.mjs", import.meta.url).href;
+
+// Use the protocol's own Effect version, as in the configuration schema tests.
+const protocolRequire = createRequire(import.meta.resolve("@opencode/protocol/groups/session"));
+const { Schema } = await import(protocolRequire.resolve("effect"));
+// Middleware is not executed when inspecting the session-create payload schema.
+const sessionPayload = makeSessionGroup(undefined, undefined).endpoints["session.create"]
+  .payload.get("application/json").schemas[0];
+const decodeSession = Schema.decodeUnknownSync(sessionPayload);
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), "angular-live-provider-"));
@@ -128,7 +138,7 @@ test("live provider uses the configured Angular fixture directory", (t) => {
   });
   const created = calls.find(call => call.path === "/api/session");
   assert.equal(response.error, undefined);
-  assert.equal(created.body.root, setup.angular);
+  assert.equal(decodeSession(created.body).location?.directory, setup.angular);
   assert.equal(created.body.agent, "lean");
   assert.deepEqual(created.body.model, {
     providerID: "openai", id: "gpt-6-astra", variant: "high",
@@ -151,7 +161,7 @@ test("plainJs uses its own root without requiring an Angular root", (t) => {
     ANGULAR_SKILL_PLAIN_JS_ROOT: setup.plainJs,
   });
   assert.equal(response.error, undefined);
-  assert.equal(calls.find(call => call.path === "/api/session").body.root, setup.plainJs);
+  assert.equal(decodeSession(calls.find(call => call.path === "/api/session").body).location?.directory, setup.plainJs);
 });
 
 test("relative roots resolve from the eval process working directory", (t) => {
@@ -161,8 +171,27 @@ test("relative roots resolve from the eval process working directory", (t) => {
   });
   assert.equal(response.error, undefined);
   // The child process working directory resolves symlinks such as macOS /var.
-  assert.equal(calls.find(call => call.path === "/api/session").body.root, realpathSync(setup.angular));
+  assert.equal(decodeSession(calls.find(call => call.path === "/api/session").body).location?.directory, realpathSync(setup.angular));
 });
+
+test("session protocol discards legacy root instead of selecting a fixture", () => {
+  assert.equal(decodeSession({ root: "/legacy-fixture" }).location, undefined);
+  assert.throws(() => decodeSession({ location: { directory: 42 } }));
+});
+
+for (const [selected, variable] of [
+  ["node", "NODEJS_SKILL_NODE_ROOT"],
+  ["browser", "NODEJS_SKILL_BROWSER_ROOT"],
+]) {
+  test(`Node trace provider preserves the ${selected} fixture through session decoding`, (t) => {
+    const setup = fixture(t);
+    const { response, calls } = setup.call(selected, { [variable]: setup.plainJs }, { nodeTrace: true });
+    assert.equal(response.error, undefined);
+    const body = calls.find(call => call.path === "/api/session").body;
+    assert.deepEqual(decodeSession(body).location, { directory: setup.plainJs });
+    assert.equal(Object.hasOwn(body, "root"), false);
+  });
+}
 
 function assertSetupError(result, expected) {
   assert.match(result.response.error, expected);
