@@ -14,7 +14,9 @@ Only the selected fixture's variable is required. Use an Angular application for
 selects `angular`. The provider checks that the selected root is an existing
 directory before calling OpenCode. Relative paths resolve from the eval process's
 working directory. Quote paths containing spaces; `~` in a quoted value is not
-expanded by the provider.
+expanded by the provider. The selected directory is sent as `location.directory`
+in the OpenCode v2 session-create request; top-level `root` is not a supported
+location field. This also applies to the shared Node.js trace provider.
 
 With dependencies installed and `opencode` available on `PATH`, run from the
 repository root:
@@ -38,7 +40,9 @@ node --test tests/angular-skill-live-provider.test.mjs
 ```
 
 These tests use temporary fixture directories and a fake `opencode` executable.
-They verify root selection, setup errors, and session/trace handling without a
+They decode captured session-create requests with the installed OpenCode v2
+protocol schema to verify fixture location selection, including the Node.js trace
+provider. They also verify setup errors and session/trace handling without a
 running OpenCode server or model calls. `replay.yaml` grades a recorded turn;
 `calibration.yaml` includes one passing and two deliberately failing traces.
 Neither demonstrates current live agent behavior.

@@ -90,7 +90,7 @@ export default class LiveProvider {
 
       const created = await api("post", "/api/session", {
         title: this.options.title,
-        root,
+        location: { directory: root },
         agent: "lean",
         model: {
           providerID: "openai",

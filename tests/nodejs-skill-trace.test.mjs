@@ -30,7 +30,7 @@ for (const fixture of ["node", "browser"]) {
     writeFileSync(join(bin, "opencode"), `#!/usr/bin/env node
 const [, method, path, , data] = process.argv.slice(2);
 const body = data ? JSON.parse(data) : {};
-if (path === "/api/session" && body.root !== ${JSON.stringify(root)}) process.exit(1);
+if (path === "/api/session" && body.location?.directory !== ${JSON.stringify(root)}) process.exit(1);
 let result = {};
 if (path === "/api/session") result = { data: { id: "trace-session" } };
 if (method === "get") result = { data: [
