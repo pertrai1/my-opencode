@@ -19,8 +19,19 @@ Match the existing project's architecture and version support before introducing
 - Put cross-cutting HTTP concerns such as authentication, error mapping, retries, and logging in small composable interceptors.
 - Use `HttpClient` so configured interceptors apply. Validate external responses before they reach typed application state.
 
+## Async resources
+
+- Check the installed API signature and stability before adopting `resource` or `httpResource`; they first appeared experimentally in 19.0 and 19.2 respectively. Do not infer stable support from examples on upstream `main`.
+- Use resources for reactive reads, not mutations. Parameter changes or destruction can cancel in-flight work; use explicit `HttpClient` mutation calls for POST/PUT/PATCH/DELETE with intentional duplicate-submission and error handling. Do not hide writes inside a resource loader.
+- In a `resource` loader, pass its `abortSignal` to cancellable operations such as `fetch`. `httpResource` uses `HttpClient` and its configured interceptors and cancels obsolete requests. An `undefined` parameter/request can represent an idle resource without issuing a request; verify the installed API shape.
+- Render idle, loading, success/empty, and error states explicitly. Reading `value()` in an error state can throw; guard reads with `hasValue()` and handle `error()` separately. Check `isLoading()`/`status()` for pending or reload UX rather than assuming an empty value means loading.
+- Test rapid parameter changes, cancellation, failed reads, and empty responses. Keep existing RxJS flows when their streaming or sequencing semantics fit the task.
+
+See [resource](https://angular.dev/guide/signals/resource) and [HTTP resources](https://angular.dev/guide/http/http-resource).
+
 ## Forms and rendering
 
 - Match the current form approach. Prefer typed non-nullable reactive forms for complex validation unless the project has adopted a supported alternative.
 - Do not mix reactive and template-driven patterns within a form.
 - In SSR code, do not access browser globals without a platform check or an injected Angular token.
+- For SSR request scoping, hydration, and HTTP transfer-cache decisions, also load [security](security.md).

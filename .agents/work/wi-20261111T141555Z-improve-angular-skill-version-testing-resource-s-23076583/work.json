@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "wi-20261111T141555Z-improve-angular-skill-version-testing-resource-s-23076583",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Improve Angular skill version, testing, resource, SSR, component guidance and focused evals; open a PR",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "low",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Version-aware guidance and focused offline eval checks verified"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-11T14:15:55.574Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}
