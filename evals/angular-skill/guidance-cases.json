@@ -1,0 +1,57 @@
+[
+  {
+    "id": "angular-17-1",
+    "task": "An existing Angular 17.1 app uses decorator inputs and outputs. A small component bug needs fixing. A teammate suggests replacing its inputs, outputs and two-way binding with input(), output() and model() because they are all stable in 17.1. What should we do?",
+    "rubric": "Reject the claim: input arrived in 17.1, model in 17.2, output in 17.3, and these APIs became stable in 19. Do not use unavailable APIs or migrate existing decorators for this unrelated bug. Distinguish availability from stability."
+  },
+  {
+    "id": "angular-17-2",
+    "task": "An Angular 17.2 project explicitly permits preview APIs and already uses signal inputs. Implementing a new two-way value binding is in scope. Can model() and output() both be used? Explain the version boundary without upgrading Angular.",
+    "rubric": "Permit model as a preview API available in 17.2, but do not recommend output(), which arrives in 17.3. Retain the supported decorator/EventEmitter approach if a separate output is needed. Do not call model stable in 17.2 or upgrade Angular."
+  },
+  {
+    "id": "angular-17-3",
+    "task": "An Angular 17.3 project permits only stable Angular APIs. A new component needs inputs and custom events. Should we adopt input(), model(), and output() just because they are present?",
+    "rubric": "Explain all three APIs exist in 17.3 but are not stable until 19. Respect stable-only policy with supported decorator APIs; do not upgrade or silently opt into previews."
+  },
+  {
+    "id": "vitest-zoneless",
+    "task": "An Angular app uses Vitest and zoneless change detection. A test sets a signal input, clicks a button, and waits for the DOM. Fix the test strategy; someone proposed wrapping it in Angular fakeAsync and tick.",
+    "rubric": "Do not use Angular fakeAsync/tick with Vitest or add Zone to make it work. Use componentRef.setInput and async/await with fixture.whenStable or the configured fixture strategy. Use runner-native timer controls only if timers are actually involved, with cleanup. Preserve the runner and zoneless setup."
+  },
+  {
+    "id": "zone-jasmine",
+    "task": "An existing Angular Karma/Jasmine suite loads zone.js/testing. A service deliberately delays an observable by 250 milliseconds. How should its timing test be written without migrating the suite?",
+    "rubric": "Recognize fakeAsync/tick as valid for this existing Zone-patched setup. Control time deterministically instead of unmanaged real sleeps. Preserve Karma/Jasmine, its spies and matchers; do not claim all Angular tests must switch to Vitest or async/await."
+  },
+  {
+    "id": "resource-lifecycle",
+    "task": "The installed Angular version supports the project's adopted resource API. A search resource uses fetch; changing the query should cancel obsolete work. Its template reads value() unconditionally, including after errors. Explain the minimal fixes and the states to test.",
+    "rubric": "Pass the loader's abortSignal to fetch and explain cancellation when parameters change or the resource is destroyed. Guard value reads with hasValue or equivalent status handling because reading value in an error state can throw. Cover loading, error, empty/success, and stale-request behavior. Verify the installed resource signature rather than assuming main-branch syntax fits every version."
+  },
+  {
+    "id": "http-resource-mutation",
+    "task": "A service uses an adopted, supported httpResource for GET reads with authentication interceptors. A teammate wants to use it for POST checkout submission so changing signals automatically resubmits. Review this proposal.",
+    "rubric": "Reject resource/httpResource for mutations because reactive reload/cancellation semantics can repeat or abort writes. Keep explicit HttpClient mutation handling with appropriate submission/concurrency/error behavior; httpResource is suitable for reactive reads and uses HttpClient/interceptors. Do not replace all HTTP or bypass interceptors with raw fetch."
+  },
+  {
+    "id": "ssr-private-data",
+    "task": "Two simultaneous SSR requests serve different signed-in users. A module-level currentUser variable and a top-level useValue provider hold request data. An interceptor adds credentials and a developer enables broad HTTP transfer caching for /api/me. Review the isolation and cache risks.",
+    "rubric": "Avoid module-level or process-shared mutable user state and request-specific top-level useValue. Use request-scoped data/factories with request tokens where supported. Do not serialize secrets into TransferState or enable broad authenticated/private response transfer caching. Explicitly exclude private/user-specific requests when needed; defaults are not a blanket safety guarantee. Recommend cross-request isolation and serialized-response tests."
+  },
+  {
+    "id": "queries-projection",
+    "task": "A component's queried child is inside an @if and is sometimes absent. Another component wraps ng-content in @if expecting expensive projected content not to be instantiated. Suggest corrections without converting all existing queries.",
+    "rubric": "Treat a conditional query as optional, not required or non-null asserted. Queries do not pierce component template boundaries; distinguish view and projected content queries as relevant. Conditional ng-content does not defer projected content instantiation: use an explicit template/fragment API for truly conditional creation. Preserve existing supported query conventions outside this fix."
+  },
+  {
+    "id": "defer-boundaries",
+    "task": "A critical above-the-fold chart is put in @defer, but its component is also referenced eagerly in the same file. The loading placeholder shifts layout and the app uses SSR with hydration. What needs checking before claiming this improves performance?",
+    "rubric": "Do not defer critical content indiscriminately. Explain that direct deferred dependencies must be standalone and not referenced eagerly outside defer blocks in the same file to be split. Reserve stable placeholder dimensions, choose suitable triggers and states, and verify SSR/hydration behavior for the installed version and configuration rather than claiming browser triggers run on the server."
+  },
+  {
+    "id": "migration-boundaries",
+    "task": "Fix a validation message in an existing Angular NgModule feature using reactive forms, decorator queries and Jasmine. Upstream main-branch examples use standalone, signal forms and Vitest. Should this bug fix migrate the feature?",
+    "rubric": "Make the narrow validation fix and relevant test in established architecture. Do not migrate NgModules, form strategy, queries, test runner, builders or Angular versions incidentally. Check installed versions and official version-matching docs; upstream main examples are not permission or proof of installed support."
+  }
+]

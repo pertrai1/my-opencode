@@ -68,3 +68,33 @@ termination can leave work running. An interrupt response describes execution
 owned by the responding OpenCode process; it is not proof that all external work
 or billing has stopped. When cleanup is unconfirmed, inspect the retained session
 before rerunning. No process-wide signal handlers or automatic retries are added.
+
+## Guidance scenarios (optional paid eval)
+
+`guidance.mjs` evaluates minimal recommendations for 11 version, testing,
+resource, SSR, component, and migration-boundary scenarios. It injects the actual
+current skill and references and uses independent case rubrics to judge responses.
+It does not test skill discovery, tool use, or a running Angular application.
+
+With model credentials and dependencies already configured, explicitly opt in to
+paid answer-model and judge calls with:
+
+```sh
+PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 \
+  PROMPTFOO_CONFIG_DIR=.promptfoo \
+  npx --no-install promptfoo eval -c evals/angular-skill/guidance.mjs \
+  --no-cache --no-share --no-progress-bar
+```
+
+The config uses `openai:gpt-6.1-sol` for both answers and grading, with concurrency
+limited to one. Review qualitative failures rather than treating the model judge
+as deterministic proof. The rubrics are withheld from the answer prompt.
+
+Offline checks require no credentials or model calls:
+
+```sh
+node --test tests/angular-skill-guidance.test.mjs
+```
+
+Those checks verify scenario/config wiring and loading of current reference text.
+They do not establish answer quality or demonstrate current live agent behavior.

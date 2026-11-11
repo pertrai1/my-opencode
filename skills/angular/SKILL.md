@@ -7,7 +7,9 @@ description: Use when an Angular project contains angular.json or @angular/core,
 
 Use this skill only after confirming the repository is an Angular project from `angular.json` or `@angular/core` in `package.json`.
 
-Before changing code, inspect `package.json`, `angular.json`, the relevant `tsconfig`, and nearby code. Confirm the Angular version, test runner, rendering mode, and established local conventions. Do not introduce newer Angular APIs or migrate between NgModule and standalone patterns as part of unrelated work.
+Before changing code, inspect `package.json`, `angular.json`, the relevant `tsconfig`, and nearby code. Confirm the installed Angular version (including minor version and lockfile), test runner, Zone.js or zoneless setup, rendering mode, and established local conventions. Do not introduce newer Angular APIs or migrate between NgModule and standalone patterns as part of unrelated work.
+
+Check both API availability and stability in documentation matching that version. Current upstream `main` can describe unreleased features; it is not evidence that an installed version supports them. Keep experimental or developer-preview APIs opt-in, and preserve supported existing patterns rather than performing incidental migrations.
 
 Read the reference files that match the work:
 
