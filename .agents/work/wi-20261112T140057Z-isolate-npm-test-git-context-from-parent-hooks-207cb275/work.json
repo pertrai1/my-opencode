@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "wi-20261112T140057Z-isolate-npm-test-git-context-from-parent-hooks-207cb275",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Isolate npm test Git context from parent hooks",
+  "type": "defect",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "unknown",
+  "route": "unselected",
+  "acceptanceCriteria": [
+    "npm test cannot redirect disposable Git fixtures into a hook parent repository",
+    "Regression compares parent index and refs before and after a contaminated test invocation"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-12T14:00:57.623Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}
