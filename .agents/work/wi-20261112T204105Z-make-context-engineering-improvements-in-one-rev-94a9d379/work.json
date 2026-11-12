@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "wi-20261112T204105Z-make-context-engineering-improvements-in-one-rev-94a9d379",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Make context engineering improvements in one reviewable PR",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "medium",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Phase references preserve gates and are loaded on demand",
+    "Shared evidence is deduplicated without losing child instructions",
+    "Handoffs use relevant existing examples and web research is proportionate"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-12T20:41:05.812Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}

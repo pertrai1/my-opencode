@@ -1,4 +1,6 @@
 const descriptions = {
+  read_reference: "Read an installed SDLC phase reference from the workflow reference.",
+  delegate_delivery: "Delegate the approved behavioral slice to the named role.",
   read_output: "Retrieve retained test-process output and exit status.",
   list_tools: "Discover currently available file-reading tools.",
   read_file: "Read package.json.",
@@ -15,6 +17,8 @@ const descriptions = {
 export function tool(name) {
   let properties = {};
   let required = [];
+  if (name === "read_reference") { properties = { phase: { type: "string", enum: ["discovery", "delivery", "closure"] } }; required = ["phase"]; }
+  if (name === "delegate_delivery") { properties = { agent: { type: "string", enum: ["tdd-orchestrator", "implementer"] } }; required = ["agent"]; }
   if (name === "check_ci") { properties = { head: { type: "string" } }; required = ["head"]; }
   if (name === "report") {
     properties = { status: { type: "string", enum: ["passed", "defect", "inconclusive", "completed", "blocked"] }, evidence: { type: "array", items: { type: "string" } }, answer: { type: "string" } };

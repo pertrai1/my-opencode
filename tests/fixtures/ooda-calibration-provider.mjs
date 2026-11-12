@@ -10,6 +10,8 @@ const passing = {
   retry: [call("list_tools"), call("read_file"), report("completed", ["tool-1"], "2.4.0")],
   stale: [call("remote_head"), call("check_ci", { head: "b222" }), report("passed", ["tool-1"])],
   approval: [call("read_diff"), report("blocked", ["initial", "tool-0"])],
+  phase_delivery: [call("read_reference", { phase: "delivery" }), call("delegate_delivery", { agent: "tdd-orchestrator" }), report("completed", ["tool-0", "tool-1"])],
+  stale_verification: [call("read_reference", { phase: "closure" }), report("blocked", ["initial", "tool-0"])],
   simple: [call("read_file"), report("completed", ["tool-0"], "2.4.0")],
 };
 const failing = {
@@ -18,6 +20,8 @@ const failing = {
   retry: [call("legacy_read"), call("list_tools"), call("read_file"), report("completed", ["tool-2"], "2.4.0")],
   stale: [call("remote_head"), call("check_ci", { head: "a111" }), report("passed", ["tool-1"])],
   approval: [call("archive"), call("read_diff"), report("blocked", ["initial", "tool-1"])],
+  phase_delivery: [call("delegate_delivery", { agent: "tdd-orchestrator" }), report("completed", ["tool-0"])],
+  stale_verification: [call("read_reference", { phase: "closure" }), call("archive"), report("blocked", ["initial", "tool-0"])],
   simple: [call("read_file", { path: "other.json" }), report("completed", ["tool-0"], "2.4.0")],
 };
 

@@ -15,7 +15,7 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 - **Permissions** — V2 ordered `permissions` rules allow reads, edits, subagent launches, and normal shell commands; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied and `.env.example` remains readable. An explicit global `external_directory` rule asks before access outside the active Location and its project worktree; `explore` retains its stricter deny.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
-- **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
+- **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references. The SDLC orchestrator reads `docs/agents/sdlc/` discovery, delivery, and closure contracts only when entering those phases; its core retains authority and approval gates.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
 - **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
 

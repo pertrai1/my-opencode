@@ -95,9 +95,14 @@ The `code-review-graph` MCP server builds a local graph of the current git repos
 
 ### Verification evidence
 
-- Report the commands run, their outcomes, and any checks skipped or blocked. For failed checks, distinguish confirmed application failures from environment restrictions and unresolved causes using the observed error as evidence.
-- Never describe verification as fully passing when a required check failed, was skipped, or was blocked. State what remains unverified; do not infer that an environment-blocked test would pass elsewhere.
-- Before finishing edits, inspect the final diff and status. Confirm that changes are limited to the authorized scope and preserve pre-existing worktree changes.
+- Apply `~/.config/opencode/docs/agents/verification-evidence.md`, the globally
+  loaded evidence protocol. Never claim unrun or blocked checks passed.
+- In substantive delegated handoffs, name that installed protocol and require the
+  receiver to read it if absent; parent context is not guaranteed to be inherited.
+  If role permissions prevent that read, supply the applicable evidence rules
+  inline without protected implementation context; do not broaden permissions.
+- Before finishing edits, inspect the final diff and status. Confirm that changes
+  are limited to the authorized scope and preserve pre-existing worktree changes.
 
 ## Configuration changes
 

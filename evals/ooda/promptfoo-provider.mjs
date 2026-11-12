@@ -27,6 +27,9 @@ export default class OodaProvider {
       metadata.commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
       metadata.dirty = execFileSync("git", ["status", "--porcelain"], { cwd: repository, encoding: "utf8" }).trim() !== "";
       metadata.sourceHashes = Object.fromEntries(["promptfoo-provider.mjs", "provider.mjs", "tools.mjs", "harness.mjs", "assertion.mjs", "prompt.mjs", "promptfooconfig.mjs"].map(name => [name, hash(readFileSync(new URL(name, import.meta.url)))]));
+      for (const phase of ["discovery", "delivery", "closure"]) {
+        metadata.sourceHashes[`sdlc/${phase}.md`] = hash(readFileSync(new URL(`../../docs/agents/sdlc/${phase}.md`, import.meta.url)));
+      }
       policy = createPolicy({ endpoint: metadata.endpoint, model, agent: prompt, transport: this.transport });
       const result = await evaluate(context.vars.scenario, policy);
       return { output: { id: result.id, trace: result.trace, responses: policy.responses }, metadata };

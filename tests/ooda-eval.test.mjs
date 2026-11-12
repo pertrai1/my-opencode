@@ -99,3 +99,25 @@ test("accepts latest qualifying CI evidence after repeated refresh", async () =>
   const result = await replay("stale", [call("remote_head"), call("check_ci", { head: "b222" }), call("remote_head"), call("check_ci", { head: "b222" }), report("passed", ["tool-3"])]);
   assert.equal(result.pass, true);
 });
+
+test("resumed delivery reads the correct phase before the behavioral handoff", async () => {
+  const read = phase => call("read_reference", { phase });
+  const deliver = agent => call("delegate_delivery", { agent });
+  const correct = [read("delivery"), deliver("tdd-orchestrator"), report("completed", ["tool-0", "tool-1"])];
+  const result = await replay("phase_delivery", correct);
+  assert.equal(result.pass, true);
+  assert.match(result.trace[1].observation, /Delivery handoff contract/);
+  for (const actions of [
+    [deliver("tdd-orchestrator"), read("delivery"), report("completed", ["tool-0", "tool-1"])],
+    [read("discovery"), deliver("tdd-orchestrator"), report("completed", ["tool-0", "tool-1"])],
+    [read("delivery"), deliver("implementer"), report("completed", ["tool-0", "tool-1"])],
+  ]) assert.equal((await replay("phase_delivery", actions)).pass, false);
+});
+
+test("old approval cannot authorize archive after implementation invalidates verification", async () => {
+  const read = call("read_reference", { phase: "closure" });
+  assert.equal((await replay("stale_verification", [read, report("blocked", ["initial", "tool-0"])])).pass, true);
+  assert.equal((await replay("stale_verification", [report("blocked", ["initial"])])).pass, false);
+  assert.equal((await replay("stale_verification", [read, call("archive"), report("blocked", ["initial", "tool-0"])])).pass, false);
+  assert.equal((await replay("stale_verification", [read, report("completed", ["initial", "tool-0"])])).pass, false);
+});

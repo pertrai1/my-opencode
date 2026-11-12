@@ -53,11 +53,11 @@ function runCli(t, config) {
 
 test("actual Promptfoo CLI wires all scenarios, local provider turns, assertions and error results offline", (t) => {
   const report = runCli(t, "evals/ooda/calibration.mjs");
-  assert.equal(report.results.stats.successes, 6);
-  assert.equal(report.results.stats.failures, 6);
-  assert.equal(report.results.stats.errors, 6);
-  assert.equal(report.results.results.length, 18);
-  assert.deepEqual([...new Set(report.results.results.map(row => row.testCase.vars.scenario))].sort(), ["approval", "interrupted", "recovered", "retry", "simple", "stale"]);
+  assert.equal(report.results.stats.successes, 8);
+  assert.equal(report.results.stats.failures, 8);
+  assert.equal(report.results.stats.errors, 8);
+  assert.equal(report.results.results.length, 24);
+  assert.deepEqual([...new Set(report.results.results.map(row => row.testCase.vars.scenario))].sort(), ["approval", "interrupted", "phase_delivery", "recovered", "retry", "simple", "stale", "stale_verification"]);
   for (const row of report.results.results) {
     assert.equal(row.response.metadata.kind, "scripted-grader-calibration");
     assert.match(row.response.metadata.sourceHashes["provider.mjs"], /^[a-f0-9]{64}$/);
@@ -79,7 +79,7 @@ test("primary Promptfoo config reports missing local model as setup errors, not 
   const report = runCli(t, "evals/ooda/promptfooconfig.mjs");
   assert.equal(report.results.stats.successes, 0);
   assert.equal(report.results.stats.failures, 0);
-  assert.equal(report.results.stats.errors, 6);
+  assert.equal(report.results.stats.errors, 8);
   for (const row of report.results.results) {
     assert.match(row.response.error, /Set OODA_MODEL/);
     assert.equal(row.response.output, undefined);

@@ -5,9 +5,10 @@ The custom provider runs one bounded simulated-tool episode per test; the JavaSc
 assertion replays its actions and validates the observed evidence. The standalone
 Node runner has been removed. No model judge is used.
 
-The six episodes cover incomplete test output, recovered completed output,
+The eight episodes cover incomplete test output, recovered completed output,
 failed-tool discovery, stale-head CI, approval gating with independent progress,
-and a two-action simple-task control. Tool contracts reject invalid arguments;
+a two-action simple-task control, phase-reference retrieval before behavioral
+delegation, and stale verification blocking archive. Tool contracts reject invalid arguments;
 action budgets apply before inference; citations can reference any qualifying
 observation. Invalid or prohibited attempts remain failures even after recovery.
 
@@ -50,8 +51,8 @@ node --require ./evals/failure-reporting/offline.js --test tests/ooda-*.test.mjs
 npm run eval:ooda:calibrate -- -o .promptfoo/ooda-calibration.json
 ```
 
-Calibration intentionally exits **100**: six scripted passing traces, six scripted
-adversarial failures, and six simulated transport errors. This checks framework
+Calibration intentionally exits **100**: eight scripted passing traces, eight scripted
+adversarial failures, and eight simulated transport errors. This checks framework
 wiring and grader discrimination, **not agent performance**. The Node regression
 test executes the real pinned Promptfoo CLI and asserts these exact results,
 including structured outputs, citations, provenance, prompt loading, and nested
@@ -64,6 +65,9 @@ to the viewer by the npm command, keeping it out of model comparisons.
 **Real model baseline not run:** no local model runtime/server was available during
 implementation; no paid model or judge calls were made. This eval loads only the
 selected agent Markdown body, strips front matter, and supplies simulated tools.
+Phase-reference reads return the actual installed-source Markdown; the adapter
+hashes those three documents alongside the prompt and harness. This tests retrieval
+under simulated tools, not runtime reference resolution.
 It does **not** run OpenCode or load skills, permissions, plugins, or orchestration.
 It cannot measure skill-only changes. Free-text semantics and full-runtime transfer
 remain unmeasured; scores apply only to these bounded tool-action fixtures.

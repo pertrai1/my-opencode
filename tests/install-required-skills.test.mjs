@@ -80,3 +80,16 @@ test("web guidance uses the existing constrained-agent shell allowance", () => {
     assert.match(frontmatter, /action: "shell"\s+resource: "npx -y modern-web-guidance@latest \*"\s+effect: allow/);
   }
 });
+
+
+test("web guidance has conditional research without waiving accessibility or browser support", () => {
+  const skill = readFileSync(path.join(repository, "skills/modern-web-guidance/SKILL.md"), "utf8");
+  const a11y = readFileSync(path.join(repository, "skills/frontend-a11y/SKILL.md"), "utf8");
+  assert.match(skill, /unfamiliar web API, new UI pattern, or performance technique/);
+  assert.match(skill, /browser support, progressive enhancement, or fallback behavior/);
+  assert.match(skill, /mechanical edit that preserves an inspected repository pattern/);
+  assert.match(skill, /required lookup is unavailable, report that limitation/);
+  assert.match(skill, /MUST\*\* follow the fallback recommendations/);
+  assert.doesNotMatch(skill, /MANDATORY: Execute FIRST for all|end the response.*Modern Web Guidance/);
+  assert.match(a11y, /mechanical-edit exception does not waive these accessibility checks/);
+});
