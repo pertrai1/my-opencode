@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import test from 'node:test';
 import ts from 'typescript';
 import yaml from 'js-yaml';
+import { effect } from './helpers/permission-rules.mjs';
 
 const root = new URL('../', import.meta.url);
 const source = readFileSync(new URL('opencode.jsonc', root), 'utf8');
@@ -14,17 +15,6 @@ const { Schema } = await import(schemaRequire.resolve('effect'));
 const { Permission } = await import('@opencode/schema/permission');
 const validateRules = Schema.decodeUnknownSync(Permission.Ruleset, { onExcessProperty: 'error' });
 validateRules(config.permissions);
-
-// Static policy regression checks, not evidence of tool boundary enforcement.
-function matches(pattern, value) {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped.replace(/\*/g, '.*').replace(/\?/g, '.')}$`).test(value);
-}
-
-function effect(rules, action, resource) {
-  return rules.reduce((result, rule) =>
-    matches(rule.action, action) && matches(rule.resource, resource) ? rule.effect : result, 'allow');
-}
 
 function agentRules() {
   const entries = Object.entries(config.agents).map(([id, agent]) => [id, agent.permissions ?? []]);

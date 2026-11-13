@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "wi-20261113T125805Z-load-sdlc-orchestrator-phase-contracts-as-skills-75595e91",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Load SDLC orchestrator phase contracts as skills on demand (replaces PR #107 part 1)",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "medium",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Phase contracts load as orchestrator skills without external_directory prompts",
+    "Store selection and task-completion rules stay in the always-loaded core",
+    "Core gate sentences match their owning skill verbatim, guarded by a test",
+    "Example-handoff guidance does not conflict with the delivery contract",
+    "OODA scenarios do not tell the model to load the phase contract"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-13T12:58:05.027Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}

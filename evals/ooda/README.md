@@ -5,9 +5,12 @@ The custom provider runs one bounded simulated-tool episode per test; the JavaSc
 assertion replays its actions and validates the observed evidence. The standalone
 Node runner has been removed. No model judge is used.
 
-The six episodes cover incomplete test output, recovered completed output,
+The eight episodes cover incomplete test output, recovered completed output,
 failed-tool discovery, stale-head CI, approval gating with independent progress,
-and a two-action simple-task control. Tool contracts reject invalid arguments;
+a two-action simple-task control, loading the delivery phase skill before a
+behavioral handoff, and refusing archive after verification went stale. The two
+phase episodes never name the skill; only the agent prompt says to load it.
+Tool contracts reject invalid arguments;
 action budgets apply before inference; citations can reference any qualifying
 observation. Invalid or prohibited attempts remain failures even after recovery.
 
@@ -39,7 +42,8 @@ Only credential-free loopback HTTP is allowed; redirects are rejected.
 
 Outputs retain model responses and tool traces. Metadata records model, endpoint,
 commit, dirty state, evaluated prompt hash, and source hashes for the adapter,
-transport, tool contracts, harness, assertion, prompt loader, and config. Transport
+transport, tool contracts, harness, assertion, prompt loader, config, and the
+three SDLC phase skills. Transport
 or setup errors use Promptfoo's error channel, separate from behavioral assertion
 failures. Promptfoo CLI exit codes apply (100 when evaluations fail or error).
 
@@ -50,8 +54,8 @@ node --require ./evals/failure-reporting/offline.js --test tests/ooda-*.test.mjs
 npm run eval:ooda:calibrate -- -o .promptfoo/ooda-calibration.json
 ```
 
-Calibration intentionally exits **100**: six scripted passing traces, six scripted
-adversarial failures, and six simulated transport errors. This checks framework
+Calibration intentionally exits **100**: eight scripted passing traces, eight scripted
+adversarial failures, and eight simulated transport errors. This checks framework
 wiring and grader discrimination, **not agent performance**. The Node regression
 test executes the real pinned Promptfoo CLI and asserts these exact results,
 including structured outputs, citations, provenance, prompt loading, and nested
@@ -65,7 +69,9 @@ to the viewer by the npm command, keeping it out of model comparisons.
 implementation; no paid model or judge calls were made. This eval loads only the
 selected agent Markdown body, strips front matter, and supplies simulated tools.
 It does **not** run OpenCode or load skills, permissions, plugins, or orchestration.
-It cannot measure skill-only changes. Free-text semantics and full-runtime transfer
+The `load_skill` tool returns a phase skill's body from this checkout, without
+front matter, as OpenCode does; it does not exercise OpenCode's skill discovery or
+permissions. It cannot measure other skill-only changes. Free-text semantics and full-runtime transfer
 remain unmeasured; scores apply only to these bounded tool-action fixtures.
 
 API references: [custom providers](https://www.promptfoo.dev/docs/providers/custom-api/),
