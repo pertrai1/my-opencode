@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "wi-20261113T131757Z-make-modern-web-guidance-research-conditional-wh-e56a4c1c",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Make modern-web-guidance research conditional while keeping trigger keywords and the reason (replaces PR #107 part 2)",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "medium",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Lookup is required for unfamiliar APIs, new UI patterns, compatibility fallbacks, performance techniques, new components, and explicit requests",
+    "Mechanical edits that keep an inspected pattern skip the lookup without waiving accessibility or browser-support rules",
+    "Skill description keeps concrete trigger keywords and the training-data reason",
+    "frontend-a11y and docs match the new triggers; a test guards the contract"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-13T13:17:57.374Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}

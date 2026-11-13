@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import yaml from "js-yaml";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const installer = path.join(repository, "scripts/install-required-skills.mjs");
@@ -79,4 +80,27 @@ test("web guidance uses the existing constrained-agent shell allowance", () => {
     const frontmatter = content.split("---")[1];
     assert.match(frontmatter, /action: "shell"\s+resource: "npx -y modern-web-guidance@latest \*"\s+effect: allow/);
   }
+});
+
+test("web guidance research depends on the task without waiving accessibility or browser support", () => {
+  const skill = readFileSync(path.join(repository, "skills/modern-web-guidance/SKILL.md"), "utf8");
+  const a11y = readFileSync(path.join(repository, "skills/frontend-a11y/SKILL.md"), "utf8");
+  const { description } = yaml.load(skill.match(/^---\n([\s\S]*?)\n---/)[1]);
+  // The description drives skill selection, so it keeps concrete triggers and the reason
+  // within the Agent Skills 1024-character description limit.
+  assert.ok(description.length <= 1024, `description is ${description.length} characters`);
+  for (const trigger of ["dialogs", "popovers", "View Transitions", "CWV (LCP, INP)", "Forms, autofill"]) {
+    assert.ok(description.includes(trigger), `description must keep trigger: ${trigger}`);
+  }
+  assert.match(description, /change faster than model training data/);
+  assert.match(description, /Skip the lookup for a mechanical edit that keeps an inspected existing pattern/);
+  assert.doesNotMatch(description, /MANDATORY|Execute FIRST for all/);
+  assert.match(skill, /unfamiliar web API, a new UI pattern, or a performance technique/);
+  assert.match(skill, /browser support, progressive enhancement, or fallback behavior/);
+  assert.match(skill, /An existing pattern shows local convention, not current\s+best practice/);
+  assert.match(skill, /This exception does not waive frontend accessibility\s+checks or the project's browser-support requirements/);
+  assert.match(skill, /MUST\*\* follow the fallback recommendations/);
+  assert.match(skill, /If a needed lookup is unavailable, report\s+that/);
+  assert.doesNotMatch(skill, /end the response where you deliver those changes with a `### Modern Web Guidance` section/);
+  assert.match(a11y, /mechanical-edit exception does not waive these accessibility checks/);
 });
