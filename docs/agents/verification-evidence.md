@@ -63,6 +63,10 @@ the required checks within its permissions before advancing a gate. A restricted
 reviewer may assess supplied logs without running commands, but must say so.
 Never invent exits, infer suite success from partial output, infer a cause from
 a timeout alone, or describe a blocked/environment-limited check as passing.
+For a failed check, use the observed error to distinguish a confirmed application
+failure from an environment restriction or an unresolved cause, and do not infer
+that an environment-blocked check would pass elsewhere. Never call verification
+fully passing while a required check failed, was skipped, or was blocked.
 After edits, recheck affected behavior and update stale evidence; after publishing
 an authorized PR, bind CI results to its actual head SHA.
 

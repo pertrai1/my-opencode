@@ -44,7 +44,7 @@ Git symlink support enabled when cloning. Do not use a Git checkout that replace
 
 ## Scope and verification
 
-This installs the two skills named in `AGENTS.md` plus `frontend-a11y`'s explicit
+This installs the two skills `AGENTS.md` requires in every project plus `frontend-a11y`'s explicit
 `modern-web-guidance` dependency. The dependency entrypoint and Apache-2.0 license
 are vendored from [GoogleChrome/modern-web-guidance at b31dc0a](https://github.com/GoogleChrome/modern-web-guidance/tree/b31dc0a43ff5d19bcf386a3476a216f3b39a6f55).
 Local adaptations make research depend on the task and keep disclosure brief:
