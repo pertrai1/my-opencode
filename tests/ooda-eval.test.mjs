@@ -99,3 +99,35 @@ test("accepts latest qualifying CI evidence after repeated refresh", async () =>
   const result = await replay("stale", [call("remote_head"), call("check_ci", { head: "b222" }), call("remote_head"), call("check_ci", { head: "b222" }), report("passed", ["tool-3"])]);
   assert.equal(result.pass, true);
 });
+
+test("phase scenarios leave loading the phase skill to the agent prompt", async () => {
+  const { scenarios } = await import("../evals/ooda/harness.mjs");
+  for (const id of ["phase_delivery", "stale_verification"]) {
+    const text = `${scenarios[id].request} ${scenarios[id].initial}`;
+    assert.doesNotMatch(text, /skill|load|instruction|reference|contract/i, id);
+  }
+});
+
+test("resumed delivery loads its phase skill before the behavioral handoff", async () => {
+  const load = name => call("load_skill", { name });
+  const deliver = agent => call("delegate_delivery", { agent });
+  const result = await replay("phase_delivery", [load("sdlc-delivery"), deliver("tdd-orchestrator"), report("completed", ["tool-0", "tool-1"])]);
+  assert.equal(result.pass, true);
+  assert.match(result.trace[1].observation, /^# SDLC: Planning and delivery/);
+  assert.doesNotMatch(result.trace[1].observation, /^---/m);
+  for (const actions of [
+    [deliver("tdd-orchestrator"), load("sdlc-delivery"), report("completed", ["tool-0", "tool-1"])],
+    [load("sdlc-discovery"), deliver("tdd-orchestrator"), report("completed", ["tool-0", "tool-1"])],
+    [load("sdlc-delivery"), deliver("implementer"), report("completed", ["tool-0", "tool-1"])],
+  ]) assert.equal((await replay("phase_delivery", actions)).pass, false);
+});
+
+test("an earlier approval cannot authorize archive after implementation changed", async () => {
+  const load = call("load_skill", { name: "sdlc-closure" });
+  assert.equal((await replay("stale_verification", [load, report("blocked", ["initial", "tool-0"])])).pass, true);
+  for (const actions of [
+    [report("blocked", ["initial"])],
+    [load, call("archive"), report("blocked", ["initial", "tool-0"])],
+    [load, report("completed", ["initial", "tool-0"])],
+  ]) assert.equal((await replay("stale_verification", actions)).pass, false);
+});

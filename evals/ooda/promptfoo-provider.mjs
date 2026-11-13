@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { evaluate } from "./harness.mjs";
+import { evaluate, skillUrl } from "./harness.mjs";
 import { createPolicy } from "./provider.mjs";
+import { PHASE_SKILLS } from "./tools.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const hash = value => createHash("sha256").update(value).digest("hex");
@@ -27,6 +28,7 @@ export default class OodaProvider {
       metadata.commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
       metadata.dirty = execFileSync("git", ["status", "--porcelain"], { cwd: repository, encoding: "utf8" }).trim() !== "";
       metadata.sourceHashes = Object.fromEntries(["promptfoo-provider.mjs", "provider.mjs", "tools.mjs", "harness.mjs", "assertion.mjs", "prompt.mjs", "promptfooconfig.mjs"].map(name => [name, hash(readFileSync(new URL(name, import.meta.url)))]));
+      for (const name of PHASE_SKILLS) metadata.sourceHashes[`skills/${name}/SKILL.md`] = hash(readFileSync(skillUrl(name)));
       policy = createPolicy({ endpoint: metadata.endpoint, model, agent: prompt, transport: this.transport });
       const result = await evaluate(context.vars.scenario, policy);
       return { output: { id: result.id, trace: result.trace, responses: policy.responses }, metadata };
