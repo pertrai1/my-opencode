@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "wi-20261113T134751Z-move-repository-specific-rules-out-of-the-global-3cce18e2",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Move repository-specific rules out of the global AGENTS.md into a skill (replaces PR #107 part 3)",
+  "type": "chore",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "medium",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Rules that only apply when changing this configuration repository load on demand from a skill",
+    "AGENTS.md keeps a one-line pointer naming the skill and its path",
+    "Verification evidence rules live once, in the globally loaded protocol",
+    "Moved text is verbatim and guarded by a test"
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-13T13:47:51.760Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}
