@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "wi-20261113T140517Z-make-the-git-fixture-isolation-regression-portab-c95da73d",
+  "source": {
+    "kind": "local",
+    "ref": null
+  },
+  "request": "Make the Git fixture isolation regression portable to symlinked temporary directories, as seen on macOS, without weakening parent repository safety assertions.",
+  "type": "defect",
+  "status": "new",
+  "owner": "unassigned",
+  "risk": "low",
+  "route": "light-task",
+  "acceptanceCriteria": [
+    "Real and symlinked fixture roots pass; parent refs and index remain unchanged; negative control detects canonical-path mismatch."
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "relationships": [],
+  "nextAction": "Triage the request and select a route.",
+  "history": [
+    {
+      "at": "2026-11-13T14:05:17.522Z",
+      "status": "new",
+      "note": "Work item created locally."
+    }
+  ]
+}
