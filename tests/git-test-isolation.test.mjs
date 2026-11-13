@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,11 +9,16 @@ import test from "node:test";
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_") && key !== "NODE_TEST_CONTEXT"));
 
-test("npm test isolates fixtures from a hook's parent Git context", t => {
+for (const symlinked of [false, true]) test(`npm test isolates fixtures from a hook's parent Git context (${symlinked ? "symlinked" : "direct"} temp root)`, t => {
   const root = mkdtempSync(join(tmpdir(), "git-test-isolation-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const parent = join(root, "parent");
-  const fixture = join(root, "fixture");
+  const actual = join(root, "actual");
+  mkdirSync(actual);
+  const alias = join(root, "alias");
+  if (symlinked) symlinkSync(actual, alias, "dir");
+  const tempRoot = symlinked ? alias : actual;
+  const parent = join(tempRoot, "parent");
+  const fixture = join(tempRoot, "fixture");
   mkdirSync(parent);
   mkdirSync(fixture);
   const git = (...args) => execFileSync("git", args, { cwd: parent, env: cleanEnv, encoding: "utf8" }).trim();
@@ -27,7 +32,7 @@ test("npm test isolates fixtures from a hook's parent Git context", t => {
   const refs = git("show-ref");
   const testFile = join(root, "fixture.test.mjs");
   writeFileSync(testFile, `import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { realpathSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 const cwd = ${JSON.stringify(fixture)};
 const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -35,7 +40,8 @@ git('init', '--quiet', '--initial-branch=fixture');
 writeFileSync(cwd + '/fixture.txt', 'fixture content');
 git('add', '.');
 git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '--quiet', '-m', 'fixture');
-assert.equal(git('rev-parse', '--show-toplevel'), cwd);
+// Git reports the canonical path, including when TMPDIR contains a symlink.
+assert.equal(realpathSync(git('rev-parse', '--show-toplevel')), realpathSync(cwd));
 assert.equal(process.env.TEST_PRESERVED_VALUE, 'preserved');
 for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'GIT_PREFIX']) assert.equal(process.env[key], undefined);
 console.log('FIXTURE_ISOLATED');
