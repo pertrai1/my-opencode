@@ -29,7 +29,7 @@
     "lint": "eslint .",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
-    "test": "node --test",
+    "test": "node --import ./scripts/isolate-test-git.mjs --test",
     "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "verify:workflow-actions": "node scripts/verify-workflow-actions.mjs",
     "ubs": "bash scripts/ubs.sh",
