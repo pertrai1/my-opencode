@@ -94,13 +94,21 @@ test("web guidance research depends on the task without waiving accessibility or
   }
   assert.match(description, /change faster than model training data/);
   assert.match(description, /Skip the lookup for a mechanical edit that keeps an inspected existing pattern/);
+  // An explicit request for current guidance overrides the mechanical-edit skip.
+  assert.match(description, /compatibility question, unless the user asks for current guidance/);
   assert.doesNotMatch(description, /MANDATORY|Execute FIRST for all/);
-  assert.match(skill, /unfamiliar web API, a new UI pattern, or a performance technique/);
-  assert.match(skill, /browser support, progressive enhancement, or fallback behavior/);
-  assert.match(skill, /An existing pattern shows local convention, not current\s+best practice/);
-  assert.match(skill, /This exception does not waive frontend accessibility\s+checks or the project's browser-support requirements/);
-  assert.match(skill, /MUST\*\* follow the fallback recommendations/);
-  assert.match(skill, /If a needed lookup is unavailable, report\s+that/);
-  assert.doesNotMatch(skill, /end the response where you deliver those changes with a `### Modern Web Guidance` section/);
+  // Compare body prose with line wrapping collapsed, so reflowing does not break the contract.
+  const prose = skill.replace(/\s+/g, " ");
+  for (const phrase of [
+    "unfamiliar web API, a new UI pattern, or a performance technique",
+    "browser support, progressive enhancement, or fallback behavior",
+    "anything the user asks to check against current web guidance",
+    "needs no lookup when it introduces no new API or compatibility question and the user has not asked for current guidance",
+    "An existing pattern shows local convention, not current best practice",
+    "This exception does not waive frontend accessibility checks or the project's browser-support requirements",
+    "you **MUST** follow the fallback recommendations",
+    "If a needed lookup is unavailable, report that",
+  ]) assert.ok(prose.includes(phrase), `skill must keep: ${phrase}`);
+  assert.ok(!prose.includes("with a `### Modern Web Guidance` section"), "separate report section must stay removed");
   assert.match(a11y, /mechanical-edit exception does not waive these accessibility checks/);
 });

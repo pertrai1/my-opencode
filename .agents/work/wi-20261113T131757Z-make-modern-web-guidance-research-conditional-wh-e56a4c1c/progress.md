@@ -28,6 +28,11 @@ PRs replacing PR #107.
   Markdown lint, and workflow pins passed; tests 548 passed, 2 failed. Both
   failures are the macOS-only `pr-agent-encoding` EILSEQ tests, which also fail
   on `origin/main` here and passed on Linux CI for PR #108.
+- Review fix (CodeRabbit, PR #109): an explicit user request for current
+  guidance now overrides the mechanical-edit skip, in both the description and
+  the body. Description trimmed to 1,022 characters; body assertions now ignore
+  line wrapping. Negative control: removing the body exception fails the test.
+  `npm run ubs` again: 548 passed, the same 2 macOS-only failures.
 - Not run: a live model check of when agents now trigger the lookup.
 
 ## Blockers

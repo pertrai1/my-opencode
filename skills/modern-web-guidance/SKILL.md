@@ -9,11 +9,11 @@ description: |
   - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
   - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
   - Frameworks: Adapting layout/styles in React, Vue, Angular.
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
+  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states.
 
-  Skip the lookup for a mechanical edit that keeps an inspected existing pattern and raises no new API or compatibility question.
+  Skip the lookup for a mechanical edit that keeps an inspected existing pattern and raises no new API or compatibility question, unless the user asks for current guidance.
 
-  Not for backend (SQL, ORMs, Express routes), CI/CD, Docker, Actions, local scripts, ESLint, or Git.
+  Not for backend, CI/CD, Docker, Actions, local scripts, ESLint, or Git.
 ---
 
 # Modern Web Guidance
@@ -41,10 +41,11 @@ can still be outdated. Search before deciding on:
 
 A mechanical edit that keeps an existing repository pattern you have inspected
 (such as copy, spacing, or a rename) needs no lookup when it introduces no new API
-or compatibility question. An existing pattern shows local convention, not current
-best practice: if you are unsure it is still appropriate, search rather than treat
-familiarity as evidence. This exception does not waive frontend accessibility
-checks or the project's browser-support requirements.
+or compatibility question and the user has not asked for current guidance. An
+existing pattern shows local convention, not current best practice: if you are
+unsure it is still appropriate, search rather than treat familiarity as evidence.
+This exception does not waive frontend accessibility checks or the project's
+browser-support requirements.
 
 ## Usage Instructions
 
