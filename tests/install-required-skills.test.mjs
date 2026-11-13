@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import yaml from "js-yaml";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const installer = path.join(repository, "scripts/install-required-skills.mjs");
@@ -79,4 +80,35 @@ test("web guidance uses the existing constrained-agent shell allowance", () => {
     const frontmatter = content.split("---")[1];
     assert.match(frontmatter, /action: "shell"\s+resource: "npx -y modern-web-guidance@latest \*"\s+effect: allow/);
   }
+});
+
+test("web guidance research depends on the task without waiving accessibility or browser support", () => {
+  const skill = readFileSync(path.join(repository, "skills/modern-web-guidance/SKILL.md"), "utf8");
+  const a11y = readFileSync(path.join(repository, "skills/frontend-a11y/SKILL.md"), "utf8");
+  const { description } = yaml.load(skill.match(/^---\n([\s\S]*?)\n---/)[1]);
+  // The description drives skill selection, so it keeps concrete triggers and the reason
+  // within the Agent Skills 1024-character description limit.
+  assert.ok(description.length <= 1024, `description is ${description.length} characters`);
+  for (const trigger of ["dialogs", "popovers", "View Transitions", "CWV (LCP, INP)", "Forms, autofill"]) {
+    assert.ok(description.includes(trigger), `description must keep trigger: ${trigger}`);
+  }
+  assert.match(description, /change faster than model training data/);
+  assert.match(description, /Skip the lookup for a mechanical edit that keeps an inspected existing pattern/);
+  // An explicit request for current guidance overrides the mechanical-edit skip.
+  assert.match(description, /compatibility question, unless the user asks for current guidance/);
+  assert.doesNotMatch(description, /MANDATORY|Execute FIRST for all/);
+  // Compare body prose with line wrapping collapsed, so reflowing does not break the contract.
+  const prose = skill.replace(/\s+/g, " ");
+  for (const phrase of [
+    "unfamiliar web API, a new UI pattern, or a performance technique",
+    "browser support, progressive enhancement, or fallback behavior",
+    "anything the user asks to check against current web guidance",
+    "needs no lookup when it introduces no new API or compatibility question and the user has not asked for current guidance",
+    "An existing pattern shows local convention, not current best practice",
+    "This exception does not waive frontend accessibility checks or the project's browser-support requirements",
+    "you **MUST** follow the fallback recommendations",
+    "If a needed lookup is unavailable, report that",
+  ]) assert.ok(prose.includes(phrase), `skill must keep: ${phrase}`);
+  assert.ok(!prose.includes("with a `### Modern Web Guidance` section"), "separate report section must stay removed");
+  assert.match(a11y, /mechanical-edit exception does not waive these accessibility checks/);
 });

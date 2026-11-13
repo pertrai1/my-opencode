@@ -12,7 +12,7 @@ Treat accessibility as a prerequisite for a working interface. Apply the local W
 1. Read [A11Y.md](A11Y.md) before changing or reviewing frontend code.
 2. Identify the target platform and the component or interaction being changed.
 3. Read only the matching file in [the loading map](A11Y.md#21-loading-triggers), plus any template that the current delivery or decision requires.
-4. For web work, also use `modern-web-guidance` first. Apply the stricter compatible requirement when the two sources overlap.
+4. For web work, follow `modern-web-guidance`'s research triggers before choosing a new pattern or compatibility behavior. Its mechanical-edit exception does not waive these accessibility checks. Apply the stricter compatible requirement when the two sources overlap.
 
 ## Implementation and review
 

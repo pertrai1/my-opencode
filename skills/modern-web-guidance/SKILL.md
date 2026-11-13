@@ -1,20 +1,19 @@
 ---
 name: modern-web-guidance
 description: |
-  Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
+  Search best-practice guides before choosing an unfamiliar web API, new UI pattern, compatibility fallback, or performance technique in HTML/CSS/client JS. Web APIs change faster than model training data.
 
-  Trigger immediately for:
+  Typical triggers:
   - UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
   - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
   - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
   - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
   - Frameworks: Adapting layout/styles in React, Vue, Angular.
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
+  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states.
 
-  DO NOT trigger for:
-  - Backend: Database SQL, ORMs, Express API routes.
-  - Pipelines: CI/CD deployment, Docker, Actions.
-  - Generic: Local scripts (Python/Go tools), ESLint, Git.
+  Skip the lookup for a mechanical edit that keeps an inspected existing pattern and raises no new API or compatibility question, unless the user asks for current guidance.
+
+  Not for backend, CI/CD, Docker, Actions, local scripts, ESLint, or Git.
 ---
 
 # Modern Web Guidance
@@ -22,18 +21,31 @@ description: |
 Vendored from [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance/tree/b31dc0a43ff5d19bcf386a3476a216f3b39a6f55)
 at commit `b31dc0a43ff5d19bcf386a3476a216f3b39a6f55` under the included
 [Apache-2.0 license](LICENSE). Local changes: Markdown formatting, this
-provenance notice, and launcher guidance restricted to the existing
-`npx -y modern-web-guidance@latest *` agent allowance. Permissions are unchanged.
+provenance notice, task-dependent research triggers with a mechanical-edit
+exception, brief disclosure in the normal completion summary, and launcher
+guidance restricted to the existing `npx -y modern-web-guidance@latest *` agent
+allowance. The trigger and disclosure wording are local adaptations, not upstream
+defaults. Permissions and browser-support rules are unchanged.
 
 A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
 
 ## When to use
 
-Must use this skill:
+Web APIs change faster than model training data, so a pattern that feels familiar
+can still be outdated. Search before deciding on:
 
-- At the **start** of implementing any web feature.
-- Before creating a new component, to check if a standardized pattern already exists.
-- To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
+- an unfamiliar web API, a new UI pattern, or a performance technique;
+- browser support, progressive enhancement, or fallback behavior;
+- a new component without an established repository pattern, to check whether a standardized pattern exists and to avoid ad-hoc solutions or large dependencies;
+- anything the user asks to check against current web guidance.
+
+A mechanical edit that keeps an existing repository pattern you have inspected
+(such as copy, spacing, or a rename) needs no lookup when it introduces no new API
+or compatibility question and the user has not asked for current guidance. An
+existing pattern shows local convention, not current best practice: if you are
+unsure it is still appropriate, search rather than treat familiarity as evidence.
+This exception does not waive frontend accessibility checks or the project's
+browser-support requirements.
 
 ## Usage Instructions
 
@@ -100,12 +112,14 @@ When generating or modifying code, cross-check the implementation against the re
 
 ### Step 4. Disclose Skill Usage
 
-When you consult `modern-web-guidance` for a task, end the response where you deliver those changes with a `### Modern Web Guidance` section:
+In the normal completion summary, name the retrieved guide IDs that shaped a
+decision and the choice or fallback each one led to, so a reviewer can trace it.
+Do not add a separate report section or quote every guide. If a lookup found
+nothing applicable, say so only when that limits the result or explains a decision.
 
-- **When retrieved guides shaped your code**: Write **one** bullet (1–2 sentences, ≤75 words) per newly applied `<id>` in first-person voice explaining the non-obvious implementation choices, CSS/API overrides, or fallbacks `<id>` required and the pitfall it prevented, anchored by a short verbatim quote of that specific rule or gotcha (never the guide's intro overview):
-  `- **\`<id>\`**: <Non-obvious APIs, overrides, or fallbacks applied and the pitfall prevented> ("<short verbatim quote of the specific rule or gotcha>").`
-  - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
-- **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
+Never invent guide IDs, quotations, or successful lookups. After compaction,
+retrieve a guide again before citing it. If a needed lookup is unavailable, report
+that and what remains unverified.
 
 ## Using npx
 
@@ -119,7 +133,7 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Guidelines
 
-- Always search **first** to find the most relevant guides.
+- When a lookup is needed, search **first** to find the most relevant guides.
 - These guides are usually framework-agnostic; adapt them correctly to your setup.
 - Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
 
