@@ -102,6 +102,31 @@ compaction can happen between checkpoints, so checkpoint regularly rather than
 waiting for a context-limit warning. Reconcile the summary with files and test
 results; compaction is not evidence that a pending step succeeded.
 
+## Implementation notes
+
+For work that follows a plan, spec, or prototype, keep a decision log next to
+the checkpoint at `.agents/work/<work-id>/implementation-notes.md` (or beside
+the workflow's `intent.md`). Start implementation from a fresh session seeded
+with the plan, spec, and prototype notes, not the planning conversation.
+
+When an edge case forces a deviation from the plan, choose the conservative
+option, log it, and continue. Do not stop to ask unless the deviation changes
+the acceptance criteria or a public contract. Each entry records:
+
+```md
+## <short title>
+
+- Plan said: <what was planned>
+- Did instead: <what was done>
+- Why: <the edge case or constraint>
+- Alternative not taken: <option and why not>
+```
+
+The notes are context, not evidence. `progress.md` still owns execution state,
+and verification still follows `verification-evidence.md`. Reviewers and
+`/explain` read the notes to judge a diff against intent; `/remember` may store
+the decisions, not the transcript.
+
 ## WorkItem shape
 
 `work.json` is intentionally independent of a tracker:
