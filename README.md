@@ -292,6 +292,10 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 - [Learn prompt benchmark](evals/learn/README.md#compare-prompt-versions) — compare a baseline revision against the working-copy prompt on ten fixed cases with one explicitly configured model.
 - **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp@0.29.10`
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
+- `commands/blindspot.md` — read-only pre-planning pass that surfaces a task's unknown unknowns, ranked by architectural impact.
+- `commands/interview.md` — read-only, one-question-at-a-time interview that resolves ambiguities before planning, highest-impact first.
+- `commands/prototype.md` — throwaway mocked prototype with fake data, written under `.agents/prototypes/`, to find unknowns before wiring real code.
+- `commands/explain.md` — HTML explainer plus quiz for a finished change, written under `.agents/docs/explainers/`, to review before merge. Not verification evidence.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
 - [Verification guidance](.agents/docs/verification/README.md) defines the `/verify` rubric, evidence requirements, and report naming. OpenSpec reports follow the change-verifier contract instead.
