@@ -2,6 +2,8 @@
 
 Global configuration for [opencode](https://opencode.ai).
 
+See the [cheat sheet](docs/cheat-sheet.md) for which command, agent, or skill to use in a given situation, and the [architecture diagram](docs/ARCHITECTURE.md) for how they connect.
+
 ## Runtime requirements
 
 This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
@@ -28,7 +30,22 @@ saved project approvals can satisfy an `ask`; configured denies remain enforced.
 The wildcard rule uses no machine-specific paths. Restart OpenCode on each
 computer after updating its configuration. See the [v2 permissions documentation](https://opencode.ai/v2/docs/permissions/#directories).
 
-## Node.js guidance
+### Agent model assignments
+
+| Model | Agents |
+| --- | --- |
+| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
+| `openai/gpt-6-astra#high` | `prompt-agent` |
+| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
+| `openai/gpt-6-sol#high` | `test-author` |
+| `openai/gpt-6-luna#medium` | `implementer` |
+| `openai/gpt-6-luna` (no explicit variant) | `explore` |
+
+Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately for `sdlc-orchestrator` or `tdd-orchestrator` when its `#xhigh` tier matters. The same applies when switching among the inline `lean`, `build`, and `plan` agents.
+
+Command-level model selections are separate: `/code-review` configures `openai/gpt-6-astra` (model-level `high` reasoning), `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6-astra#xhigh`.
+
+## Language and framework guidance
 
 The [Node.js skill](skills/nodejs/SKILL.md) applies to Node APIs, workers, CLIs,
 libraries, and scripts, including Node packages within mixed monorepos. It loads
@@ -37,9 +54,13 @@ CC-BY-SA-4.0 attribution accompany the adapted reference documents. See the
 [offline and optional live eval commands](evals/nodejs-skill/README.md). Restart
 OpenCode after installing updated skill files so discovery reflects the change.
 
+The [Angular skill](skills/angular/SKILL.md) loads when a project contains `angular.json` or `@angular/core`, or for Angular components, templates, services, routing, security, configuration, and tests.
+
+The [`skills/modern-web-guidance/`](skills/modern-web-guidance/SKILL.md) skill searches current best-practice guides before you choose an unfamiliar web API, UI pattern, compatibility fallback, or performance technique in HTML, CSS, or client JavaScript. `frontend-a11y` and `codescene-mcp` depend on it; see [required skills](docs/required-skills.md).
+
 ## Work intake
 
-Use `/intake <request>` to create a tracker-neutral local work item for a request that must survive the current session. The command classifies the request, records acceptance criteria and an initial route, and writes `work.json`, `request.md`, and `progress.md` under `.agents/work/<work-id>/` in the selected target repository.
+Use `/intake <request>` to create a tracker-neutral local work item for a request that must survive the current session. The command classifies the request, records acceptance criteria and an initial route, and writes `work.json`, `request.md`, and `progress.md` under `.agents/work/<work-id>/` in the selected target repository. The `skills/work-intake/` skill defines the intake rules, and `AGENTS.md` loads it for substantial work.
 
 For direct use from a target repository:
 
@@ -67,20 +88,16 @@ the checklist. Do the same after compaction. See the
 triggers, and the template. Reload configuration with `/reload` after changing
 todo settings.
 
-### Agent model assignments
+## Discovery and explanation
 
-| Model | Agents |
-| --- | --- |
-| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
-| `openai/gpt-6-astra#high` | `prompt-agent` |
-| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
-| `openai/gpt-6-sol#high` | `test-author` |
-| `openai/gpt-6-luna#medium` | `implementer` |
-| `openai/gpt-6-luna` (no explicit variant) | `explore` |
+Commands that find unknowns before implementation and build understanding after it. See the [cheat sheet](docs/cheat-sheet.md#before-building) for when to use each.
 
-Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately for `sdlc-orchestrator` or `tdd-orchestrator` when its `#xhigh` tier matters. The same applies when switching among the inline `lean`, `build`, and `plan` agents.
-
-Command-level model selections are separate: `/code-review` configures `openai/gpt-6-astra` (model-level `high` reasoning), `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6-astra#xhigh`.
+- `commands/blindspot.md` — read-only pre-planning pass that surfaces a task's unknown unknowns, ranked by architectural impact.
+- `commands/interview.md` — read-only, one-question-at-a-time interview that resolves ambiguities before planning, highest-impact first. Returns the brief in chat.
+- `commands/prototype.md` — throwaway mocked prototype with fake data, written under `.agents/prototypes/`, to find unknowns before wiring real code.
+- `commands/explain.md` — HTML explainer plus quiz for a finished change, written under `.agents/docs/explainers/`, to review before merge. Not verification evidence.
+- [Implementation notes](docs/agents/work-items.md#implementation-notes) — a decision log kept beside the work item's checkpoint; `/explain` reads it.
+- `skills/socratic-code-mentor/` — mentoring mode for building a project to learn how it works. You write the core; the agent does the rest. It loads when you ask to be taught or for hints only, not for normal feature work.
 
 ## Graph
 
@@ -130,6 +147,7 @@ Command-level model selections are separate: `/code-review` configures `openai/g
 - [difit](https://github.com/yoshiko-pg/difit) — local diff viewer for code review.
 - [Diffity](https://github.com/kamranahmedse/diffity) — local diff viewer and agent review workflow.
 - [hunk](https://hunk.dev) — review-first diff viewer for agent-authored changes.
+- `.agents/skills/difit/` and `.agents/skills/difit-review/` — skills that ask for a code review through difit after changes, and show findings for a branch, commit, or GitHub PR diff as difit comments.
 
 ### TypeSafe reviewer selection
 
@@ -277,31 +295,36 @@ The router sends working-tree file statuses (including file paths), tracked diff
 
 To evaluate the existing selection policy, run `node scripts/baseline-reviewer-router.mjs` from this repository with `TYPESAFE_API_KEY` set. The [baseline report](docs/reviewer-router-baseline.md) records a labeled historical/synthetic snapshot, including per-reviewer misses, unnecessary selections, latency, usage, fallback frequency, and reproduction details. The [fixtures](tests/fixtures/reviewer-router-baseline.json) keep disputed labels visible and out of accuracy totals. Re-running the command calls TypeSafe again; review any fixture paths before using it with a different dataset.
 
+## Code health
+
+- `commands/audit.md` — audit-only pass over the whole codebase for simplifications to data structures, state, control flow, algorithms, and ownership. Writes one report to `.agents/docs/audits/<date>-completed.md`.
+- `commands/perf-review.md` — read-only scan of the existing project for actionable performance issues, optionally limited to a focus area. Findings are returned in the response.
+- `commands/halstead.md` — runs `scripts/halstead-analyzer.js` on changed files, a branch diff, a directory, or an explicit file list and summarizes the most complex files.
+- `commands/learn.md` — extracts non-obvious learnings from a session into the nearest relevant `AGENTS.md`, with privacy, evidence, and trust checks before writing.
+- `skills/codescene-mcp/` — Code Health review, regression handling, and a pre-finish safeguard for AI-modified code. `AGENTS.md` requires it for code changes; see the [CodeScene setup](docs/codescene-setup.md).
+
 ## Reference
 
 - **`mdn`** (remote) — MDN Web Docs reference and browser compatibility data. `https://mcp.mdn.mozilla.net/`
 - **`chrome-devtools`** (local) — Chrome automation and inspection. `--no-usage-statistics` turns off Google's usage statistics, and `--isolated` gives each run a temporary browser profile, so sign-ins do not persist between runs. `npx -y chrome-devtools-mcp@1.12.0`
+- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp@0.29.10`
+- **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
+- **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
+- **Fallow** — its MCP server is configured but disabled by default. Enable it only in repositories where its dead-code analysis is needed.
 
 ## Verification
 
 - `npm test -- [test files]` — clears repository-local Git environment variables before loading tests so hook-invoked fixtures do not inherit the committing repository’s Git context. Use this entry point rather than raw `node --test` when running from a Git hook.
 - `npm run ubs` — checks the Node.js/npm toolchain first, then TypeScript, ESLint, Markdown, workflow action pins, and tests; stops at the first failure with a stage-specific `UBS_RESULT` record.
 - [Local tool observations](docs/tool-observation.md) — opt-in, metadata-only OTLP capture of tool failures, durations and repeated calls; local Collector setup and diagnostic walkthrough.
-
+- `plugins/tool-observation.ts` — the opt-in capture behind the observations above. Enable it with `OPENCODE_TOOL_OBSERVATION=1`.
 - [Promptfoo failure-reporting walkthrough](docs/promptfoo-failure-reporting.md) — one synthetic failed-test case, offline teaching examples, and optional model/judge runs.
 - [Learn prompt benchmark](evals/learn/README.md#compare-prompt-versions) — compare a baseline revision against the working-copy prompt on ten fixed cases with one explicitly configured model.
-- **`llm-core`** (local) — lints files with `eslint-plugin-llm-core` rules. `npx -y eslint-plugin-llm-core-mcp@0.29.10`
+- `skills/promptfoo-provider-setup/`, `skills/promptfoo-evals/`, `skills/promptfoo-redteam-setup/`, and `skills/promptfoo-redteam-run/` — Promptfoo skills by stage: connect a target, write and run non-redteam evals, plan a redteam scan, and run or inspect one. Each names the next skill to use.
 - `.github/workflows/ci.yml` — continuously runs `npm run lint:md`, `npm run typecheck`, `npm run lint`, and `npm test` on pushes and pull requests.
-- `commands/blindspot.md` — read-only pre-planning pass that surfaces a task's unknown unknowns, ranked by architectural impact.
-- `commands/interview.md` — read-only, one-question-at-a-time interview that resolves ambiguities before planning, highest-impact first.
-- `commands/prototype.md` — throwaway mocked prototype with fake data, written under `.agents/prototypes/`, to find unknowns before wiring real code.
-- `commands/explain.md` — HTML explainer plus quiz for a finished change, written under `.agents/docs/explainers/`, to review before merge. Not verification evidence.
 - `commands/verify.md` — verify completed work against rubric and source of truth. Saved artifacts live under the `.agents/docs/verification/` directory.
 - `agents/change-verifier.md` — change-local verification writer for OpenSpec changes. Persists `verification.md` as the human review surface before archive decisions.
 - [Verification guidance](.agents/docs/verification/README.md) defines the `/verify` rubric, evidence requirements, and report naming. OpenSpec reports follow the change-verifier contract instead.
-- **Optional repo tool: JSCPD** — duplicate-code detection for repositories where copy/paste logic is a real maintenance risk. Most useful as an optional input to `/code-review` and `architecture-reviewer` when a change adds or rewrites production logic across multiple files. Prefer its AI reporter for compact agent-facing output. Configure per repo with `.jscpd.json` when the team wants durable duplication checks.
-- **Optional repo tool: Knip** — unused files, exports, and dependencies analysis for JavaScript/TypeScript repositories. Useful when a repo accumulates dead code or stale dependencies, especially after refactors. Configure per repo with `knip.json` or equivalent package config when the team wants repeatable cleanup checks.
-- **Fallow** — its MCP server is configured but disabled by default. Enable it only in repositories where its dead-code analysis is needed.
 
 ## Security
 
@@ -318,20 +341,19 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 - `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
-- `.opencode/skills/openspec-*/` and `.agents/skills/openspec-*/` — local OpenSpec workflow skills for new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboarding flows.
-- `skills/sdlc-discovery/`, `skills/sdlc-delivery/`, and `skills/sdlc-closure/` — the SDLC orchestrator's phase contracts. The orchestrator loads one through the skill tool when it enters that phase, so the others stay out of context. Store selection, task completion authority, and a short list of every-phase rules stay in [the agent definition](agents/sdlc-orchestrator.md); each of those rules is copied word for word from its phase skill, and `tests/sdlc-context.test.mjs` fails if the copies drift. Restart OpenCode after changing them.
+- `plugins/atuin.ts` — records bash commands run by opencode in Atuin history with author `opencode`. Install with `atuin hook install opencode`, then restart OpenCode.
 - `skills/harness-maintenance/` — rules for changing this repository's agents, commands, plugins, skills, MCP setup, permissions, models, routing, or workflow gates. `AGENTS.md` loads in every project, so it only points to this skill instead of carrying those rules everywhere; `tests/agents-context.test.mjs` checks the pointer and that the rules are not duplicated.
+- `agents/prompt-agent.md` — refines, debugs, and critiques agent prompts, commands, workflows, handoffs, and orchestration rules. It does not modify files unless asked.
+- `.agents/skills/debug-like-expert/` — deep-analysis debugging mode with evidence gathering and hypothesis testing, for when standard troubleshooting has failed.
+- **Commit policy** — commit only when explicitly requested. When committing, prefer small atomic commits. For behavior-changing work, commit after REFACTOR and final verification, not after GREEN.
+
+### Default agents
+
 - `lean` (inline in `opencode.jsonc`) — reduced first-call context while allowing clarification questions, specialist subagent delegation, and direct web search/fetch. Selected MCP tools remain denied for this agent.
 - Lean denies the whole `mdn` and `llm-core` servers with `mdn_*` and `llm-core_*`, so tools those servers add later stay denied. Server names keep their hyphens. Context7 remains available, and these agent-local rules do not restrict `build` or `plan`. A dormant `agentmemory_*` rule covers matching tools registered by other configuration sources; it does not enable those tools. Restart OpenCode after changing agent permissions.
-- `opencode.jsonc` keeps `build` and `plan` intact, and makes `lean` the default agent for routine local work. Switch to `build` or `plan` when broader tool access is needed.
-- The explicit `~/.claude/RTK.md` instruction entry was removed because `~/.claude/CLAUDE.md` already references it.
-- Switch back to the richer agents when needed: `build` for full tool access, `plan` for planning-first workflows.
-- `commands/apply.md` — implement a change via the type-driven TDD pipeline (`/apply`, runs `tdd-orchestrator`).
-- `agents/sdlc-orchestrator.md` — primary OpenSpec workflow owner for change selection, lifecycle routing, delegated planning, verification, sync decisions, human approval, and archive gating.
-- `agents/proposal-author.md`, `agents/spec-author.md`, `agents/design-author.md`, `agents/task-planner.md` — planning authors with artifact-scoped write access.
-- `agents/spec-syncer.md` — merges change-local delta specs into `openspec/specs/**` after orchestrator gating.
-- `.opencode/commands/opsx-*.md` — thin command wrappers that preserve user-facing intent while delegating lifecycle logic to `sdlc-orchestrator`.
-- **Commit policy** — commit only when explicitly requested. When committing, prefer small atomic commits. For behavior-changing work, commit after REFACTOR and final verification, not after GREEN.
+
+### Developer tools
+
 - [GitHub CLI (`gh`)](https://cli.github.com/) — GitHub operations from the terminal.
 - [gh-dash](https://github.com/dlvhdr/gh-dash) — terminal dashboard for GitHub pull requests and issues.
 - [RTK](https://github.com/rtk-ai/rtk) — token-saving command proxy for terminal workflows.
@@ -357,7 +379,7 @@ with `/reload` after changing these settings.
 
 Separated-agent implementation flow (types → RED → GREEN), modeled on the cg-agent-flow OpenSpec pipeline. `sdlc-orchestrator` delegates behavioral implementation to this flow; it is not the only workflow entrypoint. The test author does not see the implementation plan, and the implementer cannot edit tests or the type contract. This separation reduces confirmation bias.
 
-Run it with `/apply <change or task description>`.
+Run it with `/apply <change or task description>` (`commands/apply.md`).
 
 | Phase | Agent | Model | Can edit | Mechanically blocked from |
 | --- | --- | --- | --- | --- |
@@ -388,11 +410,15 @@ Language support: the orchestrator detects the type checker at intake: TypeScrip
 
 The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 
-- Use the `opsx-*` commands for OpenSpec change lifecycle work: new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard.
+- OpenSpec change lifecycle work covers new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard flows. The `opsx-*` command wrappers and a `.opencode/skills/openspec-*/` copy are not tracked in this repository; the tracked OpenSpec skills are `.agents/skills/openspec-*/`.
 - The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
 - Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
 - `tdd-orchestrator` uses `mode: all` to support direct `/apply` entry and SDLC delegation. `experimental.subagent_depth: 2` permits SDLC → TDD → worker launches; TDD retains its three-worker allowlist. Restart OpenCode after changing these settings.
 - OpenSpec verification is persisted in change-local `verification.md` and used as the canonical human review surface before archive.
+- `skills/sdlc-discovery/`, `skills/sdlc-delivery/`, and `skills/sdlc-closure/` — the SDLC orchestrator's phase contracts. The orchestrator loads one through the skill tool when it enters that phase, so the others stay out of context. Store selection, task completion authority, and a short list of every-phase rules stay in [the agent definition](agents/sdlc-orchestrator.md); each of those rules is copied word for word from its phase skill, and `tests/sdlc-context.test.mjs` fails if the copies drift. Restart OpenCode after changing them.
+- `agents/sdlc-orchestrator.md` — primary OpenSpec workflow owner for change selection, lifecycle routing, delegated planning, verification, sync decisions, human approval, and archive gating.
+- `agents/proposal-author.md`, `agents/spec-author.md`, `agents/design-author.md`, `agents/task-planner.md` — planning authors with artifact-scoped write access.
+- `agents/spec-syncer.md` — merges change-local delta specs into `openspec/specs/**` after orchestrator gating.
 
 Context artifacts: `progress.md` (running conventions and decisions, read on every handoff) and `intent.md` (implementation decisions, full for TDD tasks, lite for simple ones).
 
@@ -420,7 +446,7 @@ deterministic checks do not prove live agent compliance.
 
 ## Replicating this setup
 
-Install the two AGENTS-required skills on each computer with the
+Install the required skills (`frontend-a11y`, `codescene-mcp`, and its dependency `modern-web-guidance`) on each computer with the
 [shared skill installer](docs/required-skills.md). Keeping `.agents` in this
 configuration checkout alone does not install skills into other projects.
 
