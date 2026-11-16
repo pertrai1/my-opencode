@@ -26,4 +26,4 @@ Report:
 2. What the prototype is meant to answer, and which parts are faked.
 3. Questions it surfaced that were not in the original idea.
 
-Then offer to record decisions made from it in a short note (`.agents/prototypes/<slug>/NOTES.md`) so a later planning step starts from the prototype and the notes, not from the conversation.
+If any decisions were made from it, record them in a short note (`.agents/prototypes/<slug>/NOTES.md`) so a later planning step starts from the prototype and the notes, not from the conversation.

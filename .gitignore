@@ -7,6 +7,8 @@ service.json
 .agents/docs/verification/*
 .agents/reports/*
 .agents/docs/security-audits/*
+.agents/docs/explainers/*
+.agents/prototypes/*
 !.agents/docs/verification/README.md
 
 /.promptfoo/

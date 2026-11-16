@@ -6,11 +6,11 @@ Help me understand a change I did not write by hand, so I can merge it with conf
 
 Scope: $ARGUMENTS
 
-If scope is empty, use the current branch against its resolved base branch (check `git symbolic-ref refs/remotes/origin/HEAD`; inspect available branches if unset), including staged, unstaged, and untracked files.
+If scope is empty, use the current branch against its base branch, including staged, unstaged, and untracked files. Resolve the base in this order: the open pull request's target branch for the current branch (for example `gh pr view --json baseRefName`) when one exists, else `git symbolic-ref refs/remotes/origin/HEAD`; if neither resolves, inspect the available branches and ask.
 
 ## Inputs
 
-Read the full change set, then the intent behind it when present: the active work item's `intent.md` and `progress.md`, any implementation notes (`implementation-notes.md` next to them), a spec, and the linked issue. Treat the diff and tests as the source of truth for what the code does, and the notes for why. Where they disagree, say so.
+Read the full change set, excluding this command's own output under `.agents/docs/explainers/` and prototype output under `.agents/prototypes/`, then the intent behind it when present: the active work item's `intent.md` and `progress.md`, any implementation notes (`implementation-notes.md` next to them), a spec, and the linked issue. Treat the diff and tests as the source of truth for what the code does, and the notes for why. Where they disagree, say so.
 
 ## Report
 

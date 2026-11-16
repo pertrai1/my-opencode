@@ -25,4 +25,4 @@ Summarize as a short brief:
 2. Assumptions you are proceeding on.
 3. Open items the user chose to defer.
 
-Then suggest the next step (`/prototype`, planning, or implementation). If the work spans multiple stages or files, follow the `work-intake` skill and record the brief in the work item's `intent.md` or `progress.md` instead of creating a second record.
+Then suggest the next step (`/prototype`, planning, or implementation). Return the brief in chat only. If the work spans multiple stages or files, say it should be recorded in the active work item's `intent.md` or `progress.md` (or a new work item via the `work-intake` skill) and offer to do that once I authorize edits; do not write it yourself.
