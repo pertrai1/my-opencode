@@ -341,7 +341,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 - `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
-- `plugins/atuin.ts` — records bash commands run by opencode in Atuin history with author `opencode`. Install with `atuin hook install opencode`, then restart OpenCode.
+- `plugins/atuin.ts` — already included in this global configuration and automatically discovered from `~/.config/opencode/plugins/`. When the `atuin` executable is available on OpenCode's PATH, it records bash commands in Atuin history with author `opencode`; there is no separate opt-in flag. `atuin hook install opencode` installs the hook for setups that do not already include it, not an activation step for this checkout. See [plugin discovery](https://opencode.ai/v2/docs/plugins/#discover).
 - `skills/harness-maintenance/` — rules for changing this repository's agents, commands, plugins, skills, MCP setup, permissions, models, routing, or workflow gates. `AGENTS.md` loads in every project, so it only points to this skill instead of carrying those rules everywhere; `tests/agents-context.test.mjs` checks the pointer and that the rules are not duplicated.
 - `agents/prompt-agent.md` — refines, debugs, and critiques agent prompts, commands, workflows, handoffs, and orchestration rules. It does not modify files unless asked.
 - `.agents/skills/debug-like-expert/` — deep-analysis debugging mode with evidence gathering and hypothesis testing, for when standard troubleshooting has failed.
