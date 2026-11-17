@@ -9,6 +9,9 @@ permissions:
   - action: "edit"
     resource: "**/openspec/specs/**/*.md"
     effect: allow
+  - action: "edit"
+    resource: "openspec/specs/**/*.md"
+    effect: allow
   - action: "shell"
     resource: "*"
     effect: deny

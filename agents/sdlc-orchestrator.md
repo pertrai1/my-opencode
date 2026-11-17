@@ -10,16 +10,31 @@ permissions:
     resource: "**/openspec/changes/**/progress.md"
     effect: allow
   - action: "edit"
+    resource: "openspec/changes/**/progress.md"
+    effect: allow
+  - action: "edit"
     resource: "**/openspec/changes/**/intent.md"
+    effect: allow
+  - action: "edit"
+    resource: "openspec/changes/**/intent.md"
     effect: allow
   - action: "edit"
     resource: "**/openspec/changes/**/verification.md"
     effect: allow
   - action: "edit"
+    resource: "openspec/changes/**/verification.md"
+    effect: allow
+  - action: "edit"
     resource: "**/openspec/changes/**/tasks.md"
     effect: allow
   - action: "edit"
+    resource: "openspec/changes/**/tasks.md"
+    effect: allow
+  - action: "edit"
     resource: "**/.agents/work/**"
+    effect: allow
+  - action: "edit"
+    resource: ".agents/work/**"
     effect: allow
   - action: "subagent"
     resource: "*"
