@@ -245,6 +245,9 @@
       "llm-core": {
         "type": "local",
         "command": ["npx", "-y", "eslint-plugin-llm-core-mcp@0.31.0"],
+        "timeout": {
+          "startup": 120000,
+        },
         "environment": {
           "LLM_CORE_MCP_ENABLE_FALLBACK": "1",
         },
@@ -252,7 +255,7 @@
       },
       "fallow": {
         "type": "local",
-        "command": ["npx", "-y", "--package=fallow@3.43.3", "fallow-mcp"],
+        "command": ["npx", "-y", "--package=fallow@3.43.1", "fallow-mcp"],
         "disabled": false,
       },
       // Opts out of Google usage statistics and uses a temporary browser profile per run.
