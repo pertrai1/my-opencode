@@ -1,4 +1,6 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -75,4 +77,37 @@ test("rejects unsafe work item IDs when resuming", async () => {
     run(["resume", "--root", root, "../../package.json"]),
     /Invalid work item ID/,
   );
+});
+
+for (const option of ["--acceptnace", "--acceptnace=Expected result", "--command", "--positionals"]) {
+  test(`rejects unknown option ${option} before creating artifacts`, async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "work-item-option-"));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL("../scripts/work-item.mjs", import.meta.url)),
+      "create", "--root", root, "--request", "Keep acceptance criteria",
+      option, ...(option.includes("=") ? [] : ["Expected result"]),
+    ], { encoding: "utf8", timeout: 10_000 });
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Unknown option --(?:acceptnace|command|positionals)/);
+    assert.deepEqual(await readdir(root), []);
+  });
+}
+
+test("keeps supported equals syntax and repeated acceptance criteria", async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "work-item-option-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const item = await run([
+    "create", `--root=${root}`, "--request=Keep all metadata", "--type=chore",
+    "--owner=developer", "--risk=low", "--route=direct", "--next=Verify result",
+    "--acceptance=First criterion", "--acceptance", "Second criterion",
+  ]);
+  assert.equal(item.type, "chore");
+  assert.equal(item.risk, "low");
+  assert.equal(item.route, "direct");
+  assert.equal(item.owner, "developer");
+  assert.equal(item.nextAction, "Verify result");
+  assert.equal(item.request, "Keep all metadata");
+  assert.deepEqual(item.acceptanceCriteria, ["First criterion", "Second criterion"]);
 });
