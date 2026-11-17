@@ -125,7 +125,7 @@ Pick by stage. Each names the next one to use.
 | `sonarqube-mcp.ts` | Per repository | Enables `sonarqube` only where `sonar-project.properties` sets `sonar.host.url`. |
 | `jev-routing.ts` | Off | `OPENCODE_JEV_ROUTING=1` plus `TYPESAFE_API_KEY`. Add `OPENCODE_JEV_ROUTING_DRY_RUN=1` to log decisions without switching. |
 | `tool-observation.ts` | Off | `OPENCODE_TOOL_OBSERVATION=1`. Metadata-only OTLP capture. |
-| `atuin.ts` | Opt-in | `atuin hook install opencode`, then restart. |
+| `atuin.ts` | Active when `atuin` is available | Already included in this global configuration; records bash commands in Atuin history without a separate opt-in flag. |
 | `herdr-agent-state.js` | Managed by herdr | Reinstalling herdr overwrites it. |
 
 ## Skills that only the orchestrator loads
