@@ -16,6 +16,10 @@ const REQUEST_TYPES = new Set([
   "other",
 ]);
 
+const OPTION_NAMES = new Set([
+  "root", "request", "type", "owner", "risk", "route", "acceptance", "next",
+]);
+
 function parseArgs(argv) {
   const [command = "help", ...tokens] = argv;
   const options = { command, positionals: [] };
@@ -29,6 +33,9 @@ function parseArgs(argv) {
 
     const separator = token.indexOf("=");
     const key = token.slice(2, separator === -1 ? undefined : separator);
+    if (!OPTION_NAMES.has(key)) {
+      throw new Error(`Unknown option --${key}`);
+    }
     const value = separator === -1 ? tokens[++index] : token.slice(separator + 1);
     if (!value || value.startsWith("--")) {
       throw new Error(`Missing value for --${key}`);

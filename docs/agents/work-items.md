@@ -35,6 +35,10 @@ node ~/.config/opencode/scripts/work-item.mjs create \
 ```
 
 The command creates `.agents/work/<work-id>/` containing `work.json`, `request.md`, and `progress.md`.
+Unknown options fail before any artifacts are written, so a typo such as
+`--acceptnace` cannot silently discard acceptance criteria. Supported options are
+`--root`, `--request`, `--type`, `--owner`, `--risk`, `--route`, `--acceptance`
+(repeatable), and `--next`; both `--name value` and `--name=value` are accepted.
 
 Resume or inspect a work item with:
 
