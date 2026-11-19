@@ -124,6 +124,30 @@ test("pinned OpenAI provider emits configured reasoning and JSON settings withou
   assert.equal(body.temperature, undefined); // Pinned provider applies reasoning-model restrictions.
 });
 
+test("implicit GPT-6.2 provider builds a Responses payload without calling a model", async () => {
+  const { loadApiProvider } = await import("promptfoo");
+  const id = "openai:gpt-6.2-sol";
+  // Test the shared Promptfoo route separately; the benchmark itself stays Chat-only.
+  const config = {
+    reasoning_effort: "high",
+    temperature: 0,
+    max_output_tokens: 25_000,
+    response_format: { type: "json_object" },
+  };
+  const api = await loadApiProvider(id, { options: { id, config } });
+  const input = [{ role: "user", content: "JSON only" }];
+  const { body } = await api.getOpenAiBody(JSON.stringify(input));
+  assert.equal(body.model, "gpt-6.2-sol");
+  assert.deepEqual(body.input, input);
+  assert.deepEqual(body.reasoning, { effort: "high" });
+  assert.deepEqual(body.text, { format: { type: "json_object" } });
+  assert.equal(body.max_output_tokens, 25_000);
+  assert.equal(body.messages, undefined);
+  assert.equal(body.max_tokens, undefined);
+  assert.equal(body.max_completion_tokens, undefined);
+  assert.equal(body.temperature, undefined);
+});
+
 test("actual offline CLI sends both prompt versions on every case and repeat without answer leakage", (t) => {
   const temporary = mkdtempSync(join(tmpdir(), "learn-benchmark-"));
   t.after(() => rmSync(temporary, { recursive: true, force: true }));

@@ -22,7 +22,7 @@ full OpenCode agent, its configured model/permissions, or report-writing workflo
 
 ## 1. Run the offline teaching examples
 
-Use the repository's Node 22.22.0+ (within 22.x)/npm 10 toolchain. Promptfoo is pinned to `0.124.1`
+Use the repository's Node 22.22.0+ (within 22.x)/npm 10 toolchain. Promptfoo is pinned to `0.126.0`
 in `package.json` and locked with its dependencies in `package-lock.json`.
 The engine declaration and `npm run verify:toolchain` enforce this release's
 Node **22.22.0** minimum; CI selects a current Node 22 patch before installation.
@@ -115,4 +115,4 @@ model response or semantic grading result, and the paid stages above remain unru
 - [Echo provider](https://www.promptfoo.dev/docs/providers/echo/) (model-graded assertions can still call a judge)
 - [LLM rubric and thresholds](https://www.promptfoo.dev/docs/configuration/expected-outputs/model-graded/llm-rubric/)
 - [CLI flags](https://www.promptfoo.dev/docs/usage/command-line/)
-- [Pinned package metadata](https://www.npmjs.com/package/promptfoo/v/0.124.1)
+- [Pinned package metadata](https://www.npmjs.com/package/promptfoo/v/0.126.0)

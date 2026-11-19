@@ -77,4 +77,4 @@ remain unmeasured; scores apply only to these bounded tool-action fixtures.
 API references: [custom providers](https://www.promptfoo.dev/docs/providers/custom-api/),
 [JavaScript assertions](https://www.promptfoo.dev/docs/configuration/expected-outputs/javascript/),
 and [viewer comparison](https://www.promptfoo.dev/docs/usage/web-ui/). Integration
-is tested against the repository's pinned Promptfoo 0.124.1, not a downloaded latest CLI.
+is tested against the repository's pinned Promptfoo 0.126.0, not a downloaded latest CLI.

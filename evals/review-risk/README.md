@@ -74,7 +74,7 @@ After changing instructions, cases or configuration, run:
 node --test tests/review-risk.test.mjs tests/review-risk-model.test.mjs
 ```
 
-The model wiring test uses the pinned Promptfoo 0.124.1 CLI with controlled local
+The model wiring test uses the pinned Promptfoo 0.126.0 CLI with controlled local
 outputs and network blocked. It checks canonical instructions, evidence/criteria
 separation, independent provider selection, fail-fast setup for missing/blank
 provider IDs, and mechanical/semantic result aggregation. Scripted
