@@ -10,7 +10,7 @@ This repository supports Node.js 22.22.0 or newer within the 22.x line, and npm 
 
 ## What's configured
 
-- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6.1-sol#high`, and sets model-level `high` reasoning effort for `gpt-6.1-sol`. The inline `lean`, `build`, and `plan` agents use `gpt-6-astra#high`, `gpt-6.1-sol`, and `gpt-6-astra`, respectively; Jev routing switches to the same models. See the assignments below for Markdown agents.
+- **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6.2-sol#high` and sets model-level `high` reasoning effort for `gpt-6.2-sol`. The inline `lean`, `build`, and `plan` agents use `gpt-6.2-astra#high`, `gpt-6.2-sol`, and `gpt-6.2-astra`, respectively. Jev routes use the same models as their agents. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
 - **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
@@ -34,16 +34,16 @@ computer after updating its configuration. See the [v2 permissions documentation
 
 | Model | Agents |
 | --- | --- |
-| `openai/gpt-6-astra#xhigh` | `architecture-reviewer`, `design-author`, `proposal-author`, `task-planner` |
-| `openai/gpt-6-astra#high` | `prompt-agent` |
-| `openai/gpt-6-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `frontend-a11y-reviewer`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
-| `openai/gpt-6-sol#high` | `test-author` |
-| `openai/gpt-6-luna#medium` | `implementer` |
-| `openai/gpt-6-luna` (no explicit variant) | `explore` |
+| `openai/gpt-6.2-astra#xhigh` | `architecture-reviewer`, `design-author`, `frontend-a11y-reviewer`, `proposal-author`, `task-planner` |
+| `openai/gpt-6.2-astra#high` | `prompt-agent` |
+| `openai/gpt-6.2-sol#xhigh` | `architecture-boundary-reviewer`, `change-verifier`, `performance-reviewer`, `production-readiness-reviewer`, `sdlc-orchestrator`, `security-audit-reviewer`, `spec-author`, `spec-syncer`, `tdd-orchestrator`, `test-reviewer`, `type-author` |
+| `openai/gpt-6.2-sol#high` | `test-author` |
+| `openai/gpt-6.2-sol#medium` | `implementer` |
+| `openai/gpt-6.2-sol` (no explicit variant) | `explore` |
 
 Subagents with configured models use those selections. A primary agent's configured model does not switch an existing session's selected model when you change agents; select the model separately for `sdlc-orchestrator` or `tdd-orchestrator` when its `#xhigh` tier matters. The same applies when switching among the inline `lean`, `build`, and `plan` agents.
 
-Command-level model selections are separate: `/code-review` configures `openai/gpt-6-astra` (model-level `high` reasoning), `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6-astra#xhigh`.
+Command-level model selections are separate: `/code-review` configures `openai/gpt-6.2-astra`, `/halstead` configures `openai/gpt-6-luna#medium`, and `/audit` configures `openai/gpt-6.2-astra#xhigh`.
 
 ## Language and framework guidance
 
@@ -266,10 +266,10 @@ Example record:
   "timestamp": "2026-09-29T16:00:00.000Z",
   "source": "jev",
   "currentAgent": "lean",
-  "currentModel": "openai/gpt-6-astra#high",
+  "currentModel": "openai/gpt-6.2-astra#high",
   "selectedRoute": "build",
   "selectedAgent": "build",
-  "selectedModel": "openai/gpt-6.1-sol",
+  "selectedModel": "openai/gpt-6.2-sol",
   "confidence": 0.9,
   "probability": 0.8,
   "latencyMs": 0,
@@ -383,10 +383,10 @@ Run it with `/apply <change or task description>` (`commands/apply.md`).
 
 | Phase | Agent | Model | Can edit | Mechanically blocked from |
 | --- | --- | --- | --- | --- |
-| 0 — Contract | `agents/type-author.md` | gpt-6-sol#xhigh | dedicated contract files (`*.d.ts`, `types.ts`, `types/`, `contracts.py`, `types.py`, `*.pyi`) | test files |
-| 1 — RED | `agents/test-author.md` | gpt-6-sol#high | test files only | implementation files and `tasks.md` |
-| 2 — GREEN | `agents/implementer.md` | gpt-6-luna#medium | implementation/config/docs, but not contract or test files | test files and contract files |
-| Orchestration | `agents/tdd-orchestrator.md` | gpt-6-sol#xhigh | `progress.md` + `intent.md` only | all code; can only task the three agents above |
+| 0 — Contract | `agents/type-author.md` | gpt-6.2-sol#xhigh | dedicated contract files (`*.d.ts`, `types.ts`, `types/`, `contracts.py`, `types.py`, `*.pyi`) | test files |
+| 1 — RED | `agents/test-author.md` | gpt-6.2-sol#high | test files only | implementation files and `tasks.md` |
+| 2 — GREEN | `agents/implementer.md` | gpt-6.2-sol#medium | implementation/config/docs, but not contract or test files | test files and contract files |
+| Orchestration | `agents/tdd-orchestrator.md` | gpt-6.2-sol#xhigh | `progress.md` + `intent.md` only | all code; can only task the three agents above |
 
 Model philosophy: specs, architecture, contracts, orchestration, verification, and specialist reviews use `#xhigh` reasoning. Test authoring uses `#high`; implementation uses `#medium`, pinned by the contract, failing test, compiler, and checksums. If the implementer starts burning self-correction retries, bump its reasoning effort up.
 

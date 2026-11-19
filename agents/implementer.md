@@ -1,7 +1,7 @@
 ---
 description: Phase 2 (GREEN) of the type-driven TDD pipeline. Writes minimal production code to pass the test-author's failing test while conforming to the published contract or, in direct-task mode, the orchestrator's acceptance criteria and verification constraints. Cannot modify tests. Invoked by tdd-orchestrator after test-author or directly for config, docs, and trivial tasks.
 mode: subagent
-model: openai/gpt-6-luna#medium
+model: openai/gpt-6.2-sol#medium
 permissions:
   - action: "edit"
     resource: "*"

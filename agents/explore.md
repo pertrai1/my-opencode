@@ -1,7 +1,7 @@
 ---
 description: Create a restricted, specialized agent called explore dedicated solely to codebase analysis, reconnaissance, and reading.
 mode: subagent
-model: openai/gpt-6-luna
+model: openai/gpt-6.2-sol
 permissions:
   - action: "*"
     resource: "*"

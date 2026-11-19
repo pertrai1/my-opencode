@@ -1,7 +1,7 @@
 ---
 description: Review a working-tree or PR diff for architectural fit, challenge review risk, and launch Difit with findings.
 agent: plan
-model: openai/gpt-6-astra
+model: openai/gpt-6.2-astra
 ---
 
 Review the current change set in the working tree, or the full PR diff when the

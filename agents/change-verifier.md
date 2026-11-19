@@ -1,7 +1,7 @@
 ---
 description: Verifies a change against planning artifacts, task state, and implementation evidence, and distinguishes blocking issues from warnings before archive readiness.
 mode: subagent
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 permissions:
   - action: "edit"
     resource: "*"
@@ -43,7 +43,7 @@ Before writing `verification.md`, reason from the evidence provided by the orche
 - Compare claimed implementation against proposal, spec, design, and task intent.
 - Separately assess validation: does a representative scenario support the user's
   intended outcome, not merely conformance to the written spec? In `Functional
-  Check` and `Test Coverage Check`, identify a relevant disconfirming case and
+Check` and `Test Coverage Check`, identify a relevant disconfirming case and
   what plausible defect the assertions would catch, or explain non-applicability.
 - In `Findings`, `Unverified Areas`, and `Recommendation`, surface material
   decisions, assumptions, changed defaults, evidence gaps, and the specific human

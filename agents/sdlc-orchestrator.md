@@ -1,7 +1,7 @@
 ---
 description: Orchestrates OpenSpec change lifecycle from intake through archive readiness, owns workflow state transitions, and delegates planning/implementation/review work to existing role agents.
 mode: primary
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 permissions:
   - action: "edit"
     resource: "*"
@@ -209,11 +209,11 @@ Three lifecycle phases have detailed contracts packaged as skills. Each is long 
 only one applies at a time, so load a contract with the skill tool when its phase
 starts instead of keeping all of them in context.
 
-| Lifecycle states | Skill |
-| --- | --- |
+| Lifecycle states                                                           | Skill            |
+| -------------------------------------------------------------------------- | ---------------- |
 | `target-discovery`, and any later reselection of commands or verifier mode | `sdlc-discovery` |
-| `planning`, `implementation` | `sdlc-delivery` |
-| `verification`, `human-approval`, `archive-readiness` | `sdlc-closure` |
+| `planning`, `implementation`                                               | `sdlc-delivery`  |
+| `verification`, `human-approval`, `archive-readiness`                      | `sdlc-closure`   |
 
 - Load the matching skill before acting in that state or delegating its work.
 - On resume or after compaction, read the active change's `progress.md` and

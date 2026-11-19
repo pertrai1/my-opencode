@@ -5,9 +5,9 @@ const cases = JSON.parse(readFileSync(new URL("./guidance-cases.json", import.me
 export default {
   description: "Angular guidance evaluation — paid model and judge calls, explicit opt-in",
   prompts: ["file://guidance-prompt.mjs"],
-  providers: ["openai:gpt-6.1-sol"],
+  providers: ["openai:gpt-6.2-sol"],
   defaultTest: {
-    options: { provider: "openai:gpt-6.1-sol" },
+    options: { provider: "openai:gpt-6.2-sol" },
   },
   evaluateOptions: { maxConcurrency: 1 },
   tests: cases.map(scenario => ({

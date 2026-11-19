@@ -1,7 +1,7 @@
 ---
 description: Phase 0 of the type-driven TDD pipeline. Writes type definitions, interfaces, and function signatures for a slice BEFORE any tests or implementation exist. No runtime logic. Invoked by tdd-orchestrator.
 mode: subagent
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 permissions:
   - action: "edit"
     resource: "*"
@@ -154,11 +154,11 @@ Return exactly these sections:
 
 ## Contract mechanism by language
 
-| Language | Contract form | Verifier |
-| --- | --- | --- |
-| TypeScript | interfaces/types in dedicated files (`types.ts`, `types/`, `.d.ts`) | `tsc --noEmit` or the repo's typecheck script |
-| Python | `Protocol`, `TypedDict`, dataclass, and signature declarations in a dedicated module (`types.py`, `contracts.py`, or `.pyi` stubs) | `mypy` or `pyright` |
-| JS with JSDoc/checkJs setup | `.d.ts` declaration files | `tsc --checkJs` |
+| Language                    | Contract form                                                                                                                      | Verifier                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| TypeScript                  | interfaces/types in dedicated files (`types.ts`, `types/`, `.d.ts`)                                                                | `tsc --noEmit` or the repo's typecheck script |
+| Python                      | `Protocol`, `TypedDict`, dataclass, and signature declarations in a dedicated module (`types.py`, `contracts.py`, or `.pyi` stubs) | `mypy` or `pyright`                           |
+| JS with JSDoc/checkJs setup | `.d.ts` declaration files                                                                                                          | `tsc --checkJs`                               |
 
 ## Rules
 

@@ -24,41 +24,41 @@ function response(choice, probabilities, confidence = 0.9) {
 
 test("routes a concrete implementation to build when Jev is confident", async () => {
   const result = await routeAgent(
-    { text: "Implement the parser and add tests", currentAgent: "lean", currentModel: "openai/gpt-6-astra#high" },
+    { text: "Implement the parser and add tests", currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high" },
     { systemOne: async () => response("build", { current: 0.05, lean: 0.1, build: 0.8, plan: 0.05 }) },
     () => 100,
   );
 
   assert.equal(result.route, "build");
   assert.equal(result.agent, "build");
-  assert.equal(result.model, "openai/gpt-6.1-sol");
+  assert.equal(result.model, "openai/gpt-6.2-sol");
   assert.equal(result.source, "typesafe");
   assert.equal(result.accepted, true);
 });
 
 test("keeps the current route when Jev is uncertain", async () => {
   const result = await routeAgent(
-    { text: "Please take a look at this", currentAgent: "lean", currentModel: "openai/gpt-6-astra#high" },
+    { text: "Please take a look at this", currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high" },
     { systemOne: async () => response("plan", { current: 0.1, lean: 0.2, build: 0.35, plan: 0.35 }, 0.4) },
     () => 100,
   );
 
   assert.equal(result.route, "current");
   assert.equal(result.agent, "lean");
-  assert.equal(result.model, "openai/gpt-6-astra#high");
+  assert.equal(result.model, "openai/gpt-6.2-astra#high");
   assert.equal(result.reason, "uncertain-or-current");
 });
 
 test("ignores unknown route names instead of accepting inherited object properties", async () => {
   const result = await routeAgent(
-    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6-astra#high" },
+    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high" },
     { systemOne: async () => response("toString", {}, 1) },
     () => 100,
   );
 
   assert.equal(result.route, "current");
   assert.equal(result.agent, "lean");
-  assert.equal(result.model, "openai/gpt-6-astra#high");
+  assert.equal(result.model, "openai/gpt-6.2-astra#high");
   assert.equal(result.reason, "uncertain-or-current");
 });
 
@@ -66,7 +66,7 @@ test("falls back without retaining provider error messages or changing the sessi
   const markers = ["synthetic-provider-credential", "/private/synthetic-project/request.txt", "synthetic-response-content"];
   const times = [100, 112.6];
   const result = await routeAgent(
-    { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
+    { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6.2-astra" },
     { systemOne: async () => { throw new Error(markers.join("\n")); } },
     () => times.shift(),
   );
@@ -74,7 +74,7 @@ test("falls back without retaining provider error messages or changing the sessi
   assert.equal(result.source, "fallback");
   assert.equal(result.route, "current");
   assert.equal(result.agent, "plan");
-  assert.equal(result.model, "openai/gpt-6-astra");
+  assert.equal(result.model, "openai/gpt-6.2-astra");
   assert.equal(result.latencyMs, 13);
   assert.equal(result.reason, "typesafe-error");
   for (const marker of markers) assert.equal(JSON.stringify(result).includes(marker), false);
@@ -83,7 +83,7 @@ test("falls back without retaining provider error messages or changing the sessi
 test("falls back safely for non-Error provider rejections", async () => {
   for (const failure of ["synthetic-rejection-text", { message: "synthetic-rejection-message" }, null, undefined]) {
     const result = await routeAgent(
-      { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
+      { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6.2-astra" },
       { systemOne: async () => { throw failure; } },
       () => 100,
     );
@@ -91,7 +91,7 @@ test("falls back safely for non-Error provider rejections", async () => {
     assert.equal(result.source, "fallback");
     assert.equal(result.route, "current");
     assert.equal(result.agent, "plan");
-    assert.equal(result.model, "openai/gpt-6-astra");
+    assert.equal(result.model, "openai/gpt-6.2-astra");
     assert.equal(result.reason, "typesafe-error");
     assert.equal(result.latencyMs, 0);
     assert.equal(JSON.stringify(result).includes("synthetic-rejection"), false);
@@ -106,7 +106,7 @@ test("falls back without reading a provider error's message getter", async () =>
     throw new Error("synthetic-message-getter-failure");
   } });
   const result = await routeAgent(
-    { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6-astra" },
+    { text: "Review this change", currentAgent: "plan", currentModel: "openai/gpt-6.2-astra" },
     { systemOne: async () => { throw failure; } },
     () => 100,
   );
@@ -115,7 +115,7 @@ test("falls back without reading a provider error's message getter", async () =>
   assert.equal(result.source, "fallback");
   assert.equal(result.route, "current");
   assert.equal(result.agent, "plan");
-  assert.equal(result.model, "openai/gpt-6-astra");
+  assert.equal(result.model, "openai/gpt-6.2-astra");
   assert.equal(result.reason, "typesafe-error");
   assert.equal(result.latencyMs, 0);
 });
@@ -127,7 +127,7 @@ test("falls back when the default TypeSafe client cannot be constructed", async 
     const result = await routeAgent({
       text: "Review this change",
       currentAgent: "plan",
-      currentModel: "openai/gpt-6-astra",
+      currentModel: "openai/gpt-6.2-astra",
     });
 
     assert.equal(result.source, "fallback");
@@ -142,7 +142,7 @@ test("falls back when the default TypeSafe client cannot be constructed", async 
 test("preserves the complete route probability distribution", async () => {
   const probabilities = { current: 0.05, lean: 0.1, build: 0.8, plan: 0.05 };
   const result = await routeAgent(
-    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6-astra#high" },
+    { text: "Implement the parser", currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high" },
     { systemOne: async () => response("build", probabilities) },
     () => 100,
   );
@@ -154,7 +154,7 @@ test("preserves explicitly selected agents", () => {
   assert.equal(hasExplicitAgentSelection(undefined, "sdlc-orchestrator"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [{ name: "plan" }] }, "lean"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [] }, "lean"), false);
-  assert.equal(hasExplicitAgentSelection({ model: "openai/gpt-6-astra" }, "lean"), true);
+  assert.equal(hasExplicitAgentSelection({ model: "openai/gpt-6.2-astra" }, "lean"), true);
 });
 
 test("exposes a closed, versioned route policy", () => {
@@ -198,9 +198,9 @@ test("parses OpenCode model references", () => {
     id: "gpt-6-luna",
     variant: "high",
   });
-  assert.deepEqual(parseModelRef("openai/gpt-6-sol"), {
+  assert.deepEqual(parseModelRef("openai/gpt-6.2-sol"), {
     providerID: "openai",
-    id: "gpt-6-sol",
+    id: "gpt-6.2-sol",
   });
   assert.equal(parseModelRef("invalid"), undefined);
 });
@@ -263,9 +263,9 @@ test("buckets request length without retaining prompt content or exact length", 
 
 test("includes only configured current agent and model identifiers", () => {
   for (const [currentAgent, currentModel] of [
-    ["lean", "openai/gpt-6-astra#high"],
-    ["build", "openai/gpt-6.1-sol"],
-    ["plan", "openai/gpt-6-astra"],
+    ["lean", "openai/gpt-6.2-astra#high"],
+    ["build", "openai/gpt-6.2-sol"],
+    ["plan", "openai/gpt-6.2-astra"],
   ]) {
     assert.deepEqual(sanitizeRoutingInput({ text: "request", currentAgent, currentModel }), {
       requestKind: "nonempty", requestLengthBucket: "short", currentAgent, currentModel,
@@ -333,7 +333,7 @@ test("provider payloads depend only on allowed shape, with no prompt hashes or h
   const payloads = [];
   for (const text of ["synthetic secret A", "unrelated content"]) {
     await routeAgent({
-      text, currentAgent: "lean", currentModel: "openai/gpt-6-astra#high",
+      text, currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high",
       context: { attachedFiles: Infinity, attachedAgents: "synthetic secret", attachedSkills: 1000, text },
     }, { systemOne: async (payload) => {
       payloads.push(JSON.parse(JSON.stringify(payload)));
@@ -344,14 +344,14 @@ test("provider payloads depend only on allowed shape, with no prompt hashes or h
   assert.equal(new Set(payloads.map((payload) => JSON.stringify(payload))).size, 1);
   for (const payload of payloads) assert.deepEqual(payload.state.request, {
     requestKind: "nonempty", requestLengthBucket: "short",
-    currentAgent: "lean", currentModel: "openai/gpt-6-astra#high",
+    currentAgent: "lean", currentModel: "openai/gpt-6.2-astra#high",
     context: { attachedFiles: 0, attachedAgents: 0, attachedSkills: 100 },
   });
 });
 
 test("retains confidence and probability thresholds with minimized input", async () => {
   for (const [probability, confidence, expected] of [[0.6, 0.55, "build"], [0.599, 0.55, "current"], [0.6, 0.549, "current"]]) {
-    const result = await routeAgent({ text: "request", currentAgent: "plan", currentModel: "openai/gpt-6-astra" }, {
+    const result = await routeAgent({ text: "request", currentAgent: "plan", currentModel: "openai/gpt-6.2-astra" }, {
       systemOne: async () => ({ ...response("build", { build: probability }, confidence), ignored: "synthetic secret" }),
     });
     assert.equal(result.route, expected);

@@ -29,7 +29,7 @@ ANGULAR_SKILL_ANGULAR_ROOT="/absolute/path/to/angular-app" \
   --no-cache --no-share --no-progress-bar
 ```
 
-The live eval uses the existing `lean` agent and `openai/gpt-6-astra` model with
+The live eval uses the existing `lean` agent and `openai/gpt-6.2-astra` model with
 `high` reasoning. It makes paid model calls. Missing, blank, nonexistent, and
 non-directory roots return provider setup errors with no OpenCode calls.
 
@@ -86,7 +86,7 @@ PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 \
   --no-cache --no-share --no-progress-bar
 ```
 
-The config uses `openai:gpt-6.1-sol` for both answers and grading, with concurrency
+The config uses `openai:gpt-6.2-sol` for both answers and grading, with concurrency
 limited to one. Review qualitative failures rather than treating the model judge
 as deterministic proof. The rubrics are withheld from the answer prompt.
 

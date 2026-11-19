@@ -22,7 +22,7 @@ export const ROUTES = {
     permissionProfile: "developer-local",
     sideEffectLevel: "local",
     agent: "lean",
-    model: "openai/gpt-6-astra#high",
+    model: "openai/gpt-6.2-astra#high",
   },
   build: {
     description: "Use the build agent for a concrete implementation or debugging request with moderate complexity.",
@@ -30,7 +30,7 @@ export const ROUTES = {
     permissionProfile: "developer-local",
     sideEffectLevel: "local",
     agent: "build",
-    model: "openai/gpt-6.1-sol",
+    model: "openai/gpt-6.2-sol",
   },
   plan: {
     description: "Use the plan agent for architecture, review, planning, or ambiguous/high-risk work.",
@@ -38,7 +38,7 @@ export const ROUTES = {
     permissionProfile: "review-only",
     sideEffectLevel: "limited",
     agent: "plan",
-    model: "openai/gpt-6-astra",
+    model: "openai/gpt-6.2-astra",
   },
 };
 

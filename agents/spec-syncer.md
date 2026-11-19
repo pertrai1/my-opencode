@@ -1,7 +1,7 @@
 ---
 description: Syncs change-local delta specs into main OpenSpec specs using orchestrator-provided comparisons, rules, and target paths.
 mode: subagent
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 permissions:
   - action: "edit"
     resource: "*"

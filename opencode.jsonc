@@ -3,10 +3,9 @@
   "experimental": {
     "todo": true,
     "subagent_depth": 2,
-    "background_compaction": true,
     "artifacts": true,
   },
-  "model": "openai/gpt-6.1-sol#high",
+  "model": "openai/gpt-6.2-sol#high",
   "providers": {
     "openai": {
       "settings": {
@@ -15,9 +14,12 @@
         "chunkTimeout": 600000,
       },
       "models": {
-        "gpt-6.1-sol": {
+        "gpt-6.2-sol": {
           "settings": {
             "reasoningEffort": "high",
+            "compaction": {
+              "type": "summary",
+            },
           },
         },
       },
@@ -31,7 +33,7 @@
   "agents": {
     "lean": {
       "description": "Lean default agent with a smaller first-call context. Uses local code tools by default and keeps heavier tools opt-in via the build and plan agents.",
-      "model": "openai/gpt-6-astra#high",
+      "model": "openai/gpt-6.2-astra#high",
       "mode": "primary",
       "permissions": [
         {
@@ -83,7 +85,7 @@
       ],
     },
     "build": {
-      "model": "openai/gpt-6.1-sol",
+      "model": "openai/gpt-6.2-sol",
       "permissions": [
         {
           "action": "code-review-graph_apply_refactor_tool",
@@ -93,7 +95,7 @@
       ],
     },
     "plan": {
-      "model": "openai/gpt-6-astra",
+      "model": "openai/gpt-6.2-astra",
     },
   },
   "lsp": true,
@@ -256,7 +258,7 @@
       "fallow": {
         "type": "local",
         "command": ["npx", "-y", "--package=fallow@3.43.1", "fallow-mcp"],
-        "disabled": false,
+        "disabled": true,
       },
       // Opts out of Google usage statistics and uses a temporary browser profile per run.
       "chrome-devtools": {
@@ -286,7 +288,7 @@
           "SONARQUBE_PROJECT_KEY",
           "sonarsource/sonarqube-mcp:1.30.0.4763@sha256:a85875c818d6235fee1ec815e29b0a33a6ef3dd9ef43c63fb4bc018a3bd9443c",
         ],
-        "disabled": false,
+        "disabled": true,
       },
       "codescene": {
         "type": "local",
@@ -296,14 +298,6 @@
         },
         "disabled": false,
       },
-      "rea": {
-        "type": "local",
-        "command": ["npx", "-y", "rea-agents@6.7.0", "mcp"],
-        "environment": {
-          "HOPPER_LAUNCHER_PATH": "/Users/robsimpson/Applications/Hopper Disassembler.app/Contents/MacOS/hopper",
-        },
-        "disabled": true,
-      },
     },
   },
   "tool_output": {
@@ -311,10 +305,5 @@
     "max_bytes": 51200,
   },
   "formatter": true,
-  "plugins": [
-    "@openchamber/opencode-claude@1.6.0"
-  ],
-  "disabled_providers": [
-    "amazon-bedrock"
-  ],
+  "plugins": ["@openchamber/opencode-claude@1.6.0"],
 }

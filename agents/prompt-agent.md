@@ -1,7 +1,7 @@
 ---
 description: "Help refine, debug, critique, and improve OpenCode agent prompts, commands, workflows, handoffs, and multi-agent orchestration rules without modifying files unless explicitly asked."
 mode: all
-model: openai/gpt-6-astra#high
+model: openai/gpt-6.2-astra#high
 permissions:
   - action: "read"
     resource: "*"

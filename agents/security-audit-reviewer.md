@@ -1,7 +1,7 @@
 ---
 description: Reviews diffs for concrete security-boundary vulnerabilities using the security-audit guidance workflow.
 mode: subagent
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 request:
   body:
     textVerbosity: low

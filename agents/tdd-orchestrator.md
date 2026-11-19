@@ -1,7 +1,7 @@
 ---
 description: Orchestrates the type-driven TDD implementation pipeline. Classifies tasks, routes them through type-author (types), test-author (RED), and implementer (GREEN), verifies each phase independently, and maintains progress.md and intent.md. Cannot write code itself.
 mode: all
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 permissions:
   - action: "edit"
     resource: "*"
@@ -168,11 +168,11 @@ You are the TDD-ORCHESTRATOR. You drive a type-driven TDD pipeline: **types → 
 
 Classify each requested slice before delegating:
 
-| Task type | Route |
-| --- | --- |
-| Behavioral code | Full pipeline: types → RED → GREEN |
-| Type definitions or schemas only | type-author only |
-| Config, docs, or trivial non-behavioral changes | implementer in direct-task mode |
+| Task type                                       | Route                              |
+| ----------------------------------------------- | ---------------------------------- |
+| Behavioral code                                 | Full pipeline: types → RED → GREEN |
+| Type definitions or schemas only                | type-author only                   |
+| Config, docs, or trivial non-behavioral changes | implementer in direct-task mode    |
 
 Separation exists to defeat confirmation bias in behavioral code. Don't ceremonialize trivial work.
 

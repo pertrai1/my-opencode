@@ -33,9 +33,9 @@ PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CONFIG_DIR=.p
   --no-cache --no-write --no-share --no-progress-bar
 ```
 
-`live.mjs` uses `openai:gpt-6.1-sol` and the same scenarios/grader. The plan probe
+`live.mjs` uses `openai:gpt-6.2-sol` and the same scenarios/grader. The plan probe
 intentionally uses this model while the trace eval preserves the existing Angular
-harness choice of `gpt-6-astra` at high reasoning; results are not comparable
+harness choice of `gpt-6.2-astra` at high reasoning; results are not comparable
 between models, and availability has not been verified by live calls. It supplies the
 current skill entrypoint and asks for structured activation/reference/action plans.
 Expectations stay in the grader, outside the model prompt. The action vocabulary
@@ -52,7 +52,7 @@ No live calls are part of repository tests or the offline commands above.
 ## Real OpenCode activation and reference trace
 
 `trace.mjs` reuses the Angular live provider, creating a fresh `lean` session with
-`openai/gpt-6-astra` at high reasoning for each case. This makes paid calls; do
+`openai/gpt-6.2-astra` at high reasoning for each case. This makes paid calls; do
 not run without separate authorization. Install this checkout's skills into the
 OpenCode configuration used by the running server and restart it first. The Node
 fixture must contain `export.mjs`, a Node CLI with faulty stream error handling,

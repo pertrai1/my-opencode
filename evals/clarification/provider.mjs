@@ -20,7 +20,7 @@ export default class ClarificationProvider {
     }
 
     const environment = createEnvironment(scenario.files);
-    const model = this.config.model ?? "gpt-6-astra";
+    const model = this.config.model ?? "gpt-6.2-astra";
     const effort = this.config.reasoningEffort ?? "high";
     const responses = [];
 

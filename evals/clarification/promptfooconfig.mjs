@@ -9,7 +9,7 @@ export default {
     {
       id: "file://provider.mjs",
       config: {
-        model: "gpt-6-astra",
+        model: "gpt-6.2-astra",
         reasoningEffort: "high",
       },
     },

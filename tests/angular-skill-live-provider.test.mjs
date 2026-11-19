@@ -141,7 +141,7 @@ test("live provider uses the configured Angular fixture directory", (t) => {
   assert.equal(decodeSession(created.body).location?.directory, setup.angular);
   assert.equal(created.body.agent, "lean");
   assert.deepEqual(created.body.model, {
-    providerID: "openai", id: "gpt-6-astra", variant: "high",
+    providerID: "openai", id: "gpt-6.2-astra", variant: "high",
   });
   assert.deepEqual(calls.map(call => [call.method, call.path]), [
     ["post", "/api/session"],

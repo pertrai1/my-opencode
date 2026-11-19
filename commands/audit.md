@@ -1,7 +1,7 @@
 ---
 description: Audit this entire codebase for materially useful simplifications in its data structures, state representation, control flow, algorithms, and ownership.
 agent: plan
-model: openai/gpt-6-astra#xhigh
+model: openai/gpt-6.2-astra#xhigh
 ---
 
 Audit only.

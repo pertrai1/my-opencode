@@ -1,7 +1,7 @@
 ---
 description: Task-planning author that writes execution-ready, verifiable tasks from proposal/spec/design dependency artifacts.
 mode: subagent
-model: openai/gpt-6-astra#xhigh
+model: openai/gpt-6.2-astra#xhigh
 permissions:
   - action: "edit"
     resource: "*"

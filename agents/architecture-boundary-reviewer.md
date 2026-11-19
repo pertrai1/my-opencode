@@ -1,7 +1,7 @@
 ---
 description: Reviews the current diff only for concrete architectural boundary violations. This is the narrow, edge-focused companion to architecture-reviewer, not a broad design-fitness or drift review.
 mode: subagent
-model: openai/gpt-6-sol#xhigh
+model: openai/gpt-6.2-sol#xhigh
 request:
   body:
     textVerbosity: low

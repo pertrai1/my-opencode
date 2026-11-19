@@ -94,7 +94,7 @@ export default class LiveProvider {
         agent: "lean",
         model: {
           providerID: "openai",
-          id: "gpt-6-astra",
+          id: "gpt-6.2-astra",
           variant: "high",
         },
       }, request);

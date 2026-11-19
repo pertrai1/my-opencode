@@ -13,7 +13,7 @@ const repository = fileURLToPath(new URL("../", import.meta.url));
 const read = path => readFileSync(join(repository, path), "utf8");
 const original = yaml.load(read("evals/learn/promptfooconfig.yaml"));
 const settings = {
-  LEARN_BENCHMARK_PROVIDER: "openai:chat:gpt-6.1-sol",
+  LEARN_BENCHMARK_PROVIDER: "openai:chat:gpt-6.2-sol",
   LEARN_BENCHMARK_REASONING_EFFORT: "high",
 };
 // The production config deliberately has no implicit model settings.
@@ -97,7 +97,7 @@ test("missing or blank settings, invalid provider/effort and unresolved versions
     }
   }
   for (const env of [
-    { LEARN_BENCHMARK_PROVIDER: "openai/gpt-6.1-sol#high" },
+    { LEARN_BENCHMARK_PROVIDER: "openai/gpt-6.2-sol#high" },
     { LEARN_BENCHMARK_PROVIDER: "openai:chat:" },
     { LEARN_BENCHMARK_REASONING_EFFORT: "guess" },
     { LEARN_BASELINE_REF: " " },
@@ -116,7 +116,7 @@ test("pinned OpenAI provider emits configured reasoning and JSON settings withou
   const [provider = {}] = config.providers;
   const api = await loadApiProvider(provider.id, { options: provider });
   const { body } = await api.getOpenAiBody(JSON.stringify([{ role: "user", content: "JSON only" }]));
-  assert.equal(body.model, "gpt-6.1-sol");
+  assert.equal(body.model, "gpt-6.2-sol");
   assert.equal(body.reasoning_effort, "high");
   assert.deepEqual(body.response_format, original.providers[0].config.response_format);
   assert.equal(body.max_completion_tokens, 25_000);
