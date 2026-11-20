@@ -16,7 +16,7 @@ observation. Invalid or prohibited attempts remain failures even after recovery.
 
 ## Run and compare
 
-Use Node 22.22.2+ (22.x), npm 10, and `npm ci` from the repository root. Start an
+Use the [supported toolchain](../../README.md#runtime-requirements) and `npm ci --engine-strict` from the repository root. Start an
 already-installed tool-capable local model server at
 `http://127.0.0.1:11434/v1/chat/completions`. It must run locally, not proxy a paid
 provider. No models are downloaded or credentials loaded by this eval.

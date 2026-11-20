@@ -6,7 +6,9 @@ See the [cheat sheet](docs/cheat-sheet.md) for which command, agent, or skill to
 
 ## Runtime requirements
 
-This repository supports Node.js 22.22.2 or newer within the 22.x line, and npm 10. The supported versions are declared in `package.json` and are validated in CI. If npm reports an engine mismatch, switch to the declared Node.js/npm toolchain before running `npm ci` and the verification commands.
+This repository supports Node.js **22.22.2+ within 22.x** or **24.15.0+ within 24.x**, with npm **10 or 11**. Node 23, 25 and 26 are not supported. `package.json` is the authoritative range; CI runs strict installs and all checks on both minimum versions and current releases of both majors. The `packageManager` value remains the npm 10.9.9 reference version, not a requirement to downgrade a supported npm 11 installation.
+
+Before installing, check `command -v node`, `node -v`, and `npm -v`, then run `npm run verify:toolchain` from this repository. Use your existing version manager to select a supported version for this shell/project; do not change other projects' pins or your system default. For nvm users, `nvm install 24` followed by `nvm use 24` selects the newer supported line (or use `22` to retain that line). Recheck the toolchain, then run `npm ci --engine-strict` and `npm run ubs`. If the verifier suggests `npm install --global` to repair an unsupported npm version, use it only inside your version-manager-isolated Node installation; otherwise select a compatible managed toolchain rather than changing system npm. These commands are suggestions, not automatic repairs; use the dependency's own runtime requirements in other projects.
 
 ## What's configured
 

@@ -36,6 +36,12 @@ for (const [node, expected] of [
   ["22.22.2", 0],
   ["22.23.3", 0],
   ["23.0.0", 1],
+  ["24.14.9", 1],
+  ["24.15.0", 0],
+  ["24.22.3", 0],
+  ["25.0.0", 1],
+  ["26.0.0", 1],
+  ["24.15.0-rc.1", 1],
   ["21.99.99", 1],
   ["22.22.2-rc.1", 1],
 ]) {
@@ -49,19 +55,19 @@ for (const [node, expected] of [
   });
 }
 
-for (const npm of ["9.9.9", "11.0.0", "10.9.9-beta.1", undefined]) {
+for (const npm of ["9.9.9", "12.0.0", "10.9.9-beta.1", undefined]) {
   test(`toolchain verifier rejects reported npm ${npm ?? "unknown"}`, () => {
     const result = verify("22.22.2", npm ?? "");
     assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.match(result.stderr, /npm .* does not satisfy >=10 <11/);
+    assert.match(result.stderr, /npm .* does not satisfy >=10 <12/);
   });
 }
 
 for (const [node, npm, needsNode, needsNpm] of [
   ["20.19.0", "10.9.9", true, false],
   ["22.21.9", "10.9.9", true, false],
-  ["22.22.2", "11.0.0", false, true],
-  ["24.0.0", "11.0.0", true, true],
+  ["22.22.2", "12.0.0", false, true],
+  ["24.0.0", "12.0.0", true, true],
   ["22.22.2", "", false, false],
   ["24.0.0", "", true, false],
 ]) {
@@ -73,7 +79,7 @@ for (const [node, npm, needsNode, needsNpm] of [
     if (needsNode) {
       assert.match(
         result.stderr,
-        /For nvm users:\n {2}nvm install 22\n {2}nvm use 22/,
+        /For nvm users, choose one supported line for this shell\/project:\n {2}nvm install 24 && nvm use 24\n {2}nvm install 22 && nvm use 22/,
       );
     } else {
       assert.doesNotMatch(result.stderr, /nvm/);
@@ -86,7 +92,7 @@ for (const [node, npm, needsNode, needsNpm] of [
       if (needsNode) {
         assert.match(
           result.stderr,
-          /If npm still does not satisfy >=10 <11 after selecting Node\.js/,
+          /If npm still does not satisfy >=10 <12 after selecting Node\.js/,
         );
         assert.ok(
           result.stderr.indexOf("npm run verify:toolchain") <
@@ -124,4 +130,13 @@ for (const color of ["0", "1"]) {
     );
     assert.equal(result.stderr, "");
   });
+}
+
+for (const node of ["22.22.2", "24.15.0"]) {
+  for (const npm of ["10.9.9", "11.12.1"]) {
+    test(`toolchain accepts supported Node ${node} with npm ${npm}`, () => {
+      const result = verify(node, npm);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    });
+  }
 }

@@ -9,7 +9,7 @@ then runs both through the same prompt renderer and one model. Set
 `LEARN_BASELINE_REF` to a commit/ref for a different baseline; it resolves once to
 an exact commit. The report records that SHA and the working-copy SHA-256 hash.
 
-Use Node 22.22.2+ (22.x), npm 10 and `npm ci`. After separately authorizing provider
+Use the [supported toolchain](../../README.md#runtime-requirements) and `npm ci --engine-strict`. After separately authorizing provider
 charges and supplying `OPENAI_API_KEY` outside the repository:
 
 ```sh
@@ -52,7 +52,7 @@ capture stub; their placeholder failures are not model performance results.
 
 ## Existing single-model evaluation
 
-From the repository root, use Node 22.22.2+ (22.x), npm 10, and `npm ci`.
+From the repository root, use the [supported toolchain](../../README.md#runtime-requirements) and `npm ci --engine-strict`.
 The live eval requires an authorized OpenAI API key supplied as `OPENAI_API_KEY`
 outside the repository. It makes ten model requests and can incur provider charges;
 there is no model judge. Do not run it without authorization to use that provider.
