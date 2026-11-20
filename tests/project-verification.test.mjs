@@ -84,7 +84,7 @@ test("materialized target matches child cwd through a symlinked temporary parent
 // These are executed fixture checks, not agent runs or a semantic report grader.
 for (const scenario of [
   {
-    language: "node", command: process.execPath, args: ["--test", "shipping.test.mjs"],
+    language: "node", command: process.execPath, args: ["--test", "--test-reporter=tap", "shipping.test.mjs"],
     manifest: "package.json", source: "shipping.mjs", broken: "return subtotal;",
     fixed: "return subtotal + shipping;", failure: /shipping is included/, success: /# fail 0/,
   },

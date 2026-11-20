@@ -63,5 +63,59 @@ jobs:
       - name: Install dependencies
         run: npm ci --engine-strict
 
-      - name: Check toolchain and Promptfoo contracts
-        run: node --test tests/verify-toolchain.test.mjs tests/learn-benchmark.test.mjs
+      - name: Run all repository checks
+        run: npm run ubs
+
+  verify-node24:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify workflow action pins
+        run: npm run verify:workflow-actions
+
+      - name: Verify Node and npm versions
+        run: npm run verify:toolchain
+
+      - name: Install dependencies
+        run: npm ci --engine-strict
+
+      - name: Markdown lint
+        run: npm run lint:md
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+  verify-minimum-node24:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up minimum supported Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Verify Node and npm versions
+        run: npm run verify:toolchain
+
+      - name: Install dependencies
+        run: npm ci --engine-strict
+
+      - name: Run all repository checks
+        run: npm run ubs

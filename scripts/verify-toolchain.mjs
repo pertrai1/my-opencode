@@ -23,13 +23,15 @@ function compareVersions(left, right) {
   return 0;
 }
 
-// The repository declares bounded >=minimum <maximum ranges, not arbitrary semver.
+// Accept unions of bounded >=minimum <maximum ranges, not arbitrary semver.
 function matchesVersionRange(version, range) {
-  const match = range?.match(/^>=(\d+(?:\.\d+){0,2})\s+<(\d+(?:\.\d+){0,2})$/);
   const actual = versionParts(version);
-  if (!match || !actual) return false;
-  return compareVersions(actual, versionParts(match[1])) >= 0
-    && compareVersions(actual, versionParts(match[2])) < 0;
+  if (!range || !actual) return false;
+  const bounds = range.split(" || ").map((part) => part.match(/^>=(\d+(?:\.\d+){0,2})\s+<(\d+(?:\.\d+){0,2})$/));
+  if (bounds.some((match) => !match)) return false;
+  return bounds.some((match) =>
+    compareVersions(actual, versionParts(match[1])) >= 0
+    && compareVersions(actual, versionParts(match[2])) < 0);
 }
 
 const mismatches = Object.entries(requirements)
@@ -41,9 +43,10 @@ if (mismatches.length > 0) {
   console.error(mismatches.join("\n"));
   const nodeMismatch = !matchesVersionRange(versions.node, requirements.node);
   if (nodeMismatch) {
-    const nodeMajor = requirements.node.match(/^>=(\d+)/)[1];
+    const nodeMajors = [...requirements.node.matchAll(/>=(\d+)/g)].map((match) => match[1]).reverse();
     console.error("Select a Node.js version satisfying %s.", requirements.node);
-    console.error("For nvm users:\n  nvm install %s\n  nvm use %s", nodeMajor, nodeMajor);
+    console.error("For nvm users, choose one supported line for this shell/project:");
+    for (const major of nodeMajors) console.error("  nvm install %s && nvm use %s", major, major);
   }
   if (!versions.npm) {
     console.error("npm version is unknown because npm's user-agent was not provided; run the check through npm.");
