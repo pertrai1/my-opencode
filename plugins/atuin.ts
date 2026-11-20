@@ -1,13 +1,13 @@
 /**
- * Atuin plugin for opencode.
+ * Repository-managed Atuin adapter for OpenCode v2.
  *
  * Tracks bash commands executed by opencode in Atuin history with author
  * `opencode`.
  *
- * Install with:
- *   atuin hook install opencode
- *
- * Then restart opencode.
+ * Already included in this global configuration; no hook installer is needed.
+ * Do not run `atuin hook install opencode` over this managed file: the upstream
+ * installer can replace it with its bundled plugin. Update through this
+ * checkout and restart OpenCode. See README.md for setup guidance.
  */
 
 import { Plugin } from "@opencode/plugin";
