@@ -16,7 +16,7 @@ observation. Invalid or prohibited attempts remain failures even after recovery.
 
 ## Run and compare
 
-Use Node 22.22+ (22.x), npm 10, and `npm ci` from the repository root. Start an
+Use Node 22.22.2+ (22.x), npm 10, and `npm ci` from the repository root. Start an
 already-installed tool-capable local model server at
 `http://127.0.0.1:11434/v1/chat/completions`. It must run locally, not proxy a paid
 provider. No models are downloaded or credentials loaded by this eval.
@@ -77,4 +77,4 @@ remain unmeasured; scores apply only to these bounded tool-action fixtures.
 API references: [custom providers](https://www.promptfoo.dev/docs/providers/custom-api/),
 [JavaScript assertions](https://www.promptfoo.dev/docs/configuration/expected-outputs/javascript/),
 and [viewer comparison](https://www.promptfoo.dev/docs/usage/web-ui/). Integration
-is tested against the repository's pinned Promptfoo 0.124.1, not a downloaded latest CLI.
+is tested against the repository's pinned Promptfoo 0.126.0, not a downloaded latest CLI.

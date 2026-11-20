@@ -34,7 +34,7 @@ measured.
 
 ## Offline verification and calibration
 
-Use the repository's Node 22.22+ (22.x), npm 10 and installed Promptfoo 0.124.1.
+Use the repository's Node 22.22.2+ (22.x), npm 10 and installed Promptfoo 0.126.0.
 No installation, credential loading, model download or remote judge is required.
 
 ```sh

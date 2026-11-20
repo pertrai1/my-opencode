@@ -31,26 +31,27 @@ function verify(node, npm = "10.9.9", env = {}) {
 
 for (const [node, expected] of [
   ["22.21.9", 1],
-  ["22.22.0", 0],
-  ["22.22.1", 0],
+  ["22.22.0", 1],
+  ["22.22.1", 1],
+  ["22.22.2", 0],
   ["22.23.3", 0],
   ["23.0.0", 1],
   ["21.99.99", 1],
-  ["22.22.0-rc.1", 1],
+  ["22.22.2-rc.1", 1],
 ]) {
   test(`toolchain verifier ${expected ? "rejects" : "accepts"} reported Node ${node}`, () => {
     const result = verify(node);
     assert.equal(result.status, expected, result.stdout + result.stderr);
     assert.match(
       result.stdout + result.stderr,
-      expected ? /node .* does not satisfy >=22\.22\.0 <23/ : /Toolchain OK/,
+      expected ? /node .* does not satisfy >=22\.22\.2 <23/ : /Toolchain OK/,
     );
   });
 }
 
 for (const npm of ["9.9.9", "11.0.0", "10.9.9-beta.1", undefined]) {
   test(`toolchain verifier rejects reported npm ${npm ?? "unknown"}`, () => {
-    const result = verify("22.22.0", npm ?? "");
+    const result = verify("22.22.2", npm ?? "");
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(result.stderr, /npm .* does not satisfy >=10 <11/);
   });
@@ -59,9 +60,9 @@ for (const npm of ["9.9.9", "11.0.0", "10.9.9-beta.1", undefined]) {
 for (const [node, npm, needsNode, needsNpm] of [
   ["20.19.0", "10.9.9", true, false],
   ["22.21.9", "10.9.9", true, false],
-  ["22.22.0", "11.0.0", false, true],
+  ["22.22.2", "11.0.0", false, true],
   ["24.0.0", "11.0.0", true, true],
-  ["22.22.0", "", false, false],
+  ["22.22.2", "", false, false],
   ["24.0.0", "", true, false],
 ]) {
   test(`failure guidance for Node ${node} and npm ${npm === "" ? "unknown" : npm} is conditional`, () => {
@@ -111,7 +112,7 @@ for (const [node, npm, needsNode, needsNpm] of [
 
 for (const color of ["0", "1"]) {
   test(`compatible versions keep success output free of repair guidance with FORCE_COLOR=${color}`, () => {
-    const result = verify("22.22.0", "10.9.9", {
+    const result = verify("22.22.2", "10.9.9", {
       FORCE_COLOR: color,
       NO_COLOR: undefined,
       NODE_DISABLE_COLORS: undefined,
@@ -119,7 +120,7 @@ for (const color of ["0", "1"]) {
     assert.equal(result.status, 0);
     assert.match(
       stripVTControlCharacters(result.stdout),
-      /^Toolchain OK \{ node: '22\.22\.0', npm: '10\.9\.9' \}\n$/,
+      /^Toolchain OK \{ node: '22\.22\.2', npm: '10\.9\.9' \}\n$/,
     );
     assert.equal(result.stderr, "");
   });

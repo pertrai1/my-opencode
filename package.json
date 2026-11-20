@@ -1,6 +1,6 @@
 {
   "engines": {
-    "node": ">=22.22.0 <23",
+    "node": ">=22.22.2 <23",
     "npm": ">=10 <11"
   },
   "packageManager": "npm@10.9.9",
@@ -21,7 +21,7 @@
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "markdownlint-cli2": "^0.18.1",
-    "promptfoo": "0.124.1",
+    "promptfoo": "0.126.0",
     "typescript": "^6.0.3"
   },
   "scripts": {
