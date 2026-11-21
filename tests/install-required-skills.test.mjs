@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
+import { lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,11 @@ import yaml from "js-yaml";
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const installer = path.join(repository, "scripts/install-required-skills.mjs");
 const names = ["frontend-a11y", "codescene-mcp", "modern-web-guidance"];
+const openspecNames = [
+  "openspec-apply-change", "openspec-archive-change", "openspec-bulk-archive-change",
+  "openspec-continue-change", "openspec-explore", "openspec-ff-change",
+  "openspec-new-change", "openspec-onboard", "openspec-sync-specs", "openspec-verify-change",
+];
 
 function fixture(t) {
   const home = mkdtempSync(path.join(tmpdir(), "required-skills-"));
@@ -28,9 +33,55 @@ test("dry run leaves a clean home untouched; install and rerun use the maintaine
     assert.equal(realpathSync(link), realpathSync(path.join(repository, "skills", name)));
     assert.equal(readFileSync(path.join(link, "SKILL.md"), "utf8"), readFileSync(path.join(repository, "skills", name, "SKILL.md"), "utf8"));
   }
+  assert.deepEqual(readdirSync(path.join(home, ".agents/skills")).sort(), [...names].sort());
   assert.equal(run().match(/Already linked/g).length, 3);
   assert.ok(existsSync(path.join(home, ".agents/skills/frontend-a11y/A11Y.md")));
   assert.equal(realpathSync(path.join(home, ".agents/skills/codescene-mcp/references/setup.md")), realpathSync(path.join(repository, "docs/codescene-setup.md")));
+});
+
+test("OpenSpec opt-in links the exact maintained skills without changing an unrelated repository", t => {
+  const root = fixture(t);
+  const home = path.join(root, "home");
+  const project = path.join(root, "project");
+  mkdirSync(home);
+  mkdirSync(project);
+  execFileSync("git", ["init", "--quiet"], { cwd: project });
+  const run = (...args) => execFileSync(process.execPath, [installer, "--home", home, "--with-openspec", ...args], {
+    cwd: project, encoding: "utf8",
+  });
+  assert.equal(run("--dry-run").match(/^Would link:/gm).length, names.length + openspecNames.length);
+  assert.deepEqual(readdirSync(home), []);
+  run();
+  const destination = path.join(home, ".agents/skills");
+  assert.deepEqual(readdirSync(destination).sort(), [...names, ...openspecNames].sort());
+  for (const name of openspecNames) {
+    const link = path.join(destination, name);
+    assert.ok(lstatSync(link).isSymbolicLink());
+    assert.equal(realpathSync(link), realpathSync(path.join(repository, ".agents/skills", name)));
+    assert.ok(readFileSync(path.join(link, "SKILL.md"), "utf8").includes(`name: ${name}`));
+  }
+  assert.equal(run().match(/^Already linked:/gm).length, names.length + openspecNames.length);
+  assert.deepEqual(readdirSync(project), [".git"]);
+  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }), "");
+});
+
+test("an OpenSpec conflict only blocks opt-in and leaves the entire plan untouched", t => {
+  const home = fixture(t);
+  const parent = path.join(home, ".agents/skills");
+  const conflict = path.join(parent, "openspec-verify-change");
+  mkdirSync(conflict, { recursive: true });
+  const skill = path.join(conflict, "SKILL.md");
+  writeFileSync(skill, "keep upstream or local edits");
+  const run = (...args) => spawnSync(process.execPath, [installer, "--home", home, ...args], { encoding: "utf8" });
+  for (const args of [["--dry-run"], []]) {
+    const result = run("--with-openspec", ...args);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Conflict preserved: .*openspec-verify-change/);
+    assert.deepEqual(readdirSync(parent), ["openspec-verify-change"]);
+    assert.equal(readFileSync(skill, "utf8"), "keep upstream or local edits");
+  }
+  assert.equal(run().status, 0);
+  assert.deepEqual(readdirSync(parent).sort(), [...names, "openspec-verify-change"].sort());
 });
 
 for (const kind of ["directory", "file", "other-link", "broken-link"]) {

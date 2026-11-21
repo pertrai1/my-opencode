@@ -5,13 +5,20 @@ import { fileURLToPath } from "node:url";
 
 const requiredSkills = ["frontend-a11y", "codescene-mcp"];
 const dependencies = ["modern-web-guidance"];
+// Only the lifecycle skills maintained in this checkout, not every project skill.
+const openspecSkills = [
+  "openspec-apply-change", "openspec-archive-change", "openspec-bulk-archive-change",
+  "openspec-continue-change", "openspec-explore", "openspec-ff-change",
+  "openspec-new-change", "openspec-onboard", "openspec-sync-specs", "openspec-verify-change",
+];
 const repository = fileURLToPath(new URL("../", import.meta.url));
 
 function options(args) {
-  const result = { home: homedir(), dryRun: false };
+  const result = { home: homedir(), dryRun: false, withOpenSpec: false };
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--dry-run") result.dryRun = true;
+    else if (arg === "--with-openspec") result.withOpenSpec = true;
     else if (arg === "--home") {
       result.home = path.resolve(homeArgument(args[++index]));
     } else throw new Error(`Unknown or incomplete argument: ${arg}`);
@@ -33,8 +40,8 @@ async function optional(operation) {
   }
 }
 
-async function planSkill(home, name) {
-  const source = await realpath(path.join(repository, "skills", name));
+async function planSkill(home, directory, name) {
+  const source = await realpath(path.join(repository, directory, name));
   await readFile(path.join(source, "SKILL.md"), "utf8");
   const destination = path.join(home, ".agents", "skills", name);
   const existing = await optional(() => lstat(destination));
@@ -47,9 +54,12 @@ async function planSkill(home, name) {
 }
 
 async function main() {
-  const { home, dryRun } = options(process.argv.slice(2));
+  const { home, dryRun, withOpenSpec } = options(process.argv.slice(2));
   // Check every destination before creating anything; never replace user files.
-  const plan = await Promise.all([...requiredSkills, ...dependencies].map(name => planSkill(home, name)));
+  const plan = await Promise.all([
+    ...[...requiredSkills, ...dependencies].map(name => planSkill(home, "skills", name)),
+    ...(withOpenSpec ? openspecSkills.map(name => planSkill(home, ".agents/skills", name)) : []),
+  ]);
   for (const item of plan) {
     if (!item.exists && !dryRun) {
       await mkdir(path.dirname(item.destination), { recursive: true });
