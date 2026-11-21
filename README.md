@@ -416,6 +416,7 @@ Language support: the orchestrator detects the type checker at intake: TypeScrip
 The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 
 - OpenSpec change lifecycle work covers new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard flows. The `opsx-*` command wrappers and a `.opencode/skills/openspec-*/` copy are not tracked in this repository; the tracked OpenSpec skills are `.agents/skills/openspec-*/`.
+- For discovery in other repositories, [opt in to global OpenSpec skill links](docs/required-skills.md#optional-discover-this-checkouts-openspec-skills-in-other-projects). This does not initialize those repositories or choose a planning store.
 - The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
 - Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
 - `tdd-orchestrator` uses `mode: all` to support direct `/apply` entry and SDLC delegation. `experimental.subagent_depth: 2` permits SDLC → TDD → worker launches; TDD retains its three-worker allowlist. Restart OpenCode after changing these settings.
