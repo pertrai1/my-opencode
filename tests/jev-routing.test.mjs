@@ -31,7 +31,7 @@ function loadRoutingPlugin(logs) {
 async function setup(t, get, systemOne) {
   const provider = t.mock.method(TypeSafeClient.prototype, "systemOne", systemOne);
   const environment = { OPENCODE_JEV_ROUTING: "1", TYPESAFE_API_KEY: "synthetic-test-key" };
-  for (const [key, value] of Object.entries(environment)) {
+  for (const [key, value] of Object.entries({ ...environment, OPENCODE_JEV_ROUTING_DRY_RUN: "0" })) {
     const previous = process.env[key];
     t.after(() => {
       if (previous === undefined) delete process.env[key];
