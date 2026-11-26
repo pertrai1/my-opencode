@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 import test from "node:test";
 import ts from "typescript";
 import yaml from "js-yaml";
@@ -66,7 +67,7 @@ function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, env, encoding: "utf8", timeout: 10_000 });
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.signal, null, result.stderr);
-  return { exit: result.status, output: result.stdout + result.stderr };
+  return { exit: result.status, output: stripVTControlCharacters(result.stdout + result.stderr) };
 }
 
 test("materialized target matches child cwd through a symlinked temporary parent", t => {
