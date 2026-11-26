@@ -154,7 +154,20 @@ test("preserves explicitly selected agents", () => {
   assert.equal(hasExplicitAgentSelection(undefined, "sdlc-orchestrator"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [{ name: "plan" }] }, "lean"), true);
   assert.equal(hasExplicitAgentSelection({ agents: [] }, "lean"), false);
-  assert.equal(hasExplicitAgentSelection({ model: "openai/gpt-6.2-astra" }, "lean"), true);
+});
+
+test("routing keeps the current session when a provider score is missing or invalid", async () => {
+  for (const [probabilities, confidence] of [
+    [undefined, 0.9], [{ plan: NaN }, 0.9], [{ plan: Infinity }, 0.9],
+    [{ plan: 1.1 }, 0.9], [{ plan: "0.9" }, 0.9], [{ plan: 0.9 }, Infinity],
+  ]) {
+    const result = await routeAgent(
+      { text: "Review a design", currentAgent: "lean" },
+      { systemOne: async () => response("plan", probabilities, confidence) },
+    );
+    assert.equal(result.route, "current");
+    assert.equal(result.accepted, false);
+  }
 });
 
 test("exposes a closed, versioned route policy", () => {

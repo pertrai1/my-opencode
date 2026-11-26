@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode/plugin";
+import type { SessionDomain, SessionPrompt } from "@opencode/plugin/promise/session";
 import {
   hasExplicitAgentSelection,
   getRoutingDiagnostic,
@@ -18,6 +19,26 @@ function currentModelRef(model: unknown): string | undefined {
   return `${value.providerID}/${value.id}${typeof value.variant === "string" ? `#${value.variant}` : ""}`;
 }
 
+async function applyRoute(
+  session: SessionDomain,
+  sessionID: SessionPrompt["sessionID"],
+  currentAgent: string | undefined,
+  decision: Awaited<ReturnType<typeof routeAgent>>,
+): Promise<void> {
+  if (decision.route === "current" || process.env.OPENCODE_JEV_ROUTING_DRY_RUN === "1") return;
+  const latest = await session.get({ sessionID });
+  if (latest.model || latest.agent !== currentAgent) return;
+
+  if (decision.agent && decision.agent !== currentAgent) {
+    await session.switchAgent({ sessionID, agent: decision.agent });
+    // The user can select a model or another agent while this request is pending.
+    const afterSwitch = await session.get({ sessionID });
+    if (afterSwitch.model || afterSwitch.agent !== decision.agent) return;
+  }
+  const model = parseModelRef(decision.model);
+  if (model) await session.switchModel({ sessionID, model });
+}
+
 export default Plugin.define({
   id: "jev-routing",
   async setup(ctx) {
@@ -28,20 +49,22 @@ export default Plugin.define({
 
     await ctx.session.hook("prompt", async (input) => {
       const session = await ctx.session.get({ sessionID: input.sessionID });
-      if (hasExplicitAgentSelection(input.prompt, session.agent)) {
-        console.info("[jev-routing] preserving explicit agent selection", {
+      const currentModel = currentModelRef(session.model);
+      // V2 stores model selections on the session and does not expose their origin.
+      if (session.model || hasExplicitAgentSelection(input.prompt, session.agent)) {
+        console.info("[jev-routing] preserving session selection", {
           agent: session.agent,
         });
         await emitRoutingProvenance(createRoutingProvenance({
           sessionId: input.sessionID,
           timestamp: new Date().toISOString(),
           currentAgent: session.agent,
-          currentModel: currentModelRef(session.model),
+          currentModel,
           decision: {
             source: "explicit",
             route: "current",
             agent: session.agent,
-            model: currentModelRef(session.model),
+            model: currentModel,
             accepted: false,
             reason: "explicit-selection-bypass",
           },
@@ -49,7 +72,6 @@ export default Plugin.define({
         }), console.info, { enabled: true });
         return;
       }
-      const currentModel = currentModelRef(session.model);
       const decision = await routeAgent({
         text: input.prompt.text,
         currentAgent: session.agent,
@@ -82,14 +104,7 @@ export default Plugin.define({
         },
       }), console.info, { enabled: true });
 
-      if (decision.route === "current" || process.env.OPENCODE_JEV_ROUTING_DRY_RUN === "1") return;
-      if (decision.agent && decision.agent !== session.agent) {
-        await ctx.session.switchAgent({ sessionID: input.sessionID, agent: decision.agent });
-      }
-      const model = parseModelRef(decision.model);
-      if (model && decision.model !== currentModel) {
-        await ctx.session.switchModel({ sessionID: input.sessionID, model });
-      }
+      await applyRoute(ctx.session, input.sessionID, session.agent, decision);
     });
   },
 });

@@ -15,12 +15,18 @@ async function createGraphPlugin(directory, failure, run = async () => ({ stdout
   current_sha: 'same',
   built_on_branch: 'main',
   current_branch: 'main',
-})) {
+}), resolveRoot = cwd => cwd) {
   const calls = [];
   const statusCalls = [];
   const logs = [];
   const execFile = () => {};
   execFile[promisify.custom] = async (file, args, options = {}) => {
+    if (file === 'git') {
+      assert.deepEqual(Array.from(args), ['rev-parse', '--show-toplevel']);
+      const root = resolveRoot(options.cwd);
+      if (!root) throw new Error('not a git repository');
+      return { stdout: `${root}\n` };
+    }
     const call = { file, args: Array.from(args), cwd: options.cwd };
     if (args.at(0) === 'status') statusCalls.push(call);
     else calls.push(call);
@@ -85,6 +91,77 @@ test('startup does not rebuild a current graph', async () => {
   const { calls, statusCalls } = await createGraphPlugin(path.resolve('fixtures', 'current repository'));
   assert.equal(statusCalls.length, 1);
   assert.deepEqual(calls, []);
+});
+
+test('non-Git locations do not start graph maintenance', async () => {
+  const { calls, statusCalls, hooks } = await createGraphPlugin('/outside', undefined, undefined, undefined, () => undefined);
+  await hooks['execute.before']({ tool: 'shell', input: { command: 'git commit -m fix' } });
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  assert.deepEqual(statusCalls, []);
+  assert.deepEqual(calls, []);
+});
+
+test('edits initialize the graph when a Git repository first appears', async () => {
+  const location = path.resolve('new repository');
+  let initialized = false;
+  const { calls, statusCalls, hooks } = await createGraphPlugin(
+    location, undefined, undefined, JSON.stringify({ files: 0 }), () => initialized ? location : undefined,
+  );
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  assert.deepEqual(calls, []);
+  assert.deepEqual(statusCalls, []);
+
+  initialized = true;
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  assert.deepEqual(calls, [
+    { file: 'code-review-graph', args: ['build'], cwd: location },
+  ]);
+  assert.equal(statusCalls.length, 1);
+
+  await hooks['execute.after']({ tool: 'patch', status: 'completed' });
+  assert.deepEqual(calls.map(call => call.args), [['build'], ['update', '--skip-flows']]);
+  assert.equal(statusCalls.length, 1);
+});
+
+test('edits refresh the graph when Git starts resolving a different worktree root', async () => {
+  const parent = path.resolve('parent');
+  const child = path.join(parent, 'child');
+  let root = parent;
+  const { calls, statusCalls, hooks } = await createGraphPlugin(
+    child, undefined, undefined, JSON.stringify({ files: 0 }), () => root,
+  );
+  const edit = () => hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  await edit();
+
+  root = child;
+  await Promise.all([edit(), edit()]);
+  root = undefined;
+  await edit();
+  root = parent;
+  await edit();
+
+  assert.deepEqual(statusCalls.map(call => call.cwd), [parent, child, parent]);
+  assert.deepEqual(calls.map(({ args, cwd }) => [args, cwd]), [
+    [['build'], parent],
+    [['update', '--skip-flows'], parent],
+    [['build'], child],
+    [['update', '--skip-flows'], child],
+    [['build'], parent],
+  ]);
+});
+
+test('startup, edits, and an explicit commit workdir resolve their own Git roots', async () => {
+  const location = path.resolve('first', 'src');
+  const otherWorkdir = path.resolve('other', 'src');
+  const roots = new Map([[location, path.dirname(location)], [otherWorkdir, path.dirname(otherWorkdir)]]);
+  const { calls, statusCalls, hooks } = await createGraphPlugin(location, undefined, undefined, undefined, cwd => roots.get(cwd));
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  await hooks['execute.before']({ tool: 'shell', input: { command: 'git commit -m fix', workdir: '../../other/src' } });
+  assert.equal(statusCalls.at(0)?.cwd, path.dirname(location));
+  assert.deepEqual(calls, [
+    { file: 'code-review-graph', args: ['update', '--skip-flows'], cwd: path.dirname(location) },
+    { file: 'code-review-graph', args: ['detect-changes', '--brief'], cwd: path.dirname(otherWorkdir) },
+  ]);
 });
 
 test('graph hooks inspect and update the session repository instead of the server cwd', async () => {

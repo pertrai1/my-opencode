@@ -1,46 +1,13 @@
 const safetyPlugin = require('../../plugins/safety.ts').default;
 
-function createAsyncEventStream() {
-  const pending = [];
-  const waiters = [];
-  let closed = false;
-
-  return {
-    emit(event) {
-      const waiter = waiters.shift();
-      if (waiter) {
-        waiter({ value: event, done: false });
-      } else {
-        pending.push(event);
-      }
-    },
-    close() {
-      closed = true;
-      while (waiters.length > 0) waiters.shift()({ done: true });
-    },
-    stream: {
-      [Symbol.asyncIterator]() {
-        return {
-          next() {
-            if (pending.length > 0) return Promise.resolve({ value: pending.shift(), done: false });
-            if (closed) return Promise.resolve({ done: true });
-            return new Promise((resolve) => waiters.push(resolve));
-          },
-        };
-      },
-    },
-  };
-}
-
 async function SafetyPlugin({ directory }, options) {
-  const events = createAsyncEventStream();
   const sessionAgents = new Map();
   const hooks = { prompt: null, permission: null, before: null, after: null };
 
   const cleanup = await safetyPlugin.setup({
     options: options ?? {},
     location: { directory },
-    event: { subscribe: () => events.stream },
+    event: { subscribe: () => [] },
     session: { hook: async (_name, handler) => { hooks.prompt = handler; } },
     permission: { hook: async (_name, handler) => { hooks.permission = handler; } },
     tool: {
@@ -53,20 +20,12 @@ async function SafetyPlugin({ directory }, options) {
 
   return {
     dispose: async () => {
-      events.close();
       cleanup?.();
     },
     'chat.message': async (input) => {
-      if (!sessionAgents.has(input.sessionID) && sessionAgents.size >= 1000) {
-        sessionAgents.delete(sessionAgents.keys().next().value);
-      }
+      // Adapt old fixtures to the agent field carried by V2 tool events.
       sessionAgents.set(input.sessionID, input.agent);
       await hooks.prompt({ sessionID: input.sessionID });
-    },
-    event: async ({ event }) => {
-      if (event.type === 'session.deleted') sessionAgents.delete(event.properties.sessionID);
-      events.emit({ type: event.type, data: event.properties });
-      await new Promise((resolve) => setImmediate(resolve));
     },
     'permission.ask': async (input, output) => {
       const event = { agent: sessionAgents.get(input.sessionID), action: input.type, effect: 'ask' };

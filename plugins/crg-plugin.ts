@@ -2,11 +2,17 @@ import { Plugin } from "@opencode/plugin"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { isShellTool, splitChainedCommands, withoutComments, withoutRtkPrefix } from "../lib/shell-command.ts"
+import { shellWorkingDirectory } from "../lib/shell-workdir.ts"
 
 const execFileAsync = promisify(execFile)
 const graphTimeoutMs = 10_000
 const directoryChange = /^[({\s]*(?:cd|pushd|popd)(?:\s|$)/i
 const gitCommit = /^git\s+commit(?:\s|$)/i
+const graphEditTools = new Set(["edit", "write", "patch"])
+
+function graphCommand(args: string[], cwd: string) {
+  return execFileAsync("code-review-graph", args, { cwd, timeout: graphTimeoutMs, killSignal: "SIGKILL" })
+}
 
 type GraphStatus = {
   files?: unknown
@@ -30,7 +36,7 @@ function graphNeedsBuild(stdout: string): boolean {
     return true
   }
 
-  if (typeof status.files !== "number" || status.files <= 0) return true
+  if (typeof status?.files !== "number" || status.files <= 0) return true
   return !statusFieldsMatch(status, "built_at_commit", "current_sha") ||
     !statusFieldsMatch(status, "built_on_branch", "current_branch")
 }
@@ -42,8 +48,8 @@ function getCommandText(args: unknown): string {
   return typeof record.cmd === "string" ? record.cmd : ""
 }
 
-// The graph CLI analyzes the session directory, so a commit after a directory change is skipped.
-function isSessionDirectoryCommit(command: string): boolean {
+// A commit after an inline directory change may target a different repository.
+function isDirectCommit(command: string): boolean {
   for (const part of splitChainedCommands(withoutComments(command)).map(withoutRtkPrefix)) {
     if (directoryChange.test(part)) return false
     if (gitCommit.test(part)) return true
@@ -51,46 +57,58 @@ function isSessionDirectoryCommit(command: string): boolean {
   return false
 }
 
-async function ensureCurrentGraph(directory: string): Promise<void> {
-  let statusOutput: string | undefined
+async function gitRoot(directory: string): Promise<string | undefined> {
   try {
-    const { stdout } = await execFileAsync("code-review-graph", ["status", "--json"], {
+    const { stdout } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
       cwd: directory,
       timeout: graphTimeoutMs,
       killSignal: "SIGKILL",
     })
+    return stdout.replace(/\r?\n$/, "") || undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function buildGraphIfNeeded(directory: string): Promise<boolean> {
+  let statusOutput: string | undefined
+  try {
+    const { stdout } = await graphCommand(["status", "--json"], directory)
     statusOutput = stdout
   } catch {
     // A missing graph is handled by the full build below. The CLI is optional.
     statusOutput = undefined
   }
-  if (statusOutput !== undefined && !graphNeedsBuild(statusOutput)) return
+  if (statusOutput !== undefined && !graphNeedsBuild(statusOutput)) return false
 
   try {
-    await execFileAsync("code-review-graph", ["build"], {
-      cwd: directory,
-      timeout: graphTimeoutMs,
-      killSignal: "SIGKILL",
-    })
+    await graphCommand(["build"], directory)
+    return true
   } catch {
-    // Graph maintenance must not block a session, including outside git repos.
-    return
+    // An unavailable graph CLI must not block a session.
+    return false
   }
 }
 
 export default Plugin.define({
   id: "code-review-graph",
   async setup(ctx) {
-    await ensureCurrentGraph(ctx.location.directory)
+    let root = await gitRoot(ctx.location.directory)
+    if (root) await buildGraphIfNeeded(root)
+    const initializing = new Map<string, Promise<boolean>>()
+
+    function initializeGraph(directory: string): Promise<boolean> {
+      const build = buildGraphIfNeeded(directory).finally(() => initializing.delete(directory))
+      initializing.set(directory, build)
+      return build
+    }
 
     await ctx.tool.hook("execute.before", async (event) => {
-      if (!isShellTool(event.tool) || !isSessionDirectoryCommit(getCommandText(event.input))) return
+      if (!isShellTool(event.tool) || !isDirectCommit(getCommandText(event.input))) return
+      const directory = await gitRoot(shellWorkingDirectory(event.input, ctx.location.directory))
+      if (!directory) return
       try {
-        const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
-          cwd: ctx.location.directory,
-          timeout: graphTimeoutMs,
-          killSignal: "SIGKILL", // Bound the wait even if the optional CLI ignores SIGTERM.
-        })
+        const { stdout } = await graphCommand(["detect-changes", "--brief"], directory)
         const text = stdout.trim()
         if (text) console.log("[code-review-graph] pre-commit analysis", { output: text })
       } catch {
@@ -100,13 +118,18 @@ export default Plugin.define({
     })
 
     await ctx.tool.hook("execute.after", async (event) => {
-      if (event.status !== "completed" || !["edit", "write", "patch"].includes(event.tool)) return
+      if (event.status !== "completed" || !graphEditTools.has(event.tool)) return
+      const directory = await gitRoot(ctx.location.directory)
+      const rootChanged = directory !== root
+      root = directory
+      if (!directory) return
+
+      const pending = initializing.get(directory)
+      if (pending) await pending
+      else if (rootChanged && await initializeGraph(directory)) return
+
       try {
-        await execFileAsync("code-review-graph", ["update", "--skip-flows"], {
-          cwd: ctx.location.directory,
-          timeout: graphTimeoutMs,
-          killSignal: "SIGKILL",
-        })
+        await graphCommand(["update", "--skip-flows"], directory)
       } catch {
         // The graph CLI is optional and must not block edits.
         return

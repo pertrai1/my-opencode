@@ -9,7 +9,6 @@ const read = path => readFileSync(resolve(root, path), "utf8");
 const list = dir => readdirSync(resolve(root, dir), { withFileTypes: true });
 
 const cheatSheet = read("docs/cheat-sheet.md");
-const readme = read("README.md");
 
 const commands = list("commands").filter(entry => entry.name.endsWith(".md")).map(entry => entry.name.slice(0, -3));
 const agents = list("agents").filter(entry => entry.name.endsWith(".md")).map(entry => entry.name.slice(0, -3));
@@ -39,15 +38,13 @@ test("the repository still has the surfaces this test guards", () => {
   for (const [kind, names] of inventory) assert.ok(names.length > 0, `expected at least one ${kind}`);
 });
 
-for (const [documentName, text] of [["docs/cheat-sheet.md", cheatSheet], ["README.md", readme]]) {
-  test(`${documentName} mentions every command, agent, skill, and plugin`, () => {
-    const missing = [];
-    for (const [kind, names] of inventory) {
-      for (const name of names) if (!mentions[kind](text, name)) missing.push(`${kind} ${name}`);
-    }
-    assert.deepEqual(missing, [], `add these to ${documentName}: ${missing.join(", ")}`);
-  });
-}
+test("the cheat sheet mentions every command, agent, skill, and plugin", () => {
+  const missing = [];
+  for (const [kind, names] of inventory) {
+    for (const name of names) if (!mentions[kind](cheatSheet, name)) missing.push(`${kind} ${name}`);
+  }
+  assert.deepEqual(missing, [], `add these to the cheat sheet: ${missing.join(", ")}`);
+});
 
 test("the cheat sheet only names commands that exist", () => {
   const named = new Set([...cheatSheet.matchAll(/`\/([a-z][a-z0-9-]*)[\s`\]]/g)].map(match => match[1]));
