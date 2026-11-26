@@ -33,6 +33,7 @@ async function setup(t) {
     await plugin.setup({
       location: { directory },
       tool: { hook: async (hook, handler) => { hooks[name][hook] = handler; } },
+      event: { subscribe: () => [] },
     });
   }
   return { repository, workdir, hooks };
