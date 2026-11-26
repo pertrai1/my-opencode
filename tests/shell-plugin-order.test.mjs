@@ -17,7 +17,10 @@ async function setup(t) {
   const workdir = path.join(repository, 'nested');
   fs.mkdirSync(workdir, { recursive: true });
   execFileSync('git', ['init', '--quiet'], { cwd: repository });
-  fs.writeFileSync(path.join(bin, 'rtk'), '#!/bin/sh\npwd > rewrite-cwd.log\nprintf "rtk %s\\n" "$2"\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'rtk'), `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[2] !== '--help') console.log(JSON.stringify({command: 'rtk ' + args[3]}));
+`, { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'code-review-graph'), '#!/bin/sh\nif [ "$1" = status ]; then printf \'{"files":1,"built_at_commit":"same","current_sha":"same","built_on_branch":"main","current_branch":"main"}\n\'; exit 0; fi\necho "$*" >> graph-calls.log\n', { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'atuin'), `#!/usr/bin/env node
 const { appendFileSync } = require('node:fs');
@@ -28,12 +31,16 @@ if (args[1] === 'start') process.stdout.write('history-id\\n');
 `, { mode: 0o700 });
   const previousPath = process.env.PATH;
   const previousPwd = process.env.PWD;
+  const previousRtkDisabled = process.env.RTK_DISABLED;
   process.env.PATH = `${bin}:${previousPath}`;
   process.env.PWD = directory;
+  delete process.env.RTK_DISABLED;
   t.after(() => {
     process.env.PATH = previousPath;
     if (previousPwd === undefined) delete process.env.PWD;
     else process.env.PWD = previousPwd;
+    if (previousRtkDisabled === undefined) delete process.env.RTK_DISABLED;
+    else process.env.RTK_DISABLED = previousRtkDisabled;
     fs.rmSync(bin, { recursive: true, force: true });
     fs.rmSync(directory, { recursive: true, force: true });
   });
@@ -44,6 +51,8 @@ if (args[1] === 'start') process.stdout.write('history-id\\n');
       location: { directory },
       tool: { hook: async (hook, handler) => { hooks[name][hook] = handler; } },
       event: { subscribe: () => [] },
+      agent: { get: async () => ({ data: { permissions: [] } }) },
+      session: { get: async () => ({}) },
     });
   }
   return { repository, workdir, hooks };
@@ -52,11 +61,11 @@ if (args[1] === 'start') process.stdout.write('history-id\\n');
 for (const order of [['rtk', 'graph', 'atuin'], ['atuin', 'graph', 'rtk']]) {
   test(`shell hooks agree on the explicit working directory (${order.join(', ')})`, async (t) => {
     const { repository, workdir, hooks } = await setup(t);
-    const event = { tool: 'shell', sessionID: 'session', id: 'call', input: { command: 'git commit -m fix', workdir: 'target/nested' } };
+    const event = { tool: 'shell', agent: 'build', sessionID: 'session', id: 'call', input: { command: 'git commit -m fix', workdir: 'target/nested' } };
     for (const name of order) await hooks[name]['execute.before'](event);
     await hooks.atuin['execute.after']({ ...event, status: 'completed', result: { metadata: { exit: 0 } } });
     assert.equal(event.input.command, 'rtk git commit -m fix');
-    assert.equal(fs.readFileSync(path.join(workdir, 'rewrite-cwd.log'), 'utf8').trim(), workdir);
+    assert.equal(event.input.workdir, 'target/nested');
     assert.equal(fs.readFileSync(path.join(repository, 'graph-calls.log'), 'utf8'), 'detect-changes --brief\n');
     const recorded = order.at(0) === 'rtk' ? 'rtk git commit -m fix' : 'git commit -m fix';
     assert.equal(fs.readFileSync(path.join(workdir, 'atuin-calls.log'), 'utf8'),
