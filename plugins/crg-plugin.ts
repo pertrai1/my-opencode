@@ -95,7 +95,13 @@ export default Plugin.define({
   async setup(ctx) {
     let root = await gitRoot(ctx.location.directory)
     if (root) await buildGraphIfNeeded(root)
-    let initializing: Promise<boolean> | undefined
+    const initializing = new Map<string, Promise<boolean>>()
+
+    function initializeGraph(directory: string): Promise<boolean> {
+      const build = buildGraphIfNeeded(directory).finally(() => initializing.delete(directory))
+      initializing.set(directory, build)
+      return build
+    }
 
     await ctx.tool.hook("execute.before", async (event) => {
       if (!isShellTool(event.tool) || !isDirectCommit(getCommandText(event.input))) return
@@ -113,17 +119,15 @@ export default Plugin.define({
 
     await ctx.tool.hook("execute.after", async (event) => {
       if (event.status !== "completed" || !graphEditTools.has(event.tool)) return
-      const directory = root ?? await gitRoot(ctx.location.directory)
+      const directory = await gitRoot(ctx.location.directory)
+      const rootChanged = directory !== root
+      root = directory
       if (!directory) return
-      if (initializing) {
-        await initializing
-      } else if (!root) {
-        root = directory
-        initializing = buildGraphIfNeeded(root)
-        const rebuilt = await initializing
-        initializing = undefined
-        if (rebuilt) return
-      }
+
+      const pending = initializing.get(directory)
+      if (pending) await pending
+      else if (rootChanged && await initializeGraph(directory)) return
+
       try {
         await graphCommand(["update", "--skip-flows"], directory)
       } catch {

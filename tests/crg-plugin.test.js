@@ -123,6 +123,33 @@ test('edits initialize the graph when a Git repository first appears', async () 
   assert.equal(statusCalls.length, 1);
 });
 
+test('edits refresh the graph when Git starts resolving a different worktree root', async () => {
+  const parent = path.resolve('parent');
+  const child = path.join(parent, 'child');
+  let root = parent;
+  const { calls, statusCalls, hooks } = await createGraphPlugin(
+    child, undefined, undefined, JSON.stringify({ files: 0 }), () => root,
+  );
+  const edit = () => hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  await edit();
+
+  root = child;
+  await Promise.all([edit(), edit()]);
+  root = undefined;
+  await edit();
+  root = parent;
+  await edit();
+
+  assert.deepEqual(statusCalls.map(call => call.cwd), [parent, child, parent]);
+  assert.deepEqual(calls.map(({ args, cwd }) => [args, cwd]), [
+    [['build'], parent],
+    [['update', '--skip-flows'], parent],
+    [['build'], child],
+    [['update', '--skip-flows'], child],
+    [['build'], parent],
+  ]);
+});
+
 test('startup, edits, and an explicit commit workdir resolve their own Git roots', async () => {
   const location = path.resolve('first', 'src');
   const otherWorkdir = path.resolve('other', 'src');
