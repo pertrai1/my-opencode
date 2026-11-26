@@ -33,8 +33,9 @@ if (args[1] === "start") process.stdout.write("history-test-id\\n");
   };
 }
 
-const call = () => ({
-  tool: "bash",
+const call = (tool = "bash") => ({
+  tool,
+  sessionID: "fixture-session",
   id: "call",
   input: { command: "printf 'example'", description: "Show example" },
 });
@@ -55,15 +56,15 @@ test("Atuin ends history with a failure when an OpenCode v2 bash tool errors", a
   ]);
 });
 
-for (const [result, expectedExit] of [
-  [{ metadata: { exit: 0 } }, "0"],
-  [{ metadata: { exit: 7 } }, "7"],
-  [{ content: "User aborted the command" }, "130"],
-  [{ content: "Command terminated after exceeding timeout 1000 ms" }, "124"],
+for (const [tool, result, expectedExit] of [
+  ["shell", { metadata: { exit: 0 } }, "0"],
+  ["bash", { metadata: { exit: 7 } }, "7"],
+  ["bash", { content: "User aborted the command" }, "130"],
+  ["shell", { content: [{ type: "text", text: "Command terminated after exceeding timeout 1000 ms" }] }, "124"],
 ]) {
-  test(`Atuin preserves completed bash exit ${expectedExit}`, async (t) => {
+  test(`Atuin preserves completed ${tool} exit ${expectedExit}`, async (t) => {
     const { hooks, calls, directory } = await setup(t);
-    const event = call();
+    const event = call(tool);
     await hooks["execute.before"](event);
     // An unrelated tool error must not consume the bash history entry.
     await hooks["execute.after"]({ ...event, tool: "read", status: "error", error: new Error("read failed") });

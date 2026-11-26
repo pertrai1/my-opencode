@@ -3,6 +3,7 @@ import { Error as ToolError } from "@opencode/plugin/promise/tool"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { isShellTool } from "../lib/shell-command.ts"
+import { shellWorkingDirectory } from "../lib/shell-workdir.ts"
 
 const execFileAsync = promisify(execFile)
 const rewriteTimeoutMs = 10_000
@@ -29,7 +30,7 @@ export default Plugin.define({
 
       try {
         const { stdout } = await execFileAsync("rtk", ["rewrite", args.command], {
-          cwd: ctx.location.directory,
+          cwd: shellWorkingDirectory(args, ctx.location.directory),
           timeout: rewriteTimeoutMs,
           killSignal: "SIGKILL", // Release the hook even if RTK ignores SIGTERM.
         })

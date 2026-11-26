@@ -1,7 +1,7 @@
 /**
  * Repository-managed Atuin adapter for OpenCode v2.
  *
- * Tracks bash commands executed by opencode in Atuin history with author
+ * Tracks shell commands executed by opencode in Atuin history with author
  * `opencode`.
  *
  * Already included in this global configuration; no hook installer is needed.
@@ -12,30 +12,16 @@
 
 import { Plugin } from "@opencode/plugin";
 import { spawn } from "node:child_process";
+import { isShellTool } from "../lib/shell-command.ts";
+import { shellWorkingDirectory } from "../lib/shell-workdir.ts";
 
 const ATUIN_AUTHOR = "opencode";
 const ATUIN_TIMEOUT_MS = 10_000;
-
-// opencode's shell tool keeps the id `bash` for compatibility, even though its
-// module is named `shell`.
-const BASH_TOOL = "bash";
 
 // A command that did not exit on its own reports a null exit code, so
 // substitute the conventional code for each of the two ways that happens.
 const EXIT_ABORTED = 130;
 const EXIT_TIMED_OUT = 124;
-
-// A denied command reaches neither `shell.env` nor `tool.execute.after`, so its
-// proposal is never claimed and would sit in the map for the life of the
-// session. Bound the map to cap that. Evicting the oldest can in principle drop
-// a command still waiting at its permission prompt, which just goes unrecorded,
-// but only a handful of calls are ever genuinely in flight at once.
-const MAX_PROPOSED = 128;
-
-interface Proposal {
-	command: string;
-	intent?: string;
-}
 
 interface Entry {
 	historyId: string;
@@ -86,7 +72,8 @@ function atuin(args: string[], cwd: string): Promise<AtuinResult> {
 
 async function startHistory(
 	cwd: string,
-	proposal: Proposal,
+	command: string,
+	intent: unknown,
 ): Promise<string | undefined> {
 	const args = [
 		"history",
@@ -96,8 +83,8 @@ async function startHistory(
 		"--author-kind",
 		"agent",
 	];
-	if (proposal.intent) args.push("--intent", proposal.intent);
-	args.push("--", proposal.command);
+	if (typeof intent === "string" && intent.length > 0) args.push("--intent", intent);
+	args.push("--", command);
 
 	const result = await atuin(args, cwd);
 	if (result.code !== 0) return undefined;
@@ -112,7 +99,9 @@ function exitCodeFrom(result: { content?: unknown; metadata?: unknown }): number
   const exit = (result.metadata as { exit?: unknown } | undefined)?.exit;
   if (typeof exit === "number") return exit;
 
-  const text = typeof result.content === "string" ? result.content : "";
+  const text = typeof result.content === "string" ? result.content : Array.isArray(result.content)
+    ? result.content.filter(block => block?.type === "text").map(block => block.text).join("\n")
+    : "";
 	if (text.includes("User aborted the command")) return EXIT_ABORTED;
 	if (/exceeding timeout \d+ ms/.test(text)) return EXIT_TIMED_OUT;
 	return 1;
@@ -131,77 +120,32 @@ async function swallowFailures(work: () => void | Promise<void>): Promise<void> 
 export default Plugin.define({
   id: "atuin",
   async setup(ctx) {
-	// Commands opencode has proposed but is not yet cleared to run, keyed by
-	// tool call ID.
-	const proposed = new Map<string, Proposal>();
-	// Atuin history IDs for commands that did start, keyed by tool call ID.
-	const running = new Map<string, Entry>();
+    const running = new Map<string, Entry>();
 
-	function propose(callID: string, args: unknown) {
-		const { command, description } = (args ?? {}) as {
-			command?: unknown;
-			description?: unknown;
-		};
-		if (typeof command !== "string" || command.length === 0) return;
+    await ctx.tool.hook("execute.before", event =>
+      swallowFailures(async () => {
+        if (!isShellTool(event.tool)) return;
+        const { command, description } = (event.input ?? {}) as { command?: unknown; description?: unknown };
+        if (typeof command !== "string" || command.length === 0) return;
 
-		if (proposed.size >= MAX_PROPOSED) {
-			const oldest = proposed.keys().next().value;
-			if (oldest !== undefined) proposed.delete(oldest);
-		}
+        const key = JSON.stringify([event.sessionID, event.id]);
+        const cwd = shellWorkingDirectory(event.input, ctx.location.directory);
+        const historyId = await startHistory(cwd, command, description);
+        if (historyId) running.set(key, { historyId, cwd });
+      }),
+    );
 
-		proposed.set(callID, {
-			command,
-			intent:
-				typeof description === "string" && description.length > 0
-					? description
-					: undefined,
-		});
-	}
+    await ctx.tool.hook("execute.after", event =>
+      swallowFailures(async () => {
+        if (!isShellTool(event.tool)) return;
+        const key = JSON.stringify([event.sessionID, event.id]);
+        const entry = running.get(key);
+        if (!entry) return;
+        running.delete(key);
 
-	async function start(callID: string, cwd: string) {
-		const proposal = proposed.get(callID);
-		if (!proposal) return;
-		proposed.delete(callID);
-
-		const historyId = await startHistory(cwd, proposal);
-		if (historyId) running.set(callID, { historyId, cwd });
-	}
-
-async function finish(
-	callID: string,
-	result: { content?: unknown; metadata?: unknown },
-) {
-		proposed.delete(callID);
-
-		const entry = running.get(callID);
-		if (!entry) return;
-		running.delete(callID);
-
-		await atuin(
-			[
-				"history",
-				"end",
-				entry.historyId,
-				"--exit",
-				String(exitCodeFrom(result)),
-			],
-			entry.cwd,
-		);
-	}
-
-	await ctx.tool.hook("execute.before", (event) =>
-		swallowFailures(async () => {
-			if (event.tool !== BASH_TOOL) return;
-			propose(event.id, event.input);
-			await start(event.id, ctx.location.directory);
-		}),
-	);
-
-	await ctx.tool.hook("execute.after", (event) =>
-		swallowFailures(() => {
-			if (event.tool !== BASH_TOOL) return;
-			return finish(event.id, event.status === "completed" ? event.result : {});
-		}),
-	);
+        const exit = exitCodeFrom(event.status === "completed" ? event.result : {});
+        await atuin(["history", "end", entry.historyId, "--exit", String(exit)], entry.cwd);
+      }),
+    );
   },
 });

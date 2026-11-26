@@ -2,6 +2,7 @@ import { Plugin } from "@opencode/plugin"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { isShellTool, splitChainedCommands, withoutComments, withoutRtkPrefix } from "../lib/shell-command.ts"
+import { shellWorkingDirectory } from "../lib/shell-workdir.ts"
 
 const execFileAsync = promisify(execFile)
 const graphTimeoutMs = 10_000
@@ -42,13 +43,26 @@ function getCommandText(args: unknown): string {
   return typeof record.cmd === "string" ? record.cmd : ""
 }
 
-// The graph CLI analyzes the session directory, so a commit after a directory change is skipped.
-function isSessionDirectoryCommit(command: string): boolean {
+// A commit after an inline directory change may target a different repository.
+function isDirectCommit(command: string): boolean {
   for (const part of splitChainedCommands(withoutComments(command)).map(withoutRtkPrefix)) {
     if (directoryChange.test(part)) return false
     if (gitCommit.test(part)) return true
   }
   return false
+}
+
+async function gitRoot(directory: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: directory,
+      timeout: graphTimeoutMs,
+      killSignal: "SIGKILL",
+    })
+    return stdout.replace(/\r?\n$/, "") || undefined
+  } catch {
+    return undefined
+  }
 }
 
 async function ensureCurrentGraph(directory: string): Promise<void> {
@@ -73,7 +87,7 @@ async function ensureCurrentGraph(directory: string): Promise<void> {
       killSignal: "SIGKILL",
     })
   } catch {
-    // Graph maintenance must not block a session, including outside git repos.
+    // An unavailable graph CLI must not block a session.
     return
   }
 }
@@ -81,13 +95,16 @@ async function ensureCurrentGraph(directory: string): Promise<void> {
 export default Plugin.define({
   id: "code-review-graph",
   async setup(ctx) {
-    await ensureCurrentGraph(ctx.location.directory)
+    const root = await gitRoot(ctx.location.directory)
+    if (root) await ensureCurrentGraph(root)
 
     await ctx.tool.hook("execute.before", async (event) => {
-      if (!isShellTool(event.tool) || !isSessionDirectoryCommit(getCommandText(event.input))) return
+      if (!isShellTool(event.tool) || !isDirectCommit(getCommandText(event.input))) return
+      const directory = await gitRoot(shellWorkingDirectory(event.input, ctx.location.directory))
+      if (!directory) return
       try {
         const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
-          cwd: ctx.location.directory,
+          cwd: directory,
           timeout: graphTimeoutMs,
           killSignal: "SIGKILL", // Bound the wait even if the optional CLI ignores SIGTERM.
         })
@@ -100,10 +117,10 @@ export default Plugin.define({
     })
 
     await ctx.tool.hook("execute.after", async (event) => {
-      if (event.status !== "completed" || !["edit", "write", "patch"].includes(event.tool)) return
+      if (!root || event.status !== "completed" || !["edit", "write", "patch"].includes(event.tool)) return
       try {
         await execFileAsync("code-review-graph", ["update", "--skip-flows"], {
-          cwd: ctx.location.directory,
+          cwd: root,
           timeout: graphTimeoutMs,
           killSignal: "SIGKILL",
         })
