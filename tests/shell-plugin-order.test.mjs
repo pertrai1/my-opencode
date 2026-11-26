@@ -19,11 +19,21 @@ async function setup(t) {
   execFileSync('git', ['init', '--quiet'], { cwd: repository });
   fs.writeFileSync(path.join(bin, 'rtk'), '#!/bin/sh\npwd > rewrite-cwd.log\nprintf "rtk %s\\n" "$2"\n', { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'code-review-graph'), '#!/bin/sh\nif [ "$1" = status ]; then printf \'{"files":1,"built_at_commit":"same","current_sha":"same","built_on_branch":"main","current_branch":"main"}\n\'; exit 0; fi\necho "$*" >> graph-calls.log\n', { mode: 0o700 });
-  fs.writeFileSync(path.join(bin, 'atuin'), '#!/bin/sh\nprintf "%s\\n" "$*" >> atuin-calls.log\nif [ "$2" = start ]; then printf "history-id\\n"; fi\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'atuin'), `#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync('atuin-calls.log', args.join(' ') + '\\n');
+appendFileSync('atuin-pwd.log', process.env.PWD + '\\n');
+if (args[1] === 'start') process.stdout.write('history-id\\n');
+`, { mode: 0o700 });
   const previousPath = process.env.PATH;
+  const previousPwd = process.env.PWD;
   process.env.PATH = `${bin}:${previousPath}`;
+  process.env.PWD = directory;
   t.after(() => {
     process.env.PATH = previousPath;
+    if (previousPwd === undefined) delete process.env.PWD;
+    else process.env.PWD = previousPwd;
     fs.rmSync(bin, { recursive: true, force: true });
     fs.rmSync(directory, { recursive: true, force: true });
   });
@@ -51,5 +61,6 @@ for (const order of [['rtk', 'graph', 'atuin'], ['atuin', 'graph', 'rtk']]) {
     const recorded = order.at(0) === 'rtk' ? 'rtk git commit -m fix' : 'git commit -m fix';
     assert.equal(fs.readFileSync(path.join(workdir, 'atuin-calls.log'), 'utf8'),
       `history start --author opencode --author-kind agent -- ${recorded}\nhistory end history-id --exit 0\n`);
+    assert.equal(fs.readFileSync(path.join(workdir, 'atuin-pwd.log'), 'utf8'), `${workdir}\n${workdir}\n`);
   });
 }

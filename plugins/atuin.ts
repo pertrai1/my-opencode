@@ -48,7 +48,8 @@ function atuin(args: string[], cwd: string): Promise<AtuinResult> {
 	return new Promise((resolve) => {
 		let child: ReturnType<typeof spawn>;
 		try {
-			child = spawn("atuin", args, { cwd, stdio: ["ignore", "pipe", "ignore"] });
+			// Atuin prefers PWD to the process directory when recording history.
+			child = spawn("atuin", args, { cwd, env: { ...process.env, PWD: cwd }, stdio: ["ignore", "pipe", "ignore"] });
 		} catch {
 			resolve({ code: null, stdout: "" });
 			return;
