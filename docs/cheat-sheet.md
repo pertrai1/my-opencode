@@ -7,7 +7,7 @@ Pick by situation. For how the pieces connect, see the [architecture diagram](AR
 - **Subagents** are launched by commands or orchestrators. You rarely call them directly.
 - **Skills** load on their own when their trigger matches, or when a command or agent names them.
 
-`tests/cheat-sheet.test.mjs` fails if a command, agent, skill, or plugin in this repository is missing from this page or the README. Add new ones here with a "use when" line.
+`tests/cheat-sheet.test.mjs` checks that this page covers the repository's commands, agents, skills, and plugins. Add new ones here with a "use when" line.
 
 ## Before building
 
