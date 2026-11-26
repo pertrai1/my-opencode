@@ -101,6 +101,28 @@ test('non-Git locations do not start graph maintenance', async () => {
   assert.deepEqual(calls, []);
 });
 
+test('edits initialize the graph when a Git repository first appears', async () => {
+  const location = path.resolve('new repository');
+  let initialized = false;
+  const { calls, statusCalls, hooks } = await createGraphPlugin(
+    location, undefined, undefined, JSON.stringify({ files: 0 }), () => initialized ? location : undefined,
+  );
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  assert.deepEqual(calls, []);
+  assert.deepEqual(statusCalls, []);
+
+  initialized = true;
+  await hooks['execute.after']({ tool: 'edit', status: 'completed' });
+  assert.deepEqual(calls, [
+    { file: 'code-review-graph', args: ['build'], cwd: location },
+  ]);
+  assert.equal(statusCalls.length, 1);
+
+  await hooks['execute.after']({ tool: 'patch', status: 'completed' });
+  assert.deepEqual(calls.map(call => call.args), [['build'], ['update', '--skip-flows']]);
+  assert.equal(statusCalls.length, 1);
+});
+
 test('startup, edits, and an explicit commit workdir resolve their own Git roots', async () => {
   const location = path.resolve('first', 'src');
   const otherWorkdir = path.resolve('other', 'src');

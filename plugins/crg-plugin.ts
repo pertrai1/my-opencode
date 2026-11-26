@@ -8,6 +8,11 @@ const execFileAsync = promisify(execFile)
 const graphTimeoutMs = 10_000
 const directoryChange = /^[({\s]*(?:cd|pushd|popd)(?:\s|$)/i
 const gitCommit = /^git\s+commit(?:\s|$)/i
+const graphEditTools = new Set(["edit", "write", "patch"])
+
+function graphCommand(args: string[], cwd: string) {
+  return execFileAsync("code-review-graph", args, { cwd, timeout: graphTimeoutMs, killSignal: "SIGKILL" })
+}
 
 type GraphStatus = {
   files?: unknown
@@ -31,7 +36,7 @@ function graphNeedsBuild(stdout: string): boolean {
     return true
   }
 
-  if (typeof status.files !== "number" || status.files <= 0) return true
+  if (typeof status?.files !== "number" || status.files <= 0) return true
   return !statusFieldsMatch(status, "built_at_commit", "current_sha") ||
     !statusFieldsMatch(status, "built_on_branch", "current_branch")
 }
@@ -65,49 +70,39 @@ async function gitRoot(directory: string): Promise<string | undefined> {
   }
 }
 
-async function ensureCurrentGraph(directory: string): Promise<void> {
+async function buildGraphIfNeeded(directory: string): Promise<boolean> {
   let statusOutput: string | undefined
   try {
-    const { stdout } = await execFileAsync("code-review-graph", ["status", "--json"], {
-      cwd: directory,
-      timeout: graphTimeoutMs,
-      killSignal: "SIGKILL",
-    })
+    const { stdout } = await graphCommand(["status", "--json"], directory)
     statusOutput = stdout
   } catch {
     // A missing graph is handled by the full build below. The CLI is optional.
     statusOutput = undefined
   }
-  if (statusOutput !== undefined && !graphNeedsBuild(statusOutput)) return
+  if (statusOutput !== undefined && !graphNeedsBuild(statusOutput)) return false
 
   try {
-    await execFileAsync("code-review-graph", ["build"], {
-      cwd: directory,
-      timeout: graphTimeoutMs,
-      killSignal: "SIGKILL",
-    })
+    await graphCommand(["build"], directory)
+    return true
   } catch {
     // An unavailable graph CLI must not block a session.
-    return
+    return false
   }
 }
 
 export default Plugin.define({
   id: "code-review-graph",
   async setup(ctx) {
-    const root = await gitRoot(ctx.location.directory)
-    if (root) await ensureCurrentGraph(root)
+    let root = await gitRoot(ctx.location.directory)
+    if (root) await buildGraphIfNeeded(root)
+    let initializing: Promise<boolean> | undefined
 
     await ctx.tool.hook("execute.before", async (event) => {
       if (!isShellTool(event.tool) || !isDirectCommit(getCommandText(event.input))) return
       const directory = await gitRoot(shellWorkingDirectory(event.input, ctx.location.directory))
       if (!directory) return
       try {
-        const { stdout } = await execFileAsync("code-review-graph", ["detect-changes", "--brief"], {
-          cwd: directory,
-          timeout: graphTimeoutMs,
-          killSignal: "SIGKILL", // Bound the wait even if the optional CLI ignores SIGTERM.
-        })
+        const { stdout } = await graphCommand(["detect-changes", "--brief"], directory)
         const text = stdout.trim()
         if (text) console.log("[code-review-graph] pre-commit analysis", { output: text })
       } catch {
@@ -117,13 +112,20 @@ export default Plugin.define({
     })
 
     await ctx.tool.hook("execute.after", async (event) => {
-      if (!root || event.status !== "completed" || !["edit", "write", "patch"].includes(event.tool)) return
+      if (event.status !== "completed" || !graphEditTools.has(event.tool)) return
+      const directory = root ?? await gitRoot(ctx.location.directory)
+      if (!directory) return
+      if (initializing) {
+        await initializing
+      } else if (!root) {
+        root = directory
+        initializing = buildGraphIfNeeded(root)
+        const rebuilt = await initializing
+        initializing = undefined
+        if (rebuilt) return
+      }
       try {
-        await execFileAsync("code-review-graph", ["update", "--skip-flows"], {
-          cwd: root,
-          timeout: graphTimeoutMs,
-          killSignal: "SIGKILL",
-        })
+        await graphCommand(["update", "--skip-flows"], directory)
       } catch {
         // The graph CLI is optional and must not block edits.
         return
