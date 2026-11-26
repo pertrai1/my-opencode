@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { PassThrough } from "node:stream";
+import { setImmediate } from "node:timers/promises";
 import { test } from "node:test";
 import { Tool } from "@opencode/schema/tool";
 import safety from "../plugins/safety.ts";
@@ -11,18 +13,20 @@ import { createToolObserver } from "../scripts/tool-observation.mjs";
 async function setup(t, options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "safety-v2-"));
   const hooks = {};
+  const events = new PassThrough({ objectMode: true });
   const dispose = await safety.setup({
     options: { ...options, truncation: { tempDir: directory, ...options.truncation } },
-    event: { subscribe: async function* () {} },
-    session: { hook: async () => {} },
+    event: { subscribe: () => events },
+    session: { hook: async (_name, handler) => { hooks.prompt = handler; } },
     permission: { hook: async () => {} },
     tool: { hook: async (name, handler) => { hooks[name] = handler; } },
   });
   t.after(() => {
+    events.end();
     dispose();
     fs.rmSync(directory, { recursive: true, force: true });
   });
-  return { after: hooks["execute.after"], directory };
+  return { after: hooks["execute.after"], before: hooks["execute.before"], prompt: hooks.prompt, directory, events };
 }
 
 function completed(content, sessionID = "v2-session") {
@@ -110,6 +114,37 @@ test("doom-loop detection distinguishes structured results and still detects ide
   await assert.rejects(async () => after(completed([text("same")], "repeating")), /DOOM LOOP DETECTED/);
 });
 
+test("explore-only rules use the agent in the V2 tool event", async t => {
+  const { before } = await setup(t);
+  const event = { ...completed([]), tool: "edit", input: {} };
+  await before(event);
+  assert.throws(() => before({ ...event, agent: "explore" }), /Tool 'edit' is blocked/);
+});
+
+test("a deleted session forgets its loop history without resetting other sessions", async t => {
+  const { after, events } = await setup(t);
+  const deleted = () => completed([text("same")], "deleted-session");
+  const active = () => completed([text("same")], "active-session");
+  for (let i = 0; i < 2; i++) {
+    await after(deleted());
+    await after(active());
+  }
+  events.write({ type: "session.deleted", data: { sessionID: "deleted-session" } });
+  await setImmediate();
+  await after(deleted());
+  await assert.rejects(async () => after(active()), /DOOM LOOP DETECTED/);
+});
+
+test("the loop history limit evicts old sessions but preserves recent history", async t => {
+  const { after, prompt } = await setup(t);
+  const oldest = () => completed([text("same")], "oldest-session");
+  const current = () => completed([text("same")], "current-session");
+  for (let i = 0; i < 2; i++) await after(oldest());
+  for (let i = 0; i < 1_000; i++) await prompt({ sessionID: `session-${i}` });
+  for (let i = 0; i < 2; i++) await after(current());
+  await after(oldest());
+  await assert.rejects(async () => after(current()), /DOOM LOOP DETECTED/);
+});
 
 test("failed tool events pass through without requiring a result", async t => {
   const { after } = await setup(t);
