@@ -31,6 +31,9 @@ async function applyRoute(
 
   if (decision.agent && decision.agent !== currentAgent) {
     await session.switchAgent({ sessionID, agent: decision.agent });
+    // The user can select a model or another agent while this request is pending.
+    const afterSwitch = await session.get({ sessionID });
+    if (afterSwitch.model || afterSwitch.agent !== decision.agent) return;
   }
   const model = parseModelRef(decision.model);
   if (model) await session.switchModel({ sessionID, model });

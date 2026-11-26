@@ -28,7 +28,7 @@ function loadRoutingPlugin(logs) {
   return exports.default;
 }
 
-async function setup(t, get, systemOne) {
+async function setup(t, get, systemOne, onSwitchAgent) {
   const provider = t.mock.method(TypeSafeClient.prototype, "systemOne", systemOne);
   const environment = { OPENCODE_JEV_ROUTING: "1", TYPESAFE_API_KEY: "synthetic-test-key" };
   for (const [key, value] of Object.entries({ ...environment, OPENCODE_JEV_ROUTING_DRY_RUN: "0" })) {
@@ -48,7 +48,10 @@ async function setup(t, get, systemOne) {
     session: {
       hook: async (name, handler) => { assert.equal(name, "prompt"); promptHook = handler; },
       get,
-      switchAgent: async (input) => switches.push(structuredClone(input)),
+      switchAgent: async (input) => {
+        switches.push(structuredClone(input));
+        await onSwitchAgent?.(input);
+      },
       switchModel: async (input) => switches.push(structuredClone(input)),
     },
   });
@@ -94,16 +97,43 @@ test("an existing V2 session model bypasses the provider and is preserved", asyn
 
 for (const modelSelectedDuringRouting of [false, true]) {
   test(`a valid decision only applies while the session model is unset (${modelSelectedDuringRouting})`, async (t) => {
+    let agent = "lean";
     let model;
-    const { provider, switches, submit } = await setup(t, async () => ({ agent: "lean", model }), async () => {
+    const { provider, switches, submit } = await setup(t, async () => ({ agent, model }), async () => {
       if (modelSelectedDuringRouting) model = { providerID: "openai", id: "manual" };
       return { answers: { route: { choice: "build", probabilities: { build: 0.9 }, confidence: 0.9 } } };
-    });
+    }, input => { agent = input.agent; });
     await submit();
     assert.equal(provider.mock.calls.length, 1);
     assert.deepEqual(switches, modelSelectedDuringRouting ? [] : [
       { sessionID: "synthetic-session", agent: "build" },
       { sessionID: "synthetic-session", model: { providerID: "openai", id: "gpt-6.2-sol" } },
     ]);
+  });
+}
+
+for (const manualSelection of ["model", "agent"]) {
+  test(`Jev keeps a manual ${manualSelection} selected during the agent switch`, async t => {
+    const entered = Promise.withResolvers();
+    const finish = Promise.withResolvers();
+    const state = { agent: "lean" };
+    const { switches, submit } = await setup(t,
+      async () => ({ ...state }),
+      async () => ({ answers: { route: { choice: "build", probabilities: { build: 0.9 }, confidence: 0.9 } } }),
+      async ({ agent }) => {
+        state.agent = agent;
+        entered.resolve();
+        await finish.promise;
+      },
+    );
+
+    const pending = submit();
+    await entered.promise;
+    if (manualSelection === "model") state.model = { providerID: "openai", id: "manual" };
+    else state.agent = "plan";
+    finish.resolve();
+    await pending;
+
+    assert.deepEqual(switches, [{ sessionID: "synthetic-session", agent: "build" }]);
   });
 }
