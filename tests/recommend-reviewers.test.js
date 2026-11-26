@@ -77,13 +77,13 @@ test('includes untracked files and derived metadata in the routing state', async
     calls.push(args);
     const command = args.length > 0 ? args[0] : undefined;
     if (command === 'status') {
-      return ' M README.md\n?? scripts/recommend-reviewers.mjs\n?? tests/recommend-reviewers.test.js\nA  commands/code-review.md\n M package-lock.json';
+      return ' M README.md\0?? scripts/recommend-reviewers.mjs\0?? tests/recommend-reviewers.test.js\0A  commands/code-review.md\0 M package-lock.json\0';
     }
     return ' README.md | 1 +\n 2 files changed, 1 insertion(+)';
   });
 
   assert.deepEqual(calls, [
-    ['status', '--porcelain=v1', '--untracked-files=all'],
+    ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
     ['diff', '--stat', 'HEAD'],
   ]);
   assert.equal(metadata.summary.fileCount, 5);

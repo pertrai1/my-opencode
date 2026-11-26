@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { parseStatusRecords } from "./git-status.mjs";
 import { selectReviewers } from "./reviewer-decision-provider.mjs";
 
 // Keep the existing library interface and default Jev behavior for baseline users.
@@ -12,11 +13,7 @@ function gitOutput(args) {
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\n$/, "");
 }
 
-export function changeSummary(status) {
-  const files = status.split("\n").filter(Boolean).map((entry) => ({
-    status: entry.slice(0, 2),
-    path: entry.slice(3),
-  }));
+export function changeSummary(files) {
   const paths = files.map(({ path }) => path);
   const extensions = {};
 
@@ -36,12 +33,22 @@ export function changeSummary(status) {
   };
 }
 
+function displayPath(path) {
+  return /[\s"\\]/u.test(path) ? JSON.stringify(path) : path;
+}
+
+export function formatStatus(records) {
+  return records.map(({ status, path, originalPath }) =>
+    `${status} ${originalPath === undefined ? "" : `${displayPath(originalPath)} -> `}${displayPath(path)}`,
+  ).join("\n");
+}
+
 export function changeMetadata(getGitOutput = gitOutput) {
-  const files = getGitOutput(["status", "--porcelain=v1", "--untracked-files=all"]);
+  const records = parseStatusRecords(getGitOutput(["status", "--porcelain=v1", "-z", "--untracked-files=all"]));
   return {
-    files,
+    files: formatStatus(records),
     stat: getGitOutput(["diff", "--stat", "HEAD"]),
-    summary: changeSummary(files),
+    summary: changeSummary(records),
   };
 }
 

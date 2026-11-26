@@ -6,6 +6,12 @@ model: openai/gpt-6-luna#medium
 
 Run the Halstead analyzer script and summarize the results.
 
+The analyzer uses the TypeScript parser installed with this checkout and supports
+JS, TS, JSX, TSX, and their CommonJS and ESM extensions. It counts punctuation
+and nonliteral keywords as operators and identifiers and literals as operands.
+Use the results to compare files measured by this analyzer. The reported time
+is the conventional Halstead estimate, not measured implementation time.
+
 Interpret `$ARGUMENTS` like this:
 
 - If no arguments are provided, run `node ~/.config/opencode/scripts/halstead-analyzer.js --git-changed`.
