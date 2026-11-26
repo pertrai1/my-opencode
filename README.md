@@ -343,7 +343,7 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Workflow
 
-- `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
+- `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install the RTK binary; this checkout supplies the [OpenCode integration](RTK.md). Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
 - `plugins/atuin.ts` — already included in this global configuration and automatically discovered from `~/.config/opencode/plugins/`. When the `atuin` executable is on OpenCode's PATH, it records shell commands and their working directories in Atuin history with author `opencode`. `atuin hook install opencode` can replace the managed adapter with Atuin’s bundled plugin; use the repository copy for this setup. See [plugin discovery](https://opencode.ai/v2/docs/plugins/#discover).
 
@@ -458,6 +458,6 @@ Install the required skills (`frontend-a11y`, `codescene-mcp`, and its dependenc
 configuration checkout alone does not install skills into other projects.
 
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
-2. `rtk init -g --opencode` to install the RTK plugin
+2. Install RTK on OpenCode's `PATH`; check that `rtk hook opencode --help` works.
 3. `uv tool install code-review-graph` for the CLI used by the graph MCP server and plugin, both already configured here. Do not run `code-review-graph install --platform opencode` in this checkout; it would write to `opencode.jsonc` and append its own instructions to `AGENTS.md`.
 4. herdr install for agent-state reporting
