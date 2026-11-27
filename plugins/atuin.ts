@@ -1,7 +1,7 @@
 /**
  * Repository-managed Atuin adapter for OpenCode v2.
  *
- * Tracks bash commands executed by opencode in Atuin history with author
+ * Tracks shell commands executed by opencode in Atuin history with author
  * `opencode`.
  *
  * Already included in this global configuration; no hook installer is needed.
@@ -11,31 +11,20 @@
  */
 
 import { Plugin } from "@opencode/plugin";
+import type { EventDomain } from "@opencode/plugin/promise/event";
 import { spawn } from "node:child_process";
+import { homedir } from "node:os";
+import { isShellTool } from "../lib/shell-command.ts";
+import { shellWorkingDirectory } from "../lib/shell-workdir.ts";
 
 const ATUIN_AUTHOR = "opencode";
 const ATUIN_TIMEOUT_MS = 10_000;
-
-// opencode's shell tool keeps the id `bash` for compatibility, even though its
-// module is named `shell`.
-const BASH_TOOL = "bash";
+const MAX_EARLY_EXITS = 128;
 
 // A command that did not exit on its own reports a null exit code, so
 // substitute the conventional code for each of the two ways that happens.
 const EXIT_ABORTED = 130;
 const EXIT_TIMED_OUT = 124;
-
-// A denied command reaches neither `shell.env` nor `tool.execute.after`, so its
-// proposal is never claimed and would sit in the map for the life of the
-// session. Bound the map to cap that. Evicting the oldest can in principle drop
-// a command still waiting at its permission prompt, which just goes unrecorded,
-// but only a handful of calls are ever genuinely in flight at once.
-const MAX_PROPOSED = 128;
-
-interface Proposal {
-	command: string;
-	intent?: string;
-}
 
 interface Entry {
 	historyId: string;
@@ -45,6 +34,7 @@ interface Entry {
 interface AtuinResult {
 	code: number | null;
 	stdout: string;
+	spawnError?: string;
 }
 
 /**
@@ -58,7 +48,8 @@ function atuin(args: string[], cwd: string): Promise<AtuinResult> {
 	return new Promise((resolve) => {
 		let child: ReturnType<typeof spawn>;
 		try {
-			child = spawn("atuin", args, { cwd, stdio: ["ignore", "pipe", "ignore"] });
+			// Atuin prefers PWD to the process directory when recording history.
+			child = spawn("atuin", args, { cwd, env: { ...process.env, PWD: cwd }, stdio: ["ignore", "pipe", "ignore"] });
 		} catch {
 			resolve({ code: null, stdout: "" });
 			return;
@@ -79,14 +70,17 @@ function atuin(args: string[], cwd: string): Promise<AtuinResult> {
 		child.stdout?.on("data", (chunk: string) => {
 			stdout += chunk;
 		});
-		child.on("error", () => settle({ code: null, stdout: "" }));
+		child.on("error", (error: NodeJS.ErrnoException) =>
+			settle({ code: null, stdout: "", spawnError: error.code }),
+		);
 		child.on("close", (code) => settle({ code, stdout }));
 	});
 }
 
 async function startHistory(
 	cwd: string,
-	proposal: Proposal,
+	command: string,
+	intent: unknown,
 ): Promise<string | undefined> {
 	const args = [
 		"history",
@@ -96,8 +90,8 @@ async function startHistory(
 		"--author-kind",
 		"agent",
 	];
-	if (proposal.intent) args.push("--intent", proposal.intent);
-	args.push("--", proposal.command);
+	if (typeof intent === "string" && intent.length > 0) args.push("--intent", intent);
+	args.push("--", command);
 
 	const result = await atuin(args, cwd);
 	if (result.code !== 0) return undefined;
@@ -106,16 +100,88 @@ async function startHistory(
 	return historyId.length > 0 ? historyId : undefined;
 }
 
-// The tool records an abort or a timeout in its output text rather than as an
-// exit code, so string matching is the only way to tell the two apart.
-function exitCodeFrom(result: { content?: unknown; metadata?: unknown }): number {
-  const exit = (result.metadata as { exit?: unknown } | undefined)?.exit;
+async function endHistory(entry: Entry, exit: number): Promise<void> {
+  const args = ["history", "end", entry.historyId, "--exit", String(exit)];
+  const result = await atuin(args, entry.cwd);
+  // ENOENT may mean the command removed or renamed its working directory.
+  if (result.spawnError === "ENOENT") await atuin(args, homedir());
+}
+
+interface ShellResult {
+  content?: unknown;
+  metadata?: { exit?: unknown; timeout?: unknown; status?: unknown; shellID?: unknown };
+}
+
+function outputText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.filter(block => block?.type === "text").map(block => block.text).join("\n");
+}
+
+function exitCodeFrom(result: ShellResult): number {
+  const { timeout, exit } = result.metadata ?? {};
+  if (typeof timeout === "boolean" && timeout) return EXIT_TIMED_OUT;
   if (typeof exit === "number") return exit;
 
-  const text = typeof result.content === "string" ? result.content : "";
+  // Older shell results report timeout and interruption in the output text.
+  const text = outputText(result.content);
 	if (text.includes("User aborted the command")) return EXIT_ABORTED;
 	if (/exceeding timeout \d+ ms/.test(text)) return EXIT_TIMED_OUT;
 	return 1;
+}
+
+function rememberExit(exits: Map<string, number>, id: string, code: number): void {
+  // A short-lived shell can exit before its background handle reaches the after hook.
+  exits.set(id, code);
+  if (exits.size > MAX_EARLY_EXITS) exits.delete(exits.keys().next().value);
+}
+
+function subscribeToShellExits(eventBus: EventDomain, onExit: (id: string, code: number) => Promise<void>): () => void {
+  const controller = new AbortController();
+  const events = eventBus.subscribe({ signal: controller.signal });
+  void swallowFailures(async () => {
+    for await (const event of events) {
+      if (event.type !== "shell.exited" || event.data.status === "running") continue;
+      const { id, status, exit } = event.data;
+      await onExit(id, status === "timeout" ? EXIT_TIMED_OUT : (exit ?? 1));
+    }
+  });
+  return () => controller.abort();
+}
+
+function trackBackground(eventBus: EventDomain, running: Map<string, Entry>) {
+  const waiting = new Map<string, Entry>();
+  const earlyExits = new Map<string, number>();
+  const unsubscribe = subscribeToShellExits(eventBus, async (id, code) => {
+    const entry = waiting.get(id);
+    if (entry) {
+      waiting.delete(id);
+      await endHistory(entry, code);
+    } else if (running.size > 0) rememberExit(earlyExits, id, code);
+  });
+  return {
+    async finish(entry: Entry, result: ShellResult): Promise<void> {
+      const { status, shellID } = result.metadata ?? {};
+      if (status !== "running") return endHistory(entry, exitCodeFrom(result));
+      if (typeof shellID !== "string") return;
+      const code = earlyExits.get(shellID);
+      if (code === undefined) {
+        waiting.set(shellID, entry);
+        return;
+      }
+      earlyExits.delete(shellID);
+      await endHistory(entry, code);
+    },
+    close(): void {
+      unsubscribe();
+      waiting.clear();
+      earlyExits.clear();
+    },
+  };
+}
+
+function callKey(event: { sessionID: string; id: string }): string {
+  return JSON.stringify([event.sessionID, event.id]);
 }
 
 // A rejected hook aborts opencode's tool call and discards the command's
@@ -131,77 +197,36 @@ async function swallowFailures(work: () => void | Promise<void>): Promise<void> 
 export default Plugin.define({
   id: "atuin",
   async setup(ctx) {
-	// Commands opencode has proposed but is not yet cleared to run, keyed by
-	// tool call ID.
-	const proposed = new Map<string, Proposal>();
-	// Atuin history IDs for commands that did start, keyed by tool call ID.
-	const running = new Map<string, Entry>();
+    const running = new Map<string, Entry>();
+    const background = trackBackground(ctx.event, running);
 
-	function propose(callID: string, args: unknown) {
-		const { command, description } = (args ?? {}) as {
-			command?: unknown;
-			description?: unknown;
-		};
-		if (typeof command !== "string" || command.length === 0) return;
+    await ctx.tool.hook("execute.before", event =>
+      swallowFailures(async () => {
+        if (!isShellTool(event.tool)) return;
+        const { command, description } = (event.input ?? {}) as { command?: unknown; description?: unknown };
+        if (typeof command !== "string" || command.length === 0) return;
 
-		if (proposed.size >= MAX_PROPOSED) {
-			const oldest = proposed.keys().next().value;
-			if (oldest !== undefined) proposed.delete(oldest);
-		}
+        const key = callKey(event);
+        const cwd = shellWorkingDirectory(event.input, ctx.location.directory);
+        const historyId = await startHistory(cwd, command, description);
+        if (historyId) running.set(key, { historyId, cwd });
+      }),
+    );
 
-		proposed.set(callID, {
-			command,
-			intent:
-				typeof description === "string" && description.length > 0
-					? description
-					: undefined,
-		});
-	}
+    await ctx.tool.hook("execute.after", event =>
+      swallowFailures(async () => {
+        if (!isShellTool(event.tool)) return;
+        const key = callKey(event);
+        const entry = running.get(key);
+        if (!entry) return;
+        running.delete(key);
 
-	async function start(callID: string, cwd: string) {
-		const proposal = proposed.get(callID);
-		if (!proposal) return;
-		proposed.delete(callID);
-
-		const historyId = await startHistory(cwd, proposal);
-		if (historyId) running.set(callID, { historyId, cwd });
-	}
-
-async function finish(
-	callID: string,
-	result: { content?: unknown; metadata?: unknown },
-) {
-		proposed.delete(callID);
-
-		const entry = running.get(callID);
-		if (!entry) return;
-		running.delete(callID);
-
-		await atuin(
-			[
-				"history",
-				"end",
-				entry.historyId,
-				"--exit",
-				String(exitCodeFrom(result)),
-			],
-			entry.cwd,
-		);
-	}
-
-	await ctx.tool.hook("execute.before", (event) =>
-		swallowFailures(async () => {
-			if (event.tool !== BASH_TOOL) return;
-			propose(event.id, event.input);
-			await start(event.id, ctx.location.directory);
-		}),
-	);
-
-	await ctx.tool.hook("execute.after", (event) =>
-		swallowFailures(() => {
-			if (event.tool !== BASH_TOOL) return;
-			return finish(event.id, event.status === "completed" ? event.result : {});
-		}),
-	);
+        await background.finish(entry, event.status === "completed" ? event.result : {});
+      }),
+    );
+    return () => {
+      running.clear();
+      background.close();
+    };
   },
 });

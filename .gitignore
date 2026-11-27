@@ -9,6 +9,7 @@ service.json
 .agents/docs/security-audits/*
 .agents/docs/explainers/*
 .agents/prototypes/*
+/.agents/work/
 !.agents/docs/verification/README.md
 
 /.promptfoo/

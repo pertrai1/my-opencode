@@ -84,19 +84,13 @@ export function routingQuestion() {
   );
 }
 
-function probabilityFor(answer, route) {
-  const probabilities = answer?.probabilities;
-  if (probabilities && typeof probabilities[route] === "number") return probabilities[route];
-  return answer?.choice === route ? 1 : 0;
+function validScore(value) {
+  return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
-export function hasExplicitAgentSelection(
-  prompt,
-  currentAgent,
-) {
+export function hasExplicitAgentSelection(prompt, currentAgent) {
   return Boolean(
     prompt?.agents?.some((agent) => typeof agent.name === "string")
-      || typeof prompt?.model === "string"
       || currentAgent === "sdlc-orchestrator",
   );
 }
@@ -187,11 +181,11 @@ export async function routeAgent(
       && Object.hasOwn(ROUTES, answer.choice)
       ? answer.choice
       : "current";
-    const probability = probabilityFor(answer, route);
-    const probabilities = answer?.probabilities && typeof answer.probabilities === "object"
-      ? { ...answer.probabilities }
-      : {};
-    const confidence = typeof answer?.confidence === "number" ? answer.confidence : 0;
+    const probabilities = Object.fromEntries(Object.keys(ROUTES)
+      .map(key => [key, answer?.probabilities?.[key]])
+      .filter(([, value]) => validScore(value)));
+    const probability = probabilities[route] ?? 0;
+    const confidence = validScore(answer?.confidence) ? answer.confidence : 0;
     const accepted = isApprovedRoute(route) && route !== "current"
       && probability >= ROUTING_POLICY.minProbability
       && confidence >= ROUTING_POLICY.minConfidence;

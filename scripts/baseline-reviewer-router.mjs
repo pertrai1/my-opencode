@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import { changeSummary, recommendReviewers } from "./recommend-reviewers.mjs";
+import { changeSummary, formatStatus, recommendReviewers } from "./recommend-reviewers.mjs";
 
 const FIXTURES = new URL("../tests/fixtures/reviewer-router-baseline.json", import.meta.url);
 const REVIEWERS = [
@@ -17,22 +17,25 @@ function git(args) {
 
 export function fixtureChange(fixture, runGit = git) {
   let files;
+  let records;
   let stat;
   if (fixture.commit) {
-    files = runGit(["diff-tree", "--no-commit-id", "--name-status", "--no-renames", "-r", fixture.commit])
-      .split("\n").filter(Boolean)
-      .map((entry) => {
-        const [status, path] = entry.split("\t");
-        if (!/^[AMDT]$/.test(status) || !path) throw new Error(`Unsupported historical file status: ${entry}`);
-        return `${status === "A" ? "A " : ` ${status}`} ${path}`;
-      }).join("\n");
+    const fields = runGit(["diff-tree", "--no-commit-id", "--name-status", "--no-renames", "-r", "-z", fixture.commit]).split("\0");
+    records = [];
+    for (let index = 0; index < fields.length - 1; index += 2) {
+      const [status, path] = fields.slice(index, index + 2);
+      if (!/^[AMDT]$/.test(status) || !path) throw new Error(`Unsupported historical file status: ${status}`);
+      records.push({ status: status === "A" ? "A " : ` ${status}`, path });
+    }
+    files = formatStatus(records);
     stat = runGit(["show", "--format=", "--stat", "--no-renames", fixture.commit]);
   } else {
     files = fixture.synthetic.files;
     stat = fixture.synthetic.stat;
+    records = files.split("\n").filter(Boolean).map(entry => ({ status: entry.slice(0, 2), path: entry.slice(3) }));
   }
   if (!files) throw new Error(`No files in fixture ${fixture.id}`);
-  return { files, stat, summary: changeSummary(files) };
+  return { files, stat, summary: changeSummary(records) };
 }
 
 export function validateFixtures(fixtures) {

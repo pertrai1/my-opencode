@@ -15,13 +15,13 @@ Before installing, check `command -v node`, `node -v`, and `npm -v`, then run `n
 - **Models** — `opencode.jsonc` defaults to OpenAI `gpt-6.2-sol#high` and sets model-level `high` reasoning effort for `gpt-6.2-sol`. The inline `lean`, `build`, and `plan` agents use `gpt-6.2-astra#high`, `gpt-6.2-sol`, and `gpt-6.2-astra`, respectively. Jev routes use the same models as their agents. See the assignments below for Markdown agents.
 - **Default agent** — `lean`, a reduced-context build agent for routine local work. Use `build` for the full toolset and `plan` when you explicitly want planning behavior.
 - **Agent style guide** — `docs/agents/style-guide.md` documents the repository's guidance for agent responses, implementation notes, plans, code reviews, code comments, and user-facing documentation. The shared OpenCode instruction path is configured separately at `~/.config/opencode/docs/agents/style-guide.md`. The guide summarizes [Google's developer documentation style guide](https://developers.google.com/style) with repository-specific precedence rules.
-- **Providers** — `enabled_providers` allows `openai`, `ollama`, `anthropic`, and `github-copilot`.
+- **Providers** — `opencode.jsonc` overrides OpenAI settings. Other providers are managed through OpenCode's `/connect`.
 - **Permissions** — V2 ordered `permissions` rules allow reads, edits, subagent launches, and normal shell commands; destructive operations (`rm`, `rmdir`, `unlink`, `git clean`, `git reset --hard`, destructive `git restore`/`checkout --`, force-push, remote deletion, tag deletion, `git rebase`) are denied. `.env` reads are denied and `.env.example` remains readable. An explicit global `external_directory` rule asks before access outside the active Location and its project worktree; `explore` retains its stricter deny.
 - **LSP** — enabled for code intelligence.
 - **Compaction** — auto with a 12K token buffer (v2 `compaction.buffer`).
 - **References** — `workflow` points at `docs/agents`, and `reviewers` points at `agents`, so those paths are available as named OpenCode references.
 - **Tool output** — schema-backed truncation limits via `tool_output` (`max_lines: 2000`, `max_bytes: 51200`).
-- **TUI** — `tui.json` (`tokyonight` theme, mouse input, attention notifications, and sound enabled).
+- **TUI** — [`cli.json`](cli.json) holds OpenCode V2 preferences, including the `tokyonight` theme, mouse input, and attention notifications with sound.
 
 OpenCode v2 allows external directories by default. This repository's explicit
 rule applies to external paths used by `read`, `edit`, `write`, and `patch`, and
@@ -106,7 +106,7 @@ Commands that find unknowns before implementation and build understanding after 
 - **`code-review-graph`** (local MCP) — the [Code Review Graph](https://code-review-graph.com) server for every repository you open. OpenCode starts it in the session's workspace, so one global entry serves each repository. Inside a git repository it runs with `--auto-watch`, which updates the graph as files change while the session runs; elsewhere, such as a home or temporary folder, it starts without the watcher. The graph is stored in the repository's `.code-review-graph/` directory, which ignores itself in git. A global rule denies `apply_refactor_tool`, which writes source files without `edit` permission checks; only `build` re-allows it.
 - **`code-review-graph-explore`** (local MCP, Code Mode off) — a second server for the `explore` agent, which denies `execute` and therefore cannot reach Code Mode tools. A global rule hides this server's tools from every other agent; `agents/explore.md` re-allows seven read-only tools: `list_graph_stats_tool`, `get_minimal_context_tool`, `query_graph_tool`, `traverse_graph_tool`, `get_impact_radius_tool`, `get_review_context_tool`, and `detect_changes_tool`. Building, embedding, and refactoring stay denied. This adds one idle process (about 50–100 MB) per OpenCode workspace.
 - `AGENTS.md` → **Code graph** — tells agents to use the graph only in git repositories, check it first, run a full build when it is missing or was built at another commit, and use graph tools before broad text search.
-- `plugins/crg-plugin.ts` — ensures the session starts with a current graph, logs a pre-commit change analysis, and updates the graph after file edits.
+- `plugins/crg-plugin.ts` — checks the graph at the Git worktree root and updates it after file edits. Pre-commit analysis uses the shell command's working directory.
 
 ## Review
 
@@ -197,10 +197,12 @@ in the outbound routing payload. Empty or non-string prompts make no provider
 call. If summary construction fails, routing stays on the current agent/model
 without contacting the provider. Tests use synthetic input and a fake provider.
 
-This intentionally coarse summary cannot distinguish semantic intent or risk
-from prompt wording. Jev must choose `current` when shape metadata is insufficient;
-explicit agent/model selections still bypass routing. The timeout remains three
-seconds with no retries, and acceptance thresholds are unchanged.
+This coarse summary cannot distinguish semantic intent or risk from prompt
+wording. Jev must choose `current` when shape metadata is insufficient.
+An agent attachment, the SDLC orchestrator, or a model already set on the
+session bypasses the provider. OpenCode V2 does not distinguish the origin of
+the session model in the prompt hook, so the router preserves any stored model.
+The timeout is three seconds with no retries.
 
 The policy is a closed route table in `scripts/route-agent.mjs`. Each route
 binds a task class to an approved OpenCode agent, model, permission profile,
@@ -210,11 +212,11 @@ table and its focused tests, then verify the agent/model exists in
 configuration review. Jev output is accepted only when its route is present in
 that table.
 
-If TypeSafe is unavailable, the request is ambiguous, or the probability/confidence thresholds are not met, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
+If TypeSafe is unavailable, the request is ambiguous, or the chosen route lacks a valid probability or confidence above the thresholds, the current agent and model are preserved. Each decision emits a local, opt-in `routing.decision` provenance record containing bounded routing metadata only; prompts, files, credentials, and model responses are never recorded. Sink failures are swallowed so observability cannot change routing. The implementation is `scripts/route-agent.mjs` and `scripts/routing-provenance.mjs`, following TypeSafe's [intent-routing](https://docs.typesafe.ai/patterns/intent-routing.md) and [confidence-routing](https://docs.typesafe.ai/patterns/confidence-routing.md) guidance.
 
 The provenance output is enabled with `OPENCODE_JEV_ROUTING=1` and is written through the plugin's local sink. Inspect the structured `routing.decision` entries in the OpenCode log; disable them by unsetting that variable. The versioned record supports session correlation, fallback debugging, and cost/latency and policy review without remote telemetry.
 
-Run `/code-review` normally. It invokes the router before inspecting the diff and launches the reviewers named in `selectedReviewers`. The router evaluates six independent questions in one request:
+`/code-review` can use the router for working-tree reviews when file metadata may be sent to the provider. It adds the recommendations to the reviewers selected by the manual rules. The router evaluates six independent questions in one request:
 
 - `architecture-boundary-reviewer` for public API, dependency, package, and layer changes.
 - `performance-reviewer` for performance-sensitive paths.
@@ -341,9 +343,9 @@ To evaluate the existing selection policy, run `node scripts/baseline-reviewer-r
 
 ## Workflow
 
-- `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install via `rtk init -g --opencode`. Track savings with `rtk gain`.
+- `plugins/rtk.ts` — [RTK](https://github.com/rtk-ai/rtk) command rewriting for token savings. Install the RTK binary; this checkout supplies the [OpenCode integration](RTK.md). Track savings with `rtk gain`.
 - `plugins/herdr-agent-state.js` — herdr agent-state integration. Managed by herdr; reinstalling overwrites it.
-- `plugins/atuin.ts` — already included in this global configuration and automatically discovered from `~/.config/opencode/plugins/`. When the `atuin` executable is available on OpenCode's PATH, it records bash commands in Atuin history with author `opencode`; there is no separate opt-in flag. `atuin hook install opencode` installs the hook for setups that do not already include it, not an activation step for this checkout. See [plugin discovery](https://opencode.ai/v2/docs/plugins/#discover). Do not run the hook installer over this managed adapter: it can replace `plugins/atuin.ts` with Atuin’s bundled plugin. Update the adapter through this checkout and restart OpenCode instead.
+- `plugins/atuin.ts` — already included in this global configuration and automatically discovered from `~/.config/opencode/plugins/`. When the `atuin` executable is on OpenCode's PATH, it records shell commands and their working directories in Atuin history with author `opencode`. `atuin hook install opencode` can replace the managed adapter with Atuin’s bundled plugin; use the repository copy for this setup. See [plugin discovery](https://opencode.ai/v2/docs/plugins/#discover).
 
   If the installer already replaced the adapter, first identify whether the installed path is this tracked checkout file (or a symlink to it) or a separate copy. Back up the installed file and any local edits before recovery. For a checkout or symlink, inspect `git diff HEAD -- plugins/atuin.ts` and reconcile the file with the reviewed repository version before updating; do not discard local edits to unblock a pull. For a separate installed copy, compare it with the reviewed checkout adapter and preserve intentional local changes when updating the copy. Restart OpenCode after recovery; restarting alone does not restore the file.
 
@@ -415,8 +417,7 @@ Language support: the orchestrator detects the type checker at intake: TypeScrip
 
 The top-level OpenSpec workflow is owned by `agents/sdlc-orchestrator.md`.
 
-- OpenSpec change lifecycle work covers new, continue, apply, verify, sync, archive, fast-forward, bulk archive, explore, and onboard flows. The `opsx-*` command wrappers and a `.opencode/skills/openspec-*/` copy are not tracked in this repository; the tracked OpenSpec skills are `.agents/skills/openspec-*/`.
-- For discovery in other repositories, [opt in to global OpenSpec skill links](docs/required-skills.md#optional-discover-this-checkouts-openspec-skills-in-other-projects). This does not initialize those repositories or choose a planning store.
+- OpenSpec owns the lifecycle skills. For one shared installation and a separate planning store, see [OpenSpec across repositories](docs/required-skills.md#optional-use-openspec-across-repositories). This checkout maintains the orchestrator and its three phase contracts, not legacy `opsx-*` wrappers.
 - The orchestrator owns store selection, change selection, target-repository evidence gathering, planning routing, delegated delivery, verification routing, sync decisions, task-completion authority, human approval, and archive readiness.
 - Behavioral implementation is delegated to `tdd-orchestrator`; planning and lifecycle decisions stay with `sdlc-orchestrator`.
 - `tdd-orchestrator` uses `mode: all` to support direct `/apply` entry and SDLC delegation. `experimental.subagent_depth: 2` permits SDLC → TDD → worker launches; TDD retains its three-worker allowlist. Restart OpenCode after changing these settings.
@@ -457,6 +458,6 @@ Install the required skills (`frontend-a11y`, `codescene-mcp`, and its dependenc
 configuration checkout alone does not install skills into other projects.
 
 1. `opencode auth login` / `/connect` → OpenAI and paste an API key (or set `OPENAI_API_KEY`)
-2. `rtk init -g --opencode` to install the RTK plugin
+2. Install RTK on OpenCode's `PATH`; check that `rtk hook opencode --help` works.
 3. `uv tool install code-review-graph` for the CLI used by the graph MCP server and plugin, both already configured here. Do not run `code-review-graph install --platform opencode` in this checkout; it would write to `opencode.jsonc` and append its own instructions to `AGENTS.md`.
 4. herdr install for agent-state reporting

@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { runProcess } from "../scripts/pr-agent-process.mjs";
 import { captureSnapshot, patchFiles } from "../scripts/pr-agent-snapshot.mjs";
 
 function repository(t) {
@@ -16,19 +17,15 @@ function repository(t) {
   return { cwd, git, commit };
 }
 
-function rawName(cwd, byte) {
-  return Buffer.concat([Buffer.from(`${cwd}/file-`), Buffer.from([byte]), Buffer.from(".js")]);
-}
-
 test("distinct invalid UTF-8 tracked names are rejected before they can share a comment path", t => {
   const { cwd, git, commit } = repository(t);
-  const paths = [0xfe, 0xff].map(byte => rawName(cwd, byte));
-  for (const path of paths) writeFileSync(path, "old\n");
-  git("add", ".");
+  // Git can store these paths even when the working filesystem cannot.
+  const blob = git("hash-object", "-w", "--stdin");
+  const entries = Buffer.from(`100644 ${blob}\tfile-\xfe.js\0` + `100644 ${blob}\tfile-\xff.js\0`, "latin1");
+  execFileSync("git", ["update-index", "-z", "--index-info"], { cwd, input: entries });
   commit();
-  paths.forEach((path, index) => writeFileSync(path, `new ${index}\n`));
   assert.throws(() => captureSnapshot({}, { cwd }), /non-UTF-8/i);
-  git("add", ".");
+  git("read-tree", "--empty");
   assert.throws(() => captureSnapshot({ scope: "staged" }, { cwd }), /non-UTF-8/i);
   commit();
   assert.throws(() => captureSnapshot({ base: "HEAD^" }, { cwd }), /non-UTF-8/i);
@@ -36,8 +33,14 @@ test("distinct invalid UTF-8 tracked names are rejected before they can share a 
 
 test("invalid UTF-8 untracked names fail before a lossy filesystem lookup", t => {
   const { cwd } = repository(t);
-  writeFileSync(rawName(cwd, 0xff), "synthetic\n");
-  assert.throws(() => captureSnapshot({}, { cwd }), /non-UTF-8/i);
+  const execute = (command, args, options) => {
+    if (args.includes("ls-files")) {
+      assert.equal(options.encoding, null);
+      return { status: 0, stdout: Buffer.from("file-\xff.js\0", "latin1") };
+    }
+    return runProcess(command, args, options);
+  };
+  assert.throws(() => captureSnapshot({}, { cwd, execute }), /non-UTF-8/i);
 });
 
 test("valid Unicode, literal replacement characters and a leading filename BOM retain their identity", t => {

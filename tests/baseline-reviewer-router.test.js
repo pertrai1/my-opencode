@@ -10,14 +10,14 @@ test('historical fixtures reconstruct the existing router metadata shape', async
   const calls = [];
   const change = fixtureChange({ id: 'example', commit: 'abc' }, (args) => {
     calls.push(args);
-    return args.includes('diff-tree') ? 'A\tsrc/index.ts\nM\tsrc/index.test.ts' : ' 2 files changed';
+    return args.includes('diff-tree') ? 'A\0src/index.ts\0M\0src/my index.test.ts\0' : ' 2 files changed';
   });
-  assert.equal(change.files, 'A  src/index.ts\n M src/index.test.ts');
+  assert.equal(change.files, 'A  src/index.ts\n M "src/my index.test.ts"');
   assert.equal(change.summary.fileCount, 2);
   assert.equal(change.summary.newFileCount, 1);
   assert.equal(change.summary.testFiles, 1);
   assert.deepEqual(calls, [
-    ['diff-tree', '--no-commit-id', '--name-status', '--no-renames', '-r', 'abc'],
+    ['diff-tree', '--no-commit-id', '--name-status', '--no-renames', '-r', '-z', 'abc'],
     ['show', '--format=', '--stat', '--no-renames', 'abc'],
   ]);
 });

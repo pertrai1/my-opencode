@@ -17,18 +17,22 @@ not the unrelated Rust Type Kit.
 
 ## OpenCode integration
 
-`plugins/rtk.ts` checks for `rtk` on startup and sends `bash` and `shell` command
-strings to `rtk rewrite` in the session repository before execution. It uses a nonempty rewritten command
-when RTK allows it (exit 0). An explicit RTK deny (exit 2) blocks execution.
-An RTK ask (exit 3) keeps the original command and follows OpenCode's native
-shell permissions; RTK does not independently require approval. Existing deny
-rules remain effective. Rewrites have a 10-second timeout; a stalled RTK process
-is terminated, and the original command follows OpenCode permissions. Other
-rewrite failures also leave the original command to OpenCode permissions.
-If the binary is missing, the plugin logs a warning and disables itself.
+`plugins/rtk.ts` handles OpenCode's `shell` and `bash` tool calls. It uses
+`rtk hook opencode` to propose a rewrite without changing the agent's or
+session's shell permission decision. The plugin gives RTK the effective
+OpenCode rules in a temporary JSON file, so RTK doesn't need to parse the
+checkout's JSONC. The command itself still runs in its requested working
+directory and goes through OpenCode's native permission checks.
 
-Restart OpenCode after installing RTK or changing the plugin. This integration
-uses an OpenCode tool hook; it does not require a Claude Code hook.
+Install a version of RTK that provides `rtk hook opencode` (verified with RTK
+1.1.0). If it is missing, the plugin logs a warning and leaves commands alone.
+Unsupported commands, permission-sensitive rewrites, and rewrite errors or
+timeouts also keep the original command. Set `RTK_DISABLED=1` in the
+OpenCode process environment to disable rewriting.
+
+This checkout manages the plugin; `rtk init -g --opencode` can overwrite it.
+OpenCode reloads local plugin changes. Use `/reload` to reload configuration
+after installing RTK if the plugin was previously disabled.
 
 ## Direct commands
 

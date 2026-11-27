@@ -7,7 +7,7 @@ Pick by situation. For how the pieces connect, see the [architecture diagram](AR
 - **Subagents** are launched by commands or orchestrators. You rarely call them directly.
 - **Skills** load on their own when their trigger matches, or when a command or agent names them.
 
-`tests/cheat-sheet.test.mjs` fails if a command, agent, skill, or plugin in this repository is missing from this page or the README. Add new ones here with a "use when" line.
+`tests/cheat-sheet.test.mjs` checks that this page covers the repository's commands, agents, skills, and plugins. Add new ones here with a "use when" line.
 
 ## Before building
 
@@ -125,12 +125,14 @@ Pick by stage. Each names the next one to use.
 | `sonarqube-mcp.ts` | Per repository | Enables `sonarqube` only where `sonar-project.properties` sets `sonar.host.url`. |
 | `jev-routing.ts` | Off | `OPENCODE_JEV_ROUTING=1` plus `TYPESAFE_API_KEY`. Add `OPENCODE_JEV_ROUTING_DRY_RUN=1` to log decisions without switching. |
 | `tool-observation.ts` | Off | `OPENCODE_TOOL_OBSERVATION=1`. Metadata-only OTLP capture. |
-| `atuin.ts` | Active when `atuin` is available | Already included in this global configuration; records bash commands in Atuin history without a separate opt-in flag. |
+| `atuin.ts` | Active when `atuin` is available | Records shell commands and working directories in Atuin history. |
 | `herdr-agent-state.js` | Managed by herdr | Reinstalling herdr overwrites it. |
 
 ## Skills that only the orchestrator loads
 
-`sdlc-discovery`, `sdlc-delivery`, and `sdlc-closure` are phase contracts for `sdlc-orchestrator`. You never invoke them. The OpenSpec lifecycle skills in `.agents/skills/openspec-*/` and the `difit` and `difit-review` skills in `.agents/skills/` are used by those workflows and by `/code-review`.
+`sdlc-discovery`, `sdlc-delivery`, and `sdlc-closure` are phase contracts that
+`sdlc-orchestrator` loads as needed. See [OpenSpec setup](../README.md#openspec-sdlc-workflow)
+for lifecycle skills. `/code-review` uses `difit` and `difit-review`.
 
 ## Where output goes
 

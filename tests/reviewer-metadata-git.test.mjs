@@ -45,8 +45,8 @@ for (const [path, counter, extension] of [
 }
 
 test("real Git preserves multiple records, untracked paths and quoted path spelling", t => {
-  const repo = repository(t, ["package.json", "scripts/example.mjs", "notes with spaces.md"]);
-  for (const path of ["package.json", "scripts/example.mjs", "notes with spaces.md"]) repo.write(path, "changed\n");
+  const repo = repository(t, ["package.json", "scripts/example with spaces.mjs", "notes with spaces.md"]);
+  for (const path of ["package.json", "scripts/example with spaces.mjs", "notes with spaces.md"]) repo.write(path, "changed\n");
   repo.write("commands/new.md", "new\n");
   const raw = repo.git("status", "--porcelain=v1", "--untracked-files=all");
   const result = repo.metadata();
@@ -56,6 +56,19 @@ test("real Git preserves multiple records, untracked paths and quoted path spell
   assert.equal(result.summary.dependencyFiles, 1);
   assert.equal(result.summary.scriptFiles, 1);
   assert.equal(result.summary.workflowFiles, 1);
+  assert.deepEqual(result.summary.extensions, { json: 1, mjs: 1, md: 2 });
+});
+
+test("real Git renames count only the destination and preserve names containing arrows", t => {
+  const repo = repository(t, ["old.md"]);
+  repo.git("mv", "--", "old.md", "test -> renamed.spec.mjs");
+  repo.write("scripts/after.cjs", "subsequent record\n");
+  const result = repo.metadata();
+  assert.match(result.files, /^R {2}old\.md -> "test -> renamed\.spec\.mjs"$/m);
+  assert.equal(result.summary.fileCount, 2);
+  assert.equal(result.summary.testFiles, 1);
+  assert.equal(result.summary.scriptFiles, 1);
+  assert.deepEqual(result.summary.extensions, { mjs: 1, cjs: 1 });
 });
 
 test("real Git clean and newly added files retain their metadata states", t => {
