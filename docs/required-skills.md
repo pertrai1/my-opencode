@@ -50,9 +50,17 @@ or each project. The required-skills installer above does not manage OpenSpec.
 
 With an installed OpenSpec CLI, first check that `openspec init --help` lists
 `--scope` and `openspec update --help` lists `--dry-run`. The commands below
-were checked with OpenSpec 2.1.1. Inspect existing `openspec-*` definitions in
-your shared, client-specific, and project skill directories first. Preserve
-customized files and inspect old links before removing or replacing anything.
+were checked with OpenSpec 2.1.1. Before initialization, use
+`openspec config list --json` to inspect the active profile and selected
+workflows. Keep every workflow you still need in the profile. Inspect existing
+`openspec-*` definitions in your shared, client-specific, and project skill
+directories, and back up any customizations before continuing.
+
+**Initialization changes the shared skill catalogue.** It can replace
+OpenSpec-managed definitions or remove skills excluded by the active profile.
+The later dry run only previews an update; it cannot prevent changes made by
+`init`. If any existing skill's ownership is unclear, stop and inspect it
+before running `init`.
 
 Choose a dedicated setup directory outside the code projects you work on. The
 example assumes this directory is new or empty:
