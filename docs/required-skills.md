@@ -42,6 +42,68 @@ The CodeScene skill's `references/setup.md` symlink points to the repository's
 single setup guide. It remains readable through the installed skill path. Keep
 Git symlink support enabled when cloning. Do not use a Git checkout that replaces symlinks with plain text files.
 
+## Optional: use OpenSpec across repositories
+
+OpenSpec owns its lifecycle skills. Keep them in the shared
+`~/.agents/skills` directory on each computer, not in the configuration checkout
+or each project. The required-skills installer above does not manage OpenSpec.
+
+With an installed OpenSpec CLI, first check that `openspec init --help` lists
+`--scope` and `openspec update --help` lists `--dry-run`. The commands below
+were checked with OpenSpec 2.1.1. Before initialization, use
+`openspec config list --json` to inspect the active profile and selected
+workflows. Keep every workflow you still need in the profile. Inspect existing
+`openspec-*` definitions in your shared, client-specific, and project skill
+directories, and back up any customizations before continuing.
+
+**Initialization changes the shared skill catalogue.** It can replace
+OpenSpec-managed definitions or remove skills excluded by the active profile.
+The later dry run only previews an update; it cannot prevent changes made by
+`init`. If any existing skill's ownership is unclear, stop and inspect it
+before running `init`.
+
+Choose a dedicated setup directory outside the code projects you work on. The
+example assumes this directory is new or empty:
+
+```bash
+setup="$HOME/.local/share/openspec-bootstrap"
+mkdir -p "$setup"
+openspec init "$setup" --scope global --tools opencode,codex --no-animation
+openspec update "$setup" --dry-run --json
+```
+
+Initialization writes an `openspec/` directory under the setup directory and
+installs the selected profile's skills in the home catalogue. It does not
+initialize the code project. Keep the setup directory for refreshes. Before
+running an update without `--dry-run`, inspect the preview for profile changes
+or removals. The core profile is not the entire workflow set; select optional
+workflows in OpenSpec's profile only when needed. This setup does not install
+legacy `opsx-*` wrappers.
+
+Restart the clients and check from an unrelated code project that both list the
+OpenSpec skills expected for the selected profile. Check that each resolves to
+the same shared `SKILL.md` rather than a project or client-specific duplicate.
+Listing a skill does not prove an agent will invoke it.
+
+Skill installation and planning-root selection are separate. If the code
+project should contain no planning files, use a separate
+[registered OpenSpec store](https://github.com/Fission-AI/OpenSpec/blob/v2.1.1/docs/cli.md#stores-standalone-openspec-repos).
+From the code project, verify the store explicitly:
+
+```bash
+openspec store list --json
+store_id="your-registered-store-id"
+openspec context --json --store "$store_id"
+openspec list --store "$store_id"
+```
+
+Confirm that `root.source` is `store` and that `root.store_id` and `root.path`
+identify the intended planning directory. For this repository's SDLC workflow,
+select `sdlc-orchestrator` in OpenCode and identify both the store and code
+checkout. Start by asking it to inspect the change and report the next phase
+without writes. Do not assume an upstream skill or command selects the store
+or invokes the orchestrator.
+
 ## Scope and verification
 
 This installs the two skills `AGENTS.md` requires in every project plus `frontend-a11y`'s explicit
